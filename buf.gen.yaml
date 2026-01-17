@@ -1,0 +1,18 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      # Replace with your actual Go module name from go.mod
+      value: github.com/nepeta70/ride-hailing/gen/proto
+plugins:
+  # Generates the message structs (location.pb.go)
+  - remote: buf.build/protocolbuffers/go
+    out: gen/proto
+    opt: paths=source_relative
+  # Generates the gRPC service (location_grpc.pb.go)
+  - remote: buf.build/grpc/go
+    out: gen/proto
+    opt: 
+      - paths=source_relative
+      - require_unimplemented_servers=false
