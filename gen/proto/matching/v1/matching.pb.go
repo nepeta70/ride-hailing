@@ -23,9 +23,10 @@ const (
 )
 
 type MatchingRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Unique identifier for the ride request
-	RideRequestId string `protobuf:"bytes,1,opt,name=ride_request_id,json=rideRequestId,proto3" json:"ride_request_id,omitempty"`
+	RideRequestId string `protobuf:"bytes,2,opt,name=ride_request_id,json=rideRequestId,proto3" json:"ride_request_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -58,6 +59,13 @@ func (x *MatchingRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MatchingRequest.ProtoReflect.Descriptor instead.
 func (*MatchingRequest) Descriptor() ([]byte, []int) {
 	return file_matching_v1_matching_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *MatchingRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
 }
 
 func (x *MatchingRequest) GetRideRequestId() string {
@@ -115,9 +123,11 @@ var File_matching_v1_matching_proto protoreflect.FileDescriptor
 
 const file_matching_v1_matching_proto_rawDesc = "" +
 	"\n" +
-	"\x1amatching/v1/matching.proto\x12\vmatching.v1\x1a\x1bgoogle/protobuf/empty.proto\"9\n" +
-	"\x0fMatchingRequest\x12&\n" +
-	"\x0fride_request_id\x18\x01 \x01(\tR\rrideRequestId\"/\n" +
+	"\x1amatching/v1/matching.proto\x12\vmatching.v1\x1a\x1bgoogle/protobuf/empty.proto\"X\n" +
+	"\x0fMatchingRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12&\n" +
+	"\x0fride_request_id\x18\x02 \x01(\tR\rrideRequestId\"/\n" +
 	"\x10MatchingResponse\x12\x1b\n" +
 	"\tdriver_id\x18\x01 \x01(\tR\bdriverId2e\n" +
 	"\x0fMatchingService\x12R\n" +

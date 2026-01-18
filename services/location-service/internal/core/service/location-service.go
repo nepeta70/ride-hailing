@@ -4,7 +4,6 @@ package service
 import (
 	"context"
 
-	"github.com/mmcloughlin/geohash"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/ports"
 )
@@ -21,13 +20,15 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	if err := req.Validate(); err != nil {
 		return err // Returns the Business Error
 	}
-	// 1. Calculate Geohash (Logic stays in the Service)
-	hash := geohash.Encode(req.Latitude, req.Longitude)
 
 	// 2. Map to Domain (The Geohash-only object you wanted)
-	loc := &domain.Location{
-		EntityID:   req.EntityID,
-		Geohash:    hash,
+	loc := &domain.UserLocation{
+		UserID:   req.UserID,
+		UserType: req.UserType,
+		Coordinates: domain.Coordinates{
+			Latitude:  req.Coordinates.Latitude,
+			Longitude: req.Coordinates.Longitude,
+		},
 		Accuracy:   req.Accuracy,
 		Heading:    req.Heading,
 		Speed:      req.Speed,
@@ -37,6 +38,14 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	return s.repo.Save(ctx, loc)
 }
 
-func (s *LocationService) Get(ctx context.Context, entityID string) (*domain.Location, error) {
-	return s.repo.Get(ctx, entityID)
+func (s *LocationService) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+	return s.repo.Get(ctx, userID)
+}
+
+func (s *LocationService) RemoveUserLocation(ctx context.Context, userID string) error {
+	return s.repo.RemoveUserLocation(ctx, userID)
+}
+
+func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.UserLocation, error) {
+	return s.repo.SearchNearby(ctx, req.Coordinates, req.RadiusKm)
 }

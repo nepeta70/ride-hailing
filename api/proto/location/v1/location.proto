@@ -8,13 +8,15 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/nepeta70/ride-hailing/gen/pb/location/v1";
 
 service LocationService {
-  rpc UpdateLocation(UpdateLocationRequest) returns (google.protobuf.Empty);
-  rpc GetLocation(LocateRequest) returns (Location);
+  rpc UpdateUserLocation(UpdateUserLocationRequest) returns (google.protobuf.Empty);
+  rpc GetUserLocation(LocateUserLocationRequest) returns (UserLocation);
+  rpc DeleteUserLocation(DeleteUserLocationRequest) returns (google.protobuf.Empty);
+  rpc SearchNearbyDrivers(SearchNearbyDriversRequest) returns (SearchNearbyDriversResponse);
 }
 
-message UpdateLocationRequest {
-  // Unique identifier for the entity (e.g., driver_id or user_id)
-  string entity_id = 1;
+message UpdateUserLocationRequest {
+  // Unique identifier for the user (e.g., driver_id or user_id)
+  string user_id = 1;
 
   // The latitude in degrees. Range: [-90.0, +90.0]
   double latitude = 2;
@@ -38,15 +40,47 @@ message UpdateLocationRequest {
   google.protobuf.Timestamp captured_at = 7;
 }
 
-message Location {
+message UserLocation {
   // The latitude in degrees. Range: [-90.0, +90.0]
   double latitude = 1;
 
   // The longitude in degrees. Range: [-180.0, +180.0]
   double longitude = 2;
+
+  // Optional: Horizontal accuracy of the location in meters.
+  // Crucial for filtering out "jumpy" GPS data in tunnels or cities.
+  float accuracy = 3;
+
+  // Optional: Direction of travel in degrees (0 - 360).
+  // Useful for showing the car icon pointing the right way on a map.
+  float heading = 4;
+
+  float speed = 5;
+
+  google.protobuf.Timestamp captured_at = 6;
 }
 
-message LocateRequest {
-  // Unique identifier for the entity (e.g., driver_id or user_id)
-  string entity_id = 1;
+message LocateUserLocationRequest {
+  // Unique identifier for the user (e.g., driver_id or user_id)
+  string user_id = 1;
+}
+
+message DeleteUserLocationRequest {
+  // Unique identifier for the user (e.g., driver_id or user_id)
+  string user_id = 1;
+}
+
+message SearchNearbyDriversRequest {
+  // The latitude in degrees. Range: [-90.0, +90.0]
+  double latitude = 1;
+
+  // The longitude in degrees. Range: [-180.0, +180.0]
+  double longitude = 2;
+
+  // Search radius in kilometers
+  float radius_km = 3;
+}
+
+message SearchNearbyDriversResponse {
+  repeated UserLocation driver_locations = 1;
 }

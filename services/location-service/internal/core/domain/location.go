@@ -2,17 +2,28 @@ package domain
 
 import "time"
 
-type Location struct {
-	EntityID   string    `json:"entity_id"`
-	Latitude   float64   `json:"latitude"`
-	Longitude  float64   `json:"longitude"`
-	Geohash    string    `json:"geohash"`
-	Accuracy   float32   `json:"accuracy"`
-	Heading    float32   `json:"heading"`
-	Speed      float32   `json:"speed"`
-	CapturedAt time.Time `json:"captured_at"`
+type UserType string
+
+const (
+	UserTypeDriver    UserType = "driver"
+	UserTypePassenger UserType = "passenger"
+)
+
+type Coordinates struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
-func (l *Location) NewLocation() *Location {
-	return &Location{}
+type UserLocation struct {
+	UserID      string      `json:"user_id"`
+	UserType    UserType    `json:"user_type"`
+	Coordinates Coordinates `json:"coordinates"`
+	Accuracy    float32     `json:"accuracy"`
+	Heading     float32     `json:"heading"`
+	Speed       float32     `json:"speed"`
+	CapturedAt  time.Time   `json:"captured_at"`
+}
+
+func (l *UserLocation) NewLocation() *UserLocation {
+	return &UserLocation{}
 }

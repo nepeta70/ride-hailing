@@ -20,16 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LocationService_UpdateLocation_FullMethodName = "/location.v1.LocationService/UpdateLocation"
-	LocationService_GetLocation_FullMethodName    = "/location.v1.LocationService/GetLocation"
+	LocationService_UpdateUserLocation_FullMethodName  = "/location.v1.LocationService/UpdateUserLocation"
+	LocationService_GetUserLocation_FullMethodName     = "/location.v1.LocationService/GetUserLocation"
+	LocationService_DeleteUserLocation_FullMethodName  = "/location.v1.LocationService/DeleteUserLocation"
+	LocationService_SearchNearbyDrivers_FullMethodName = "/location.v1.LocationService/SearchNearbyDrivers"
 )
 
 // LocationServiceClient is the client API for LocationService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LocationServiceClient interface {
-	UpdateLocation(ctx context.Context, in *UpdateLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetLocation(ctx context.Context, in *LocateRequest, opts ...grpc.CallOption) (*Location, error)
+	UpdateUserLocation(ctx context.Context, in *UpdateUserLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetUserLocation(ctx context.Context, in *LocateUserLocationRequest, opts ...grpc.CallOption) (*UserLocation, error)
+	DeleteUserLocation(ctx context.Context, in *DeleteUserLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SearchNearbyDrivers(ctx context.Context, in *SearchNearbyDriversRequest, opts ...grpc.CallOption) (*SearchNearbyDriversResponse, error)
 }
 
 type locationServiceClient struct {
@@ -40,20 +44,40 @@ func NewLocationServiceClient(cc grpc.ClientConnInterface) LocationServiceClient
 	return &locationServiceClient{cc}
 }
 
-func (c *locationServiceClient) UpdateLocation(ctx context.Context, in *UpdateLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *locationServiceClient) UpdateUserLocation(ctx context.Context, in *UpdateUserLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, LocationService_UpdateLocation_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, LocationService_UpdateUserLocation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *locationServiceClient) GetLocation(ctx context.Context, in *LocateRequest, opts ...grpc.CallOption) (*Location, error) {
+func (c *locationServiceClient) GetUserLocation(ctx context.Context, in *LocateUserLocationRequest, opts ...grpc.CallOption) (*UserLocation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Location)
-	err := c.cc.Invoke(ctx, LocationService_GetLocation_FullMethodName, in, out, cOpts...)
+	out := new(UserLocation)
+	err := c.cc.Invoke(ctx, LocationService_GetUserLocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *locationServiceClient) DeleteUserLocation(ctx context.Context, in *DeleteUserLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, LocationService_DeleteUserLocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *locationServiceClient) SearchNearbyDrivers(ctx context.Context, in *SearchNearbyDriversRequest, opts ...grpc.CallOption) (*SearchNearbyDriversResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchNearbyDriversResponse)
+	err := c.cc.Invoke(ctx, LocationService_SearchNearbyDrivers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +88,10 @@ func (c *locationServiceClient) GetLocation(ctx context.Context, in *LocateReque
 // All implementations should embed UnimplementedLocationServiceServer
 // for forward compatibility.
 type LocationServiceServer interface {
-	UpdateLocation(context.Context, *UpdateLocationRequest) (*emptypb.Empty, error)
-	GetLocation(context.Context, *LocateRequest) (*Location, error)
+	UpdateUserLocation(context.Context, *UpdateUserLocationRequest) (*emptypb.Empty, error)
+	GetUserLocation(context.Context, *LocateUserLocationRequest) (*UserLocation, error)
+	DeleteUserLocation(context.Context, *DeleteUserLocationRequest) (*emptypb.Empty, error)
+	SearchNearbyDrivers(context.Context, *SearchNearbyDriversRequest) (*SearchNearbyDriversResponse, error)
 }
 
 // UnimplementedLocationServiceServer should be embedded to have
@@ -75,11 +101,17 @@ type LocationServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLocationServiceServer struct{}
 
-func (UnimplementedLocationServiceServer) UpdateLocation(context.Context, *UpdateLocationRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpdateLocation not implemented")
+func (UnimplementedLocationServiceServer) UpdateUserLocation(context.Context, *UpdateUserLocationRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateUserLocation not implemented")
 }
-func (UnimplementedLocationServiceServer) GetLocation(context.Context, *LocateRequest) (*Location, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetLocation not implemented")
+func (UnimplementedLocationServiceServer) GetUserLocation(context.Context, *LocateUserLocationRequest) (*UserLocation, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserLocation not implemented")
+}
+func (UnimplementedLocationServiceServer) DeleteUserLocation(context.Context, *DeleteUserLocationRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteUserLocation not implemented")
+}
+func (UnimplementedLocationServiceServer) SearchNearbyDrivers(context.Context, *SearchNearbyDriversRequest) (*SearchNearbyDriversResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchNearbyDrivers not implemented")
 }
 func (UnimplementedLocationServiceServer) testEmbeddedByValue() {}
 
@@ -101,38 +133,74 @@ func RegisterLocationServiceServer(s grpc.ServiceRegistrar, srv LocationServiceS
 	s.RegisterService(&LocationService_ServiceDesc, srv)
 }
 
-func _LocationService_UpdateLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateLocationRequest)
+func _LocationService_UpdateUserLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserLocationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocationServiceServer).UpdateLocation(ctx, in)
+		return srv.(LocationServiceServer).UpdateUserLocation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LocationService_UpdateLocation_FullMethodName,
+		FullMethod: LocationService_UpdateUserLocation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocationServiceServer).UpdateLocation(ctx, req.(*UpdateLocationRequest))
+		return srv.(LocationServiceServer).UpdateUserLocation(ctx, req.(*UpdateUserLocationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LocationService_GetLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LocateRequest)
+func _LocationService_GetUserLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LocateUserLocationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LocationServiceServer).GetLocation(ctx, in)
+		return srv.(LocationServiceServer).GetUserLocation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LocationService_GetLocation_FullMethodName,
+		FullMethod: LocationService_GetUserLocation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LocationServiceServer).GetLocation(ctx, req.(*LocateRequest))
+		return srv.(LocationServiceServer).GetUserLocation(ctx, req.(*LocateUserLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LocationService_DeleteUserLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteUserLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LocationServiceServer).DeleteUserLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LocationService_DeleteUserLocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LocationServiceServer).DeleteUserLocation(ctx, req.(*DeleteUserLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LocationService_SearchNearbyDrivers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchNearbyDriversRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LocationServiceServer).SearchNearbyDrivers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LocationService_SearchNearbyDrivers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LocationServiceServer).SearchNearbyDrivers(ctx, req.(*SearchNearbyDriversRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -145,12 +213,20 @@ var LocationService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LocationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpdateLocation",
-			Handler:    _LocationService_UpdateLocation_Handler,
+			MethodName: "UpdateUserLocation",
+			Handler:    _LocationService_UpdateUserLocation_Handler,
 		},
 		{
-			MethodName: "GetLocation",
-			Handler:    _LocationService_GetLocation_Handler,
+			MethodName: "GetUserLocation",
+			Handler:    _LocationService_GetUserLocation_Handler,
+		},
+		{
+			MethodName: "DeleteUserLocation",
+			Handler:    _LocationService_DeleteUserLocation_Handler,
+		},
+		{
+			MethodName: "SearchNearbyDrivers",
+			Handler:    _LocationService_SearchNearbyDrivers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
