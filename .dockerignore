@@ -1,0 +1,16 @@
+# Ignore the terraform metadata which is causing the stream break
+terraform/
+.terraform/
+**/.terraform/*
+.terraform.lock.hcl
+
+# Ignore git and IDE settings
+.git/
+.vscode/
+.postman/
+
+# Ignore binaries and large files
+**/*.exe
+**/*.ps1
+**/*.sh
+**/*.zip
