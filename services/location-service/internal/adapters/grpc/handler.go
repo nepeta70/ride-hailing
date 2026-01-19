@@ -24,7 +24,7 @@ func NewLocationHandler(service *service.LocationService) *LocationHandler {
 	return &LocationHandler{service: service}
 }
 
-func (h *LocationHandler) UpdateLocation(ctx context.Context, req *locationv1.UpdateUserLocationRequest) (*emptypb.Empty, error) {
+func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv1.UpdateUserLocationRequest) (*emptypb.Empty, error) {
 	err := h.service.Update(ctx, &service.UpdateRequest{
 		UserID: req.UserId,
 		Coordinates: domain.Coordinates{
@@ -44,7 +44,7 @@ func (h *LocationHandler) UpdateLocation(ctx context.Context, req *locationv1.Up
 }
 
 // GetLocation handles the read-side (Query)
-func (h *LocationHandler) GetLocation(ctx context.Context, req *locationv1.LocateUserLocationRequest) (*locationv1.UserLocation, error) {
+func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.LocateUserLocationRequest) (*locationv1.UserLocation, error) {
 	// 2. Execute Query
 	result, err := h.service.Get(ctx, req.UserId)
 	if err != nil {

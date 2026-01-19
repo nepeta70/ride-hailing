@@ -59,8 +59,10 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 	// Set TTL so we don't leak memory for offline users
 	pipe.Expire(ctx, userLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
 
-	_, err = pipe.Exec(ctx)
-	return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
+	if _, err = pipe.Exec(ctx); err != nil {
+		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
+	}
+	return nil
 }
 
 func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
@@ -68,7 +70,7 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 	defer cancel()
 	key := userLocationKey(userID)
 
-	data, err := r.client.Get(ctx, key).Bytes()
+	data, err := r.client.HGet(ctx, key, "data").Bytes()
 	if err != nil {
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
 	}

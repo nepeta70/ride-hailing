@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -16,9 +15,16 @@ type RedisClient struct {
 // NewClient returns our wrapped client
 func NewClient(cfg RedisConfig) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Password: cfg.Password,
-		DB:       cfg.DB,
+		Addr:         cfg.Address,
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		DialTimeout:  cfg.DialTimeout,
+		PoolFIFO:     true,
+		PoolSize:     cfg.PoolSize,
+		PoolTimeout:  cfg.PoolTimeout,
+		MinIdleConns: cfg.MinIdle,
 	})
 
 	// Initial check
