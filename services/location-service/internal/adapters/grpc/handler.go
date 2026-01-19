@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -9,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
-	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	caterrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/service"
 )
@@ -24,9 +25,21 @@ func NewLocationHandler(service *service.LocationService) *LocationHandler {
 	return &LocationHandler{service: service}
 }
 
-func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv1.UpdateUserLocationRequest) (*emptypb.Empty, error) {
+func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv1.UserLocation) (*emptypb.Empty, error) {
+	// TODO: Determine user type from auth context or request metadata
+	var userType domain.UserType
+	switch {
+	case len(req.UserId) >= 7 && req.UserId[:7] == "driver_":
+		userType = domain.UserTypeDriver
+	case len(req.UserId) >= 5 && req.UserId[:5] == "user_":
+		userType = domain.UserTypeUser
+	default:
+		userType = domain.UserTypeUser
+	}
+
 	err := h.service.Update(ctx, &service.UpdateRequest{
-		UserID: req.UserId,
+		UserID:   req.UserId,
+		UserType: userType,
 		Coordinates: domain.Coordinates{
 			Latitude:  req.Latitude,
 			Longitude: req.Longitude,
@@ -44,7 +57,7 @@ func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv
 }
 
 // GetLocation handles the read-side (Query)
-func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.LocateUserLocationRequest) (*locationv1.UserLocation, error) {
+func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.UserID) (*locationv1.UserLocation, error) {
 	// 2. Execute Query
 	result, err := h.service.Get(ctx, req.UserId)
 	if err != nil {
@@ -53,6 +66,7 @@ func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.L
 
 	// 3. Map Result to Proto Response
 	return &locationv1.UserLocation{
+		UserId:     result.UserID,
 		Latitude:   result.Coordinates.Latitude,
 		Longitude:  result.Coordinates.Longitude,
 		Accuracy:   result.Accuracy,
@@ -63,7 +77,7 @@ func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.L
 }
 
 // DeleteUserLocation handles the deletion of a user's location
-func (h *LocationHandler) DeleteUserLocation(ctx context.Context, req *locationv1.DeleteUserLocationRequest) (*emptypb.Empty, error) {
+func (h *LocationHandler) DeleteUserLocation(ctx context.Context, req *locationv1.UserID) (*emptypb.Empty, error) {
 	err := h.service.RemoveUserLocation(ctx, req.UserId)
 	if err != nil {
 		return nil, mapError(err)
@@ -87,6 +101,7 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 	driverLocations := make([]*locationv1.UserLocation, 0, len(results))
 	for _, loc := range results {
 		driverLocations = append(driverLocations, &locationv1.UserLocation{
+			UserId:     loc.UserID,
 			Latitude:   loc.Coordinates.Latitude,
 			Longitude:  loc.Coordinates.Longitude,
 			Accuracy:   loc.Accuracy,
@@ -103,10 +118,16 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 
 // mapError translates your internal CategorizedErrors to gRPC status codes
 func mapError(err error) error {
-	if errors.IsBusiness(err) {
+	if caterrors.IsNotFound(err) {
+		return status.Error(codes.NotFound, err.Error())
+	}
+	if errors.Is(err, caterrors.ErrContextError) {
+		return status.Error(codes.Canceled, "request cancelled or deadline exceeded")
+	}
+	if caterrors.IsBusiness(err) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
-	if errors.IsTransient(err) {
+	if caterrors.IsTransient(err) {
 		return status.Error(codes.Unavailable, "temporary service failure, retry allowed")
 	}
 	return status.Error(codes.Internal, "an internal error occurred")

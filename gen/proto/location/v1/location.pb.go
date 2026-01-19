@@ -23,10 +23,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type UpdateUserLocationRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique identifier for the user (e.g., driver_id or user_id)
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+type UserLocation struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// The latitude in degrees. Range: [-90.0, +90.0]
 	Latitude float64 `protobuf:"fixed64,2,opt,name=latitude,proto3" json:"latitude,omitempty"`
 	// The longitude in degrees. Range: [-180.0, +180.0]
@@ -36,116 +35,16 @@ type UpdateUserLocationRequest struct {
 	Accuracy float32 `protobuf:"fixed32,4,opt,name=accuracy,proto3" json:"accuracy,omitempty"`
 	// Optional: Direction of travel in degrees (0 - 360).
 	// Useful for showing the car icon pointing the right way on a map.
-	Heading float32 `protobuf:"fixed32,5,opt,name=heading,proto3" json:"heading,omitempty"`
-	// Optional: Speed in meters per second.
-	Speed float32 `protobuf:"fixed32,6,opt,name=speed,proto3" json:"speed,omitempty"`
-	// The exact time the GPS fix was acquired on the device.
-	// Don't rely on the server-receive time for real-time tracking!
+	Heading       float32                `protobuf:"fixed32,5,opt,name=heading,proto3" json:"heading,omitempty"`
+	Speed         float32                `protobuf:"fixed32,6,opt,name=speed,proto3" json:"speed,omitempty"`
 	CapturedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateUserLocationRequest) Reset() {
-	*x = UpdateUserLocationRequest{}
-	mi := &file_location_v1_location_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateUserLocationRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateUserLocationRequest) ProtoMessage() {}
-
-func (x *UpdateUserLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateUserLocationRequest.ProtoReflect.Descriptor instead.
-func (*UpdateUserLocationRequest) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *UpdateUserLocationRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *UpdateUserLocationRequest) GetLatitude() float64 {
-	if x != nil {
-		return x.Latitude
-	}
-	return 0
-}
-
-func (x *UpdateUserLocationRequest) GetLongitude() float64 {
-	if x != nil {
-		return x.Longitude
-	}
-	return 0
-}
-
-func (x *UpdateUserLocationRequest) GetAccuracy() float32 {
-	if x != nil {
-		return x.Accuracy
-	}
-	return 0
-}
-
-func (x *UpdateUserLocationRequest) GetHeading() float32 {
-	if x != nil {
-		return x.Heading
-	}
-	return 0
-}
-
-func (x *UpdateUserLocationRequest) GetSpeed() float32 {
-	if x != nil {
-		return x.Speed
-	}
-	return 0
-}
-
-func (x *UpdateUserLocationRequest) GetCapturedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CapturedAt
-	}
-	return nil
-}
-
-type UserLocation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The latitude in degrees. Range: [-90.0, +90.0]
-	Latitude float64 `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
-	// The longitude in degrees. Range: [-180.0, +180.0]
-	Longitude float64 `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
-	// Optional: Horizontal accuracy of the location in meters.
-	// Crucial for filtering out "jumpy" GPS data in tunnels or cities.
-	Accuracy float32 `protobuf:"fixed32,3,opt,name=accuracy,proto3" json:"accuracy,omitempty"`
-	// Optional: Direction of travel in degrees (0 - 360).
-	// Useful for showing the car icon pointing the right way on a map.
-	Heading       float32                `protobuf:"fixed32,4,opt,name=heading,proto3" json:"heading,omitempty"`
-	Speed         float32                `protobuf:"fixed32,5,opt,name=speed,proto3" json:"speed,omitempty"`
-	CapturedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UserLocation) Reset() {
 	*x = UserLocation{}
-	mi := &file_location_v1_location_proto_msgTypes[1]
+	mi := &file_location_v1_location_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -157,7 +56,7 @@ func (x *UserLocation) String() string {
 func (*UserLocation) ProtoMessage() {}
 
 func (x *UserLocation) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[1]
+	mi := &file_location_v1_location_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -170,7 +69,14 @@ func (x *UserLocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserLocation.ProtoReflect.Descriptor instead.
 func (*UserLocation) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{1}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *UserLocation) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 func (x *UserLocation) GetLatitude() float64 {
@@ -215,7 +121,7 @@ func (x *UserLocation) GetCapturedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-type LocateUserLocationRequest struct {
+type UserID struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique identifier for the user (e.g., driver_id or user_id)
 	UserId        string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -223,21 +129,21 @@ type LocateUserLocationRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LocateUserLocationRequest) Reset() {
-	*x = LocateUserLocationRequest{}
-	mi := &file_location_v1_location_proto_msgTypes[2]
+func (x *UserID) Reset() {
+	*x = UserID{}
+	mi := &file_location_v1_location_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LocateUserLocationRequest) String() string {
+func (x *UserID) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LocateUserLocationRequest) ProtoMessage() {}
+func (*UserID) ProtoMessage() {}
 
-func (x *LocateUserLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[2]
+func (x *UserID) ProtoReflect() protoreflect.Message {
+	mi := &file_location_v1_location_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,57 +154,12 @@ func (x *LocateUserLocationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LocateUserLocationRequest.ProtoReflect.Descriptor instead.
-func (*LocateUserLocationRequest) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use UserID.ProtoReflect.Descriptor instead.
+func (*UserID) Descriptor() ([]byte, []int) {
+	return file_location_v1_location_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LocateUserLocationRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-type DeleteUserLocationRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique identifier for the user (e.g., driver_id or user_id)
-	UserId        string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteUserLocationRequest) Reset() {
-	*x = DeleteUserLocationRequest{}
-	mi := &file_location_v1_location_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteUserLocationRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteUserLocationRequest) ProtoMessage() {}
-
-func (x *DeleteUserLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteUserLocationRequest.ProtoReflect.Descriptor instead.
-func (*DeleteUserLocationRequest) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *DeleteUserLocationRequest) GetUserId() string {
+func (x *UserID) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
@@ -319,7 +180,7 @@ type SearchNearbyDriversRequest struct {
 
 func (x *SearchNearbyDriversRequest) Reset() {
 	*x = SearchNearbyDriversRequest{}
-	mi := &file_location_v1_location_proto_msgTypes[4]
+	mi := &file_location_v1_location_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -331,7 +192,7 @@ func (x *SearchNearbyDriversRequest) String() string {
 func (*SearchNearbyDriversRequest) ProtoMessage() {}
 
 func (x *SearchNearbyDriversRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[4]
+	mi := &file_location_v1_location_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +205,7 @@ func (x *SearchNearbyDriversRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchNearbyDriversRequest.ProtoReflect.Descriptor instead.
 func (*SearchNearbyDriversRequest) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{4}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SearchNearbyDriversRequest) GetLatitude() float64 {
@@ -377,7 +238,7 @@ type SearchNearbyDriversResponse struct {
 
 func (x *SearchNearbyDriversResponse) Reset() {
 	*x = SearchNearbyDriversResponse{}
-	mi := &file_location_v1_location_proto_msgTypes[5]
+	mi := &file_location_v1_location_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -389,7 +250,7 @@ func (x *SearchNearbyDriversResponse) String() string {
 func (*SearchNearbyDriversResponse) ProtoMessage() {}
 
 func (x *SearchNearbyDriversResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[5]
+	mi := &file_location_v1_location_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,7 +263,7 @@ func (x *SearchNearbyDriversResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchNearbyDriversResponse.ProtoReflect.Descriptor instead.
 func (*SearchNearbyDriversResponse) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{5}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SearchNearbyDriversResponse) GetDriverLocations() []*UserLocation {
@@ -416,8 +277,8 @@ var File_location_v1_location_proto protoreflect.FileDescriptor
 
 const file_location_v1_location_proto_rawDesc = "" +
 	"\n" +
-	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf7\x01\n" +
-	"\x19UpdateUserLocationRequest\x12\x17\n" +
+	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xea\x01\n" +
+	"\fUserLocation\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\blatitude\x18\x02 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x12\x1a\n" +
@@ -425,29 +286,19 @@ const file_location_v1_location_proto_rawDesc = "" +
 	"\aheading\x18\x05 \x01(\x02R\aheading\x12\x14\n" +
 	"\x05speed\x18\x06 \x01(\x02R\x05speed\x12;\n" +
 	"\vcaptured_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"capturedAt\"\xd1\x01\n" +
-	"\fUserLocation\x12\x1a\n" +
-	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1a\n" +
-	"\baccuracy\x18\x03 \x01(\x02R\baccuracy\x12\x18\n" +
-	"\aheading\x18\x04 \x01(\x02R\aheading\x12\x14\n" +
-	"\x05speed\x18\x05 \x01(\x02R\x05speed\x12;\n" +
-	"\vcaptured_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"capturedAt\"4\n" +
-	"\x19LocateUserLocationRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"4\n" +
-	"\x19DeleteUserLocationRequest\x12\x17\n" +
+	"capturedAt\"!\n" +
+	"\x06UserID\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"s\n" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1b\n" +
 	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"c\n" +
 	"\x1bSearchNearbyDriversResponse\x12D\n" +
-	"\x10driver_locations\x18\x01 \x03(\v2\x19.location.v1.UserLocationR\x0fdriverLocations2\xfd\x02\n" +
-	"\x0fLocationService\x12T\n" +
-	"\x12UpdateUserLocation\x12&.location.v1.UpdateUserLocationRequest\x1a\x16.google.protobuf.Empty\x12T\n" +
-	"\x0fGetUserLocation\x12&.location.v1.LocateUserLocationRequest\x1a\x19.location.v1.UserLocation\x12T\n" +
-	"\x12DeleteUserLocation\x12&.location.v1.DeleteUserLocationRequest\x1a\x16.google.protobuf.Empty\x12h\n" +
+	"\x10driver_locations\x18\x01 \x03(\v2\x19.location.v1.UserLocationR\x0fdriverLocations2\xca\x02\n" +
+	"\x0fLocationService\x12G\n" +
+	"\x12UpdateUserLocation\x12\x19.location.v1.UserLocation\x1a\x16.google.protobuf.Empty\x12A\n" +
+	"\x0fGetUserLocation\x12\x13.location.v1.UserID\x1a\x19.location.v1.UserLocation\x12A\n" +
+	"\x12DeleteUserLocation\x12\x13.location.v1.UserID\x1a\x16.google.protobuf.Empty\x12h\n" +
 	"\x13SearchNearbyDrivers\x12'.location.v1.SearchNearbyDriversRequest\x1a(.location.v1.SearchNearbyDriversResponseB\xb0\x01\n" +
 	"\x0fcom.location.v1B\rLocationProtoP\x01ZAgithub.com/nepeta70/ride-hailing/gen/proto/location/v1;locationv1\xa2\x02\x03LXX\xaa\x02\vLocation.V1\xca\x02\vLocation\\V1\xe2\x02\x17Location\\V1\\GPBMetadata\xea\x02\fLocation::V1b\x06proto3"
 
@@ -463,34 +314,31 @@ func file_location_v1_location_proto_rawDescGZIP() []byte {
 	return file_location_v1_location_proto_rawDescData
 }
 
-var file_location_v1_location_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_location_v1_location_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_location_v1_location_proto_goTypes = []any{
-	(*UpdateUserLocationRequest)(nil),   // 0: location.v1.UpdateUserLocationRequest
-	(*UserLocation)(nil),                // 1: location.v1.UserLocation
-	(*LocateUserLocationRequest)(nil),   // 2: location.v1.LocateUserLocationRequest
-	(*DeleteUserLocationRequest)(nil),   // 3: location.v1.DeleteUserLocationRequest
-	(*SearchNearbyDriversRequest)(nil),  // 4: location.v1.SearchNearbyDriversRequest
-	(*SearchNearbyDriversResponse)(nil), // 5: location.v1.SearchNearbyDriversResponse
-	(*timestamppb.Timestamp)(nil),       // 6: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 7: google.protobuf.Empty
+	(*UserLocation)(nil),                // 0: location.v1.UserLocation
+	(*UserID)(nil),                      // 1: location.v1.UserID
+	(*SearchNearbyDriversRequest)(nil),  // 2: location.v1.SearchNearbyDriversRequest
+	(*SearchNearbyDriversResponse)(nil), // 3: location.v1.SearchNearbyDriversResponse
+	(*timestamppb.Timestamp)(nil),       // 4: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 5: google.protobuf.Empty
 }
 var file_location_v1_location_proto_depIdxs = []int32{
-	6, // 0: location.v1.UpdateUserLocationRequest.captured_at:type_name -> google.protobuf.Timestamp
-	6, // 1: location.v1.UserLocation.captured_at:type_name -> google.protobuf.Timestamp
-	1, // 2: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.UserLocation
-	0, // 3: location.v1.LocationService.UpdateUserLocation:input_type -> location.v1.UpdateUserLocationRequest
-	2, // 4: location.v1.LocationService.GetUserLocation:input_type -> location.v1.LocateUserLocationRequest
-	3, // 5: location.v1.LocationService.DeleteUserLocation:input_type -> location.v1.DeleteUserLocationRequest
-	4, // 6: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
-	7, // 7: location.v1.LocationService.UpdateUserLocation:output_type -> google.protobuf.Empty
-	1, // 8: location.v1.LocationService.GetUserLocation:output_type -> location.v1.UserLocation
-	7, // 9: location.v1.LocationService.DeleteUserLocation:output_type -> google.protobuf.Empty
-	5, // 10: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 0: location.v1.UserLocation.captured_at:type_name -> google.protobuf.Timestamp
+	0, // 1: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.UserLocation
+	0, // 2: location.v1.LocationService.UpdateUserLocation:input_type -> location.v1.UserLocation
+	1, // 3: location.v1.LocationService.GetUserLocation:input_type -> location.v1.UserID
+	1, // 4: location.v1.LocationService.DeleteUserLocation:input_type -> location.v1.UserID
+	2, // 5: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
+	5, // 6: location.v1.LocationService.UpdateUserLocation:output_type -> google.protobuf.Empty
+	0, // 7: location.v1.LocationService.GetUserLocation:output_type -> location.v1.UserLocation
+	5, // 8: location.v1.LocationService.DeleteUserLocation:output_type -> google.protobuf.Empty
+	3, // 9: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_location_v1_location_proto_init() }
@@ -504,7 +352,7 @@ func file_location_v1_location_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_location_v1_location_proto_rawDesc), len(file_location_v1_location_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

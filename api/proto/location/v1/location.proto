@@ -8,16 +8,14 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/nepeta70/ride-hailing/gen/pb/location/v1";
 
 service LocationService {
-  rpc UpdateUserLocation(UpdateUserLocationRequest) returns (google.protobuf.Empty);
-  rpc GetUserLocation(LocateUserLocationRequest) returns (UserLocation);
-  rpc DeleteUserLocation(DeleteUserLocationRequest) returns (google.protobuf.Empty);
+  rpc UpdateUserLocation(UserLocation) returns (google.protobuf.Empty);
+  rpc GetUserLocation(UserID) returns (UserLocation);
+  rpc DeleteUserLocation(UserID) returns (google.protobuf.Empty);
   rpc SearchNearbyDrivers(SearchNearbyDriversRequest) returns (SearchNearbyDriversResponse);
 }
 
-message UpdateUserLocationRequest {
-  // Unique identifier for the user (e.g., driver_id or user_id)
+message UserLocation {
   string user_id = 1;
-
   // The latitude in degrees. Range: [-90.0, +90.0]
   double latitude = 2;
 
@@ -27,45 +25,16 @@ message UpdateUserLocationRequest {
   // Optional: Horizontal accuracy of the location in meters.
   // Crucial for filtering out "jumpy" GPS data in tunnels or cities.
   float accuracy = 4;
-
   // Optional: Direction of travel in degrees (0 - 360).
   // Useful for showing the car icon pointing the right way on a map.
   float heading = 5;
 
-  // Optional: Speed in meters per second.
   float speed = 6;
 
-  // The exact time the GPS fix was acquired on the device.
-  // Don't rely on the server-receive time for real-time tracking!
   google.protobuf.Timestamp captured_at = 7;
 }
 
-message UserLocation {
-  // The latitude in degrees. Range: [-90.0, +90.0]
-  double latitude = 1;
-
-  // The longitude in degrees. Range: [-180.0, +180.0]
-  double longitude = 2;
-
-  // Optional: Horizontal accuracy of the location in meters.
-  // Crucial for filtering out "jumpy" GPS data in tunnels or cities.
-  float accuracy = 3;
-
-  // Optional: Direction of travel in degrees (0 - 360).
-  // Useful for showing the car icon pointing the right way on a map.
-  float heading = 4;
-
-  float speed = 5;
-
-  google.protobuf.Timestamp captured_at = 6;
-}
-
-message LocateUserLocationRequest {
-  // Unique identifier for the user (e.g., driver_id or user_id)
-  string user_id = 1;
-}
-
-message DeleteUserLocationRequest {
+message UserID {
   // Unique identifier for the user (e.g., driver_id or user_id)
   string user_id = 1;
 }

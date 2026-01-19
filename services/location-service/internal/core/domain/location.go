@@ -5,8 +5,8 @@ import "time"
 type UserType string
 
 const (
-	UserTypeDriver    UserType = "driver"
-	UserTypePassenger UserType = "passenger"
+	UserTypeDriver UserType = "driver"
+	UserTypeUser   UserType = "user"
 )
 
 type Coordinates struct {

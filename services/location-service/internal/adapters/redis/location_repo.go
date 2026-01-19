@@ -3,6 +3,7 @@ package redisStore
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -20,10 +21,11 @@ const (
 type RedisRepository struct {
 	client *redis.Client
 	cfg    *config.Config
+	logger *slog.Logger
 }
 
-func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient) *RedisRepository {
-	return &RedisRepository{client: client.Rdb, cfg: cfg}
+func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger *slog.Logger) *RedisRepository {
+	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 
 func userLocationKey(userID string) string {
@@ -71,6 +73,10 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 	key := userLocationKey(userID)
 
 	data, err := r.client.HGet(ctx, key, "data").Bytes()
+	if err == redis.Nil {
+		// Not found, return nil, nil
+		return nil, errors.NewErrNotFound("location data for userID " + userID)
+	}
 	if err != nil {
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
 	}
@@ -119,9 +125,21 @@ func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.C
 	for _, geoLocation := range geoResults {
 		loc, err := r.Get(ctx, geoLocation.Name)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				r.asyncRemoveFromIndex(geoLocation.Name)
+				continue // Skip missing entries
+			}
 			return nil, errors.NewTransientErrorf("get user location failed: %w", err)
 		}
 		results = append(results, loc)
 	}
 	return results, nil
+}
+
+func (r *RedisRepository) asyncRemoveFromIndex(userID string) {
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), r.cfg.Timeouts.StandardTimeout)
+		defer cancel()
+		r.client.ZRem(bgCtx, locationIndexKeyPrefix, userID)
+	}()
 }

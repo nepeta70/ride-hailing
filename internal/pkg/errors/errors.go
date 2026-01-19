@@ -113,3 +113,17 @@ func NewErrJSONMarshal(err error) error {
 func NewErrJSONUnmarshal(err error) error {
 	return NewPermanentErrorf("failed to unmarshal from json: %w", err)
 }
+
+func NewErrNotFound(msg string) error {
+	return NewBusinessErrorf("not found: %s", msg)
+}
+
+// IsNotFound checks if the error message contains 'not found'.
+func IsNotFound(err error) bool {
+	return err != nil && (len(err.Error()) > 9 && err.Error()[:9] == "not found")
+}
+
+var (
+	ErrContextError  = NewTransientError("context cancelled or deadline exceeded")
+	ErrInternalError = NewTransientError("internal error")
+)

@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/ports"
 )
@@ -17,6 +18,9 @@ func NewLocationService(r ports.LocationRepository) *LocationService {
 }
 
 func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error {
+	if err := ctx.Err(); err != nil {
+		return errors.ErrContextError
+	}
 	if err := req.Validate(); err != nil {
 		return err // Returns the Business Error
 	}
@@ -39,13 +43,22 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 }
 
 func (s *LocationService) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.ErrContextError
+	}
 	return s.repo.Get(ctx, userID)
 }
 
 func (s *LocationService) RemoveUserLocation(ctx context.Context, userID string) error {
+	if err := ctx.Err(); err != nil {
+		return errors.ErrContextError
+	}
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
 func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.UserLocation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.ErrContextError
+	}
 	return s.repo.SearchNearby(ctx, req.Coordinates, req.RadiusKm)
 }

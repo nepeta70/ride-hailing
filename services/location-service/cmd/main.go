@@ -48,7 +48,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	locationRepository := redisAdapters.NewRedisRepository(cfg, redisClient)
+	locationRepository := redisAdapters.NewRedisRepository(cfg, redisClient, logger)
 	locationService := service.NewLocationService(locationRepository)
 	handler := grpcAdapters.NewLocationHandler(locationService)
 
