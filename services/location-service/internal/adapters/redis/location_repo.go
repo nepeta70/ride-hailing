@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/redis"
+	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,10 +19,11 @@ const (
 
 type RedisRepository struct {
 	client *redis.Client
+	cfg    *config.Config
 }
 
-func NewRedisRepository(client *redis.Client) *RedisRepository {
-	return &RedisRepository{client: client}
+func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient) *RedisRepository {
+	return &RedisRepository{client: client.Rdb, cfg: cfg}
 }
 
 func userLocationKey(userID string) string {
@@ -29,6 +32,8 @@ func userLocationKey(userID string) string {
 
 // Save implements the ports.LocationRepository interface
 func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) error {
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	defer cancel()
 	// Specific metadata for this entity (HASH)
 	userLocationKey := userLocationKey(loc.UserID)
 
@@ -51,14 +56,16 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 	// 3. Save Metadata in a Hash
 	pipe.HSet(ctx, userLocationKey, "data", data)
 
-	// Set TTL so we don't leak memory for offline drivers (e.g., 1 hour)
-	pipe.Expire(ctx, userLocationKey, time.Hour)
+	// Set TTL so we don't leak memory for offline users
+	pipe.Expire(ctx, userLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
 
 	_, err = pipe.Exec(ctx)
 	return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
 }
 
 func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	defer cancel()
 	key := userLocationKey(userID)
 
 	data, err := r.client.Get(ctx, key).Bytes()
@@ -75,11 +82,44 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 }
 
 func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	defer cancel()
 	// Remove metadata
 	userLocationKey := userLocationKey(userID)
 	if err := r.client.Del(ctx, userLocationKey).Err(); err != nil {
 		return errors.NewTransientErrorf("failed to delete location metadata: %w", err)
 	}
-	// Note: In a real implementation, you'd also want to remove the entry from the ZSET.
+
+	// Remove from geospatial index (ZSET)
+	if err := r.client.ZRem(ctx, locationIndexKeyPrefix, userID).Err(); err != nil {
+		return errors.NewTransientErrorf("failed to remove from geospatial index: %w", err)
+	}
+
 	return nil
+}
+
+func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.Coordinates, radiusKm float32) ([]*domain.UserLocation, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	defer cancel()
+	// 1. Query Geospatial Index
+	geoResults, err := r.client.GeoRadius(ctx, locationIndexKeyPrefix, coordinates.Longitude, coordinates.Latitude, &redis.GeoRadiusQuery{
+		Radius:    float64(radiusKm),
+		Unit:      "km",
+		WithCoord: false,
+		WithDist:  false,
+		Count:     r.cfg.Logic.TopKNearby,
+		Sort:      "ASC",
+	}).Result()
+	if err != nil {
+		return nil, errors.NewTransientErrorf("redis georadius query failed: %w", err)
+	}
+	var results []*domain.UserLocation
+	for _, geoLocation := range geoResults {
+		loc, err := r.Get(ctx, geoLocation.Name)
+		if err != nil {
+			return nil, errors.NewTransientErrorf("get user location failed: %w", err)
+		}
+		results = append(results, loc)
+	}
+	return results, nil
 }

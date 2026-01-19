@@ -5,39 +5,36 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
 	"github.com/nepeta70/ride-hailing/internal/pkg/redis"
 )
 
 type Config struct {
-	Server  ServerConfig          `json:"server"`
-	Logging logging.LoggingConfig `json:"logging"`
-	Redis   redis.RedisConfig     `json:"redis"`
-	Logic   LogicConfig           `json:"logic"`
-}
-
-type ServerConfig struct {
-	Port int    `json:"port" env:"SERVER_PORT" envDefault:"50051"`
-	Host string `json:"host" env:"SERVER_HOST" envDefault:"127.0.0.1"`
+	Server   config.ServerConfig   `json:"server"`
+	Logging  logging.LoggingConfig `json:"logging"`
+	Redis    redis.RedisConfig     `json:"redis"`
+	Logic    LogicConfig           `json:"logic"`
+	Timeouts config.TimeoutsConfig `json:"timeouts"`
 }
 
 type LogicConfig struct {
 	GeohashPrecision   int `json:"geohash_precision" env:"GEOHASH_PRECISION" envDefault:"7"`
-	LocationTTLSeconds int `json:"location_ttl_seconds" env:"LOCATION_TTL" envDefault:"60"`
+	LocationTTLSeconds int `json:"location_ttl_seconds" env:"LOCATION_TTL" envDefault:"300"`
+	TopKNearby         int `json:"top_k_nearby" env:"TOP_K_NEARBY" envDefault:"5"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Server: ServerConfig{
-			Port: 50051,
-			Host: "127.0.0.1",
-		},
+		Server: config.DefaultServerConfig(),
 		Logic: LogicConfig{
 			GeohashPrecision:   7,
-			LocationTTLSeconds: 60,
+			LocationTTLSeconds: 300,
+			TopKNearby:         5,
 		},
-		Logging: logging.DefaultLoggingConfig(),
-		Redis:   redis.DefaultRedisConfig(),
+		Timeouts: config.DefaultTimeoutsConfig(),
+		Logging:  logging.DefaultLoggingConfig(),
+		Redis:    redis.DefaultRedisConfig(),
 	}
 }
 

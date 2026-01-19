@@ -34,3 +34,30 @@ func (repo *InMemoryRideRepo) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	}
 	return ride, nil
 }
+
+// Update updates an existing ride in the repository.
+func (repo *InMemoryRideRepo) Update(ctx context.Context, ride *domain.Ride) error {
+	if _, exists := repo.data[ride.ID]; !exists {
+		return domain.ErrRideNotFound
+	}
+	repo.data[ride.ID] = ride
+	return nil
+}
+
+// Delete removes a ride from the repository by ID.
+func (repo *InMemoryRideRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	if _, exists := repo.data[id]; !exists {
+		return domain.ErrRideNotFound
+	}
+	delete(repo.data, id)
+	return nil
+}
+
+// List returns all rides in the repository.
+func (repo *InMemoryRideRepo) List(ctx context.Context) ([]*domain.Ride, error) {
+	rides := make([]*domain.Ride, 0, len(repo.data))
+	for _, ride := range repo.data {
+		rides = append(rides, ride)
+	}
+	return rides, nil
+}

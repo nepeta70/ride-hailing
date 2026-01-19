@@ -6,13 +6,14 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/redis"
-	grpcHandler "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/grpc"
-	grcAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/inmemory"
+	grpcAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/grpc"
+	redisAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/redis"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/service"
 	"google.golang.org/grpc"
@@ -37,7 +38,7 @@ func main() {
 	}
 
 	// 2. Setup gRPC Server
-	grpcAddr := ":50051"
+	grpcAddr := ":" + strconv.Itoa(cfg.Server.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		logger.Error("failed to listen: %v", "error", err)
@@ -47,9 +48,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	locationRepository := grcAdapters.NewInMemoryLocationRepo()
+	locationRepository := redisAdapters.NewRedisRepository(cfg, redisClient)
 	locationService := service.NewLocationService(locationRepository)
-	handler := grpcHandler.NewLocationHandler(locationService)
+	handler := grpcAdapters.NewLocationHandler(locationService)
 
 	locationv1.RegisterLocationServiceServer(grpcServer, handler)
 	reflection.Register(grpcServer)
