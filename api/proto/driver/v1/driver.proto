@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package driver.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/nepeta70/ride-hailing/gen/pb/driver/v1";
+
+// Placeholder proto for the Driver service.
+service DriverService {
+  rpc CreateDriver(CreateDriverRequest) returns (Driver);
+  rpc UpdateDriver(Driver) returns (Driver);
+  rpc GetDriver(GetDriverRequest) returns (Driver);
+}
+
+message VehicleInfo {
+  string make = 1;
+  string model = 2;
+  string color = 3;
+  string license_plate = 4;
+  int32 seats = 5;
+  string category = 6;
+  bool accepts_pets = 7;
+  bool accepts_wheelchair = 8;
+  string additional_info = 9;
+}
+
+message CreateDriverRequest {
+  string user_id = 1;
+  string license_number = 2;
+  string license_number_expiry_date = 3;
+  VehicleInfo vehicle_info = 4;
+}
+
+message GetDriverRequest {
+  string user_id = 1;
+}
+
+message Driver {
+  string user_id = 1;
+  string license_number = 2;
+  string license_number_expiry_date = 3;
+  VehicleInfo vehicle_info = 4;
+}

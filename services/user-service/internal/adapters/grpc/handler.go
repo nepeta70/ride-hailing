@@ -31,18 +31,3 @@ func (h *UserHandler) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequ
 	// TODO: Call the user service logic here
 	return &userv1.User{}, nil
 }
-
-func (h *UserHandler) CreateDriverProfile(ctx context.Context, req *userv1.CreateDriverProfileRequest) (*userv1.DriverProfile, error) {
-	// TODO: Call the user service logic here
-	return &userv1.DriverProfile{}, nil
-}
-
-func (h *UserHandler) UpdateDriverProfile(ctx context.Context, req *userv1.UpdateDriverProfileRequest) (*userv1.DriverProfile, error) {
-	// TODO: Call the user service logic here
-	return &userv1.DriverProfile{}, nil
-}
-
-func (h *UserHandler) GetDriverProfile(ctx context.Context, req *userv1.GetUserRequest) (*userv1.DriverProfile, error) {
-	// TODO: Call the user service logic here
-	return &userv1.DriverProfile{}, nil
-}

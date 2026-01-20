@@ -19,12 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetUser_FullMethodName             = "/user.v1.UserService/GetUser"
-	UserService_CreateUser_FullMethodName          = "/user.v1.UserService/CreateUser"
-	UserService_UpdateUser_FullMethodName          = "/user.v1.UserService/UpdateUser"
-	UserService_CreateDriverProfile_FullMethodName = "/user.v1.UserService/CreateDriverProfile"
-	UserService_UpdateDriverProfile_FullMethodName = "/user.v1.UserService/UpdateDriverProfile"
-	UserService_GetDriverProfile_FullMethodName    = "/user.v1.UserService/GetDriverProfile"
+	UserService_GetUser_FullMethodName    = "/user.v1.UserService/GetUser"
+	UserService_CreateUser_FullMethodName = "/user.v1.UserService/CreateUser"
+	UserService_UpdateUser_FullMethodName = "/user.v1.UserService/UpdateUser"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -35,9 +32,6 @@ type UserServiceClient interface {
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*User, error)
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*User, error)
-	CreateDriverProfile(ctx context.Context, in *CreateDriverProfileRequest, opts ...grpc.CallOption) (*DriverProfile, error)
-	UpdateDriverProfile(ctx context.Context, in *UpdateDriverProfileRequest, opts ...grpc.CallOption) (*DriverProfile, error)
-	GetDriverProfile(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*DriverProfile, error)
 }
 
 type userServiceClient struct {
@@ -78,36 +72,6 @@ func (c *userServiceClient) UpdateUser(ctx context.Context, in *UpdateUserReques
 	return out, nil
 }
 
-func (c *userServiceClient) CreateDriverProfile(ctx context.Context, in *CreateDriverProfileRequest, opts ...grpc.CallOption) (*DriverProfile, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DriverProfile)
-	err := c.cc.Invoke(ctx, UserService_CreateDriverProfile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *userServiceClient) UpdateDriverProfile(ctx context.Context, in *UpdateDriverProfileRequest, opts ...grpc.CallOption) (*DriverProfile, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DriverProfile)
-	err := c.cc.Invoke(ctx, UserService_UpdateDriverProfile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *userServiceClient) GetDriverProfile(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*DriverProfile, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DriverProfile)
-	err := c.cc.Invoke(ctx, UserService_GetDriverProfile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // UserServiceServer is the server API for UserService service.
 // All implementations should embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -116,9 +80,6 @@ type UserServiceServer interface {
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	CreateUser(context.Context, *CreateUserRequest) (*User, error)
 	UpdateUser(context.Context, *UpdateUserRequest) (*User, error)
-	CreateDriverProfile(context.Context, *CreateDriverProfileRequest) (*DriverProfile, error)
-	UpdateDriverProfile(context.Context, *UpdateDriverProfileRequest) (*DriverProfile, error)
-	GetDriverProfile(context.Context, *GetUserRequest) (*DriverProfile, error)
 }
 
 // UnimplementedUserServiceServer should be embedded to have
@@ -136,15 +97,6 @@ func (UnimplementedUserServiceServer) CreateUser(context.Context, *CreateUserReq
 }
 func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*User, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateUser not implemented")
-}
-func (UnimplementedUserServiceServer) CreateDriverProfile(context.Context, *CreateDriverProfileRequest) (*DriverProfile, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateDriverProfile not implemented")
-}
-func (UnimplementedUserServiceServer) UpdateDriverProfile(context.Context, *UpdateDriverProfileRequest) (*DriverProfile, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpdateDriverProfile not implemented")
-}
-func (UnimplementedUserServiceServer) GetDriverProfile(context.Context, *GetUserRequest) (*DriverProfile, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetDriverProfile not implemented")
 }
 func (UnimplementedUserServiceServer) testEmbeddedByValue() {}
 
@@ -220,60 +172,6 @@ func _UserService_UpdateUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_CreateDriverProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateDriverProfileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).CreateDriverProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_CreateDriverProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).CreateDriverProfile(ctx, req.(*CreateDriverProfileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _UserService_UpdateDriverProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateDriverProfileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).UpdateDriverProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_UpdateDriverProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).UpdateDriverProfile(ctx, req.(*UpdateDriverProfileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _UserService_GetDriverProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).GetDriverProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_GetDriverProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).GetDriverProfile(ctx, req.(*GetUserRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -292,18 +190,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUser",
 			Handler:    _UserService_UpdateUser_Handler,
-		},
-		{
-			MethodName: "CreateDriverProfile",
-			Handler:    _UserService_CreateDriverProfile_Handler,
-		},
-		{
-			MethodName: "UpdateDriverProfile",
-			Handler:    _UserService_UpdateDriverProfile_Handler,
-		},
-		{
-			MethodName: "GetDriverProfile",
-			Handler:    _UserService_GetDriverProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

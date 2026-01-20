@@ -262,294 +262,6 @@ func (x *User) GetPhoneNumber() string {
 	return ""
 }
 
-type VehicleInfo struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Make              string                 `protobuf:"bytes,1,opt,name=make,proto3" json:"make,omitempty"`
-	Model             string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
-	Color             string                 `protobuf:"bytes,3,opt,name=color,proto3" json:"color,omitempty"`
-	LicensePlate      string                 `protobuf:"bytes,4,opt,name=license_plate,json=licensePlate,proto3" json:"license_plate,omitempty"`
-	Seats             int32                  `protobuf:"varint,5,opt,name=seats,proto3" json:"seats,omitempty"`
-	Category          string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
-	AcceptsPets       bool                   `protobuf:"varint,7,opt,name=accepts_pets,json=acceptsPets,proto3" json:"accepts_pets,omitempty"`
-	AcceptsWheelchair bool                   `protobuf:"varint,8,opt,name=accepts_wheelchair,json=acceptsWheelchair,proto3" json:"accepts_wheelchair,omitempty"`
-	AdditionalInfo    string                 `protobuf:"bytes,9,opt,name=additional_info,json=additionalInfo,proto3" json:"additional_info,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *VehicleInfo) Reset() {
-	*x = VehicleInfo{}
-	mi := &file_user_v1_user_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *VehicleInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VehicleInfo) ProtoMessage() {}
-
-func (x *VehicleInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use VehicleInfo.ProtoReflect.Descriptor instead.
-func (*VehicleInfo) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *VehicleInfo) GetMake() string {
-	if x != nil {
-		return x.Make
-	}
-	return ""
-}
-
-func (x *VehicleInfo) GetModel() string {
-	if x != nil {
-		return x.Model
-	}
-	return ""
-}
-
-func (x *VehicleInfo) GetColor() string {
-	if x != nil {
-		return x.Color
-	}
-	return ""
-}
-
-func (x *VehicleInfo) GetLicensePlate() string {
-	if x != nil {
-		return x.LicensePlate
-	}
-	return ""
-}
-
-func (x *VehicleInfo) GetSeats() int32 {
-	if x != nil {
-		return x.Seats
-	}
-	return 0
-}
-
-func (x *VehicleInfo) GetCategory() string {
-	if x != nil {
-		return x.Category
-	}
-	return ""
-}
-
-func (x *VehicleInfo) GetAcceptsPets() bool {
-	if x != nil {
-		return x.AcceptsPets
-	}
-	return false
-}
-
-func (x *VehicleInfo) GetAcceptsWheelchair() bool {
-	if x != nil {
-		return x.AcceptsWheelchair
-	}
-	return false
-}
-
-func (x *VehicleInfo) GetAdditionalInfo() string {
-	if x != nil {
-		return x.AdditionalInfo
-	}
-	return ""
-}
-
-type CreateDriverProfileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	LicenseNumber string                 `protobuf:"bytes,2,opt,name=license_number,json=licenseNumber,proto3" json:"license_number,omitempty"`
-	VehicleInfo   *VehicleInfo           `protobuf:"bytes,3,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateDriverProfileRequest) Reset() {
-	*x = CreateDriverProfileRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateDriverProfileRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateDriverProfileRequest) ProtoMessage() {}
-
-func (x *CreateDriverProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateDriverProfileRequest.ProtoReflect.Descriptor instead.
-func (*CreateDriverProfileRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *CreateDriverProfileRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *CreateDriverProfileRequest) GetLicenseNumber() string {
-	if x != nil {
-		return x.LicenseNumber
-	}
-	return ""
-}
-
-func (x *CreateDriverProfileRequest) GetVehicleInfo() *VehicleInfo {
-	if x != nil {
-		return x.VehicleInfo
-	}
-	return nil
-}
-
-type UpdateDriverProfileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	LicenseNumber string                 `protobuf:"bytes,2,opt,name=license_number,json=licenseNumber,proto3" json:"license_number,omitempty"`
-	VehicleInfo   *VehicleInfo           `protobuf:"bytes,3,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateDriverProfileRequest) Reset() {
-	*x = UpdateDriverProfileRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateDriverProfileRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateDriverProfileRequest) ProtoMessage() {}
-
-func (x *UpdateDriverProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateDriverProfileRequest.ProtoReflect.Descriptor instead.
-func (*UpdateDriverProfileRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *UpdateDriverProfileRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *UpdateDriverProfileRequest) GetLicenseNumber() string {
-	if x != nil {
-		return x.LicenseNumber
-	}
-	return ""
-}
-
-func (x *UpdateDriverProfileRequest) GetVehicleInfo() *VehicleInfo {
-	if x != nil {
-		return x.VehicleInfo
-	}
-	return nil
-}
-
-type DriverProfile struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	LicenseNumber string                 `protobuf:"bytes,2,opt,name=license_number,json=licenseNumber,proto3" json:"license_number,omitempty"`
-	VehicleInfo   *VehicleInfo           `protobuf:"bytes,3,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DriverProfile) Reset() {
-	*x = DriverProfile{}
-	mi := &file_user_v1_user_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DriverProfile) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DriverProfile) ProtoMessage() {}
-
-func (x *DriverProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DriverProfile.ProtoReflect.Descriptor instead.
-func (*DriverProfile) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *DriverProfile) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *DriverProfile) GetLicenseNumber() string {
-	if x != nil {
-		return x.LicenseNumber
-	}
-	return ""
-}
-
-func (x *DriverProfile) GetVehicleInfo() *VehicleInfo {
-	if x != nil {
-		return x.VehicleInfo
-	}
-	return nil
-}
-
 var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
@@ -570,38 +282,13 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12!\n" +
-	"\fphone_number\x18\x04 \x01(\tR\vphoneNumber\"\x9f\x02\n" +
-	"\vVehicleInfo\x12\x12\n" +
-	"\x04make\x18\x01 \x01(\tR\x04make\x12\x14\n" +
-	"\x05model\x18\x02 \x01(\tR\x05model\x12\x14\n" +
-	"\x05color\x18\x03 \x01(\tR\x05color\x12#\n" +
-	"\rlicense_plate\x18\x04 \x01(\tR\flicensePlate\x12\x14\n" +
-	"\x05seats\x18\x05 \x01(\x05R\x05seats\x12\x1a\n" +
-	"\bcategory\x18\x06 \x01(\tR\bcategory\x12!\n" +
-	"\faccepts_pets\x18\a \x01(\bR\vacceptsPets\x12-\n" +
-	"\x12accepts_wheelchair\x18\b \x01(\bR\x11acceptsWheelchair\x12'\n" +
-	"\x0fadditional_info\x18\t \x01(\tR\x0eadditionalInfo\"\x95\x01\n" +
-	"\x1aCreateDriverProfileRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
-	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x127\n" +
-	"\fvehicle_info\x18\x03 \x01(\v2\x14.user.v1.VehicleInfoR\vvehicleInfo\"\x95\x01\n" +
-	"\x1aUpdateDriverProfileRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
-	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x127\n" +
-	"\fvehicle_info\x18\x03 \x01(\v2\x14.user.v1.VehicleInfoR\vvehicleInfo\"\x88\x01\n" +
-	"\rDriverProfile\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
-	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x127\n" +
-	"\fvehicle_info\x18\x03 \x01(\v2\x14.user.v1.VehicleInfoR\vvehicleInfo2\x9f\x03\n" +
+	"\fphone_number\x18\x04 \x01(\tR\vphoneNumber2\xb2\x01\n" +
 	"\vUserService\x121\n" +
 	"\aGetUser\x12\x17.user.v1.GetUserRequest\x1a\r.user.v1.User\x127\n" +
 	"\n" +
 	"CreateUser\x12\x1a.user.v1.CreateUserRequest\x1a\r.user.v1.User\x127\n" +
 	"\n" +
-	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\r.user.v1.User\x12R\n" +
-	"\x13CreateDriverProfile\x12#.user.v1.CreateDriverProfileRequest\x1a\x16.user.v1.DriverProfile\x12R\n" +
-	"\x13UpdateDriverProfile\x12#.user.v1.UpdateDriverProfileRequest\x1a\x16.user.v1.DriverProfile\x12C\n" +
-	"\x10GetDriverProfile\x12\x17.user.v1.GetUserRequest\x1a\x16.user.v1.DriverProfileB\x90\x01\n" +
+	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\r.user.v1.UserB\x90\x01\n" +
 	"\vcom.user.v1B\tUserProtoP\x01Z9github.com/nepeta70/ride-hailing/gen/proto/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
 
 var (
@@ -616,38 +303,25 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_user_v1_user_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_user_v1_user_proto_goTypes = []any{
-	(*GetUserRequest)(nil),             // 0: user.v1.GetUserRequest
-	(*CreateUserRequest)(nil),          // 1: user.v1.CreateUserRequest
-	(*UpdateUserRequest)(nil),          // 2: user.v1.UpdateUserRequest
-	(*User)(nil),                       // 3: user.v1.User
-	(*VehicleInfo)(nil),                // 4: user.v1.VehicleInfo
-	(*CreateDriverProfileRequest)(nil), // 5: user.v1.CreateDriverProfileRequest
-	(*UpdateDriverProfileRequest)(nil), // 6: user.v1.UpdateDriverProfileRequest
-	(*DriverProfile)(nil),              // 7: user.v1.DriverProfile
+	(*GetUserRequest)(nil),    // 0: user.v1.GetUserRequest
+	(*CreateUserRequest)(nil), // 1: user.v1.CreateUserRequest
+	(*UpdateUserRequest)(nil), // 2: user.v1.UpdateUserRequest
+	(*User)(nil),              // 3: user.v1.User
 }
 var file_user_v1_user_proto_depIdxs = []int32{
-	4, // 0: user.v1.CreateDriverProfileRequest.vehicle_info:type_name -> user.v1.VehicleInfo
-	4, // 1: user.v1.UpdateDriverProfileRequest.vehicle_info:type_name -> user.v1.VehicleInfo
-	4, // 2: user.v1.DriverProfile.vehicle_info:type_name -> user.v1.VehicleInfo
-	0, // 3: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
-	1, // 4: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
-	2, // 5: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
-	5, // 6: user.v1.UserService.CreateDriverProfile:input_type -> user.v1.CreateDriverProfileRequest
-	6, // 7: user.v1.UserService.UpdateDriverProfile:input_type -> user.v1.UpdateDriverProfileRequest
-	0, // 8: user.v1.UserService.GetDriverProfile:input_type -> user.v1.GetUserRequest
-	3, // 9: user.v1.UserService.GetUser:output_type -> user.v1.User
-	3, // 10: user.v1.UserService.CreateUser:output_type -> user.v1.User
-	3, // 11: user.v1.UserService.UpdateUser:output_type -> user.v1.User
-	7, // 12: user.v1.UserService.CreateDriverProfile:output_type -> user.v1.DriverProfile
-	7, // 13: user.v1.UserService.UpdateDriverProfile:output_type -> user.v1.DriverProfile
-	7, // 14: user.v1.UserService.GetDriverProfile:output_type -> user.v1.DriverProfile
-	9, // [9:15] is the sub-list for method output_type
-	3, // [3:9] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 0: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
+	1, // 1: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
+	2, // 2: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
+	3, // 3: user.v1.UserService.GetUser:output_type -> user.v1.User
+	3, // 4: user.v1.UserService.CreateUser:output_type -> user.v1.User
+	3, // 5: user.v1.UserService.UpdateUser:output_type -> user.v1.User
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_user_v1_user_proto_init() }
@@ -661,7 +335,7 @@ func file_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

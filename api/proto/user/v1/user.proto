@@ -11,9 +11,6 @@ service UserService {
   rpc GetUser(GetUserRequest) returns (User);
   rpc CreateUser(CreateUserRequest) returns (User);
   rpc UpdateUser(UpdateUserRequest) returns (User);
-  rpc CreateDriverProfile(CreateDriverProfileRequest) returns (DriverProfile);
-  rpc UpdateDriverProfile(UpdateDriverProfileRequest) returns (DriverProfile);
-  rpc GetDriverProfile(GetUserRequest) returns (DriverProfile);
 }
 
 message GetUserRequest {
@@ -38,34 +35,4 @@ message User {
   string name = 2;
   string email = 3;
   string phone_number = 4;
-}
-
-message VehicleInfo {
-  string make = 1;
-  string model = 2;
-  string color = 3;
-  string license_plate = 4;
-  int32 seats = 5;
-  string category = 6;
-  bool accepts_pets = 7;
-  bool accepts_wheelchair = 8;
-  string additional_info = 9;
-}
-
-message CreateDriverProfileRequest {
-  string user_id = 1;
-  string license_number = 2;
-  VehicleInfo vehicle_info = 3;
-}
-
-message UpdateDriverProfileRequest {
-  string user_id = 1;
-  string license_number = 2;
-  VehicleInfo vehicle_info = 3;
-}
-
-message DriverProfile {
-  string user_id = 1;
-  string license_number = 2;
-  VehicleInfo vehicle_info = 3;
 }
