@@ -65,17 +65,21 @@ func NewPermanentErrorf(format string, args ...any) error {
 
 // NewBusinessError creates a new business logic error
 func NewBusinessError(msg string) error {
-	return &CategorizedError{
-		Category: Business,
-		Err:      errors.New(msg),
-	}
+	return BusinessError(errors.New(msg))
 }
 
 // NewBusinessErrorf creates a new business logic error with formatting
 func NewBusinessErrorf(format string, args ...any) error {
+	return BusinessError(fmt.Errorf(format, args...))
+}
+
+func BusinessError(err error) error {
+	if err == nil {
+		return nil
+	}
 	return &CategorizedError{
 		Category: Business,
-		Err:      fmt.Errorf(format, args...),
+		Err:      err,
 	}
 }
 

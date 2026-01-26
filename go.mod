@@ -4,6 +4,8 @@ go 1.25.6
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
+	github.com/docker/distribution v2.8.3+incompatible
+	github.com/google/uuid v1.6.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -14,7 +16,6 @@ require (
 )
 
 require (
-	github.com/docker/distribution v2.8.3+incompatible
 	github.com/mmcloughlin/geohash v0.10.0
 	github.com/redis/go-redis/v9 v9.17.2
 	golang.org/x/net v0.47.0 // indirect

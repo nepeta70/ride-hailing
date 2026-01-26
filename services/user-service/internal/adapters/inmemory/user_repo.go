@@ -1,12 +1,51 @@
 package inmemory
 
-// TODO: implement in-memory user repository
+import (
+	"context"
+	"sync"
+
+	"github.com/google/uuid"
+	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/user-service/internal/ports"
+)
+
 type InMemoryUserRepository struct {
-	// In-memory storage implementation
+	mu    sync.RWMutex
+	users map[uuid.UUID]*domain.User
 }
 
 func NewInMemoryUserRepository() *InMemoryUserRepository {
 	return &InMemoryUserRepository{
-		// Initialize in-memory storage
+		users: make(map[uuid.UUID]*domain.User),
 	}
 }
+
+func (r *InMemoryUserRepository) Save(ctx context.Context, user *domain.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users[user.ID()] = user
+	return nil
+}
+
+func (r *InMemoryUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	user, ok := r.users[id]
+	if !ok {
+		return nil, domain.ErrUserNotFound
+	}
+	return user, nil
+}
+
+func (r *InMemoryUserRepository) Update(ctx context.Context, user *domain.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.users[user.ID()]; !ok {
+		return domain.ErrUserNotFound
+	}
+	r.users[user.ID()] = user
+	return nil
+}
+
+var _ ports.ReadUserRepository = (*InMemoryUserRepository)(nil)
+var _ ports.WriteUserRepository = (*InMemoryUserRepository)(nil)
