@@ -4,6 +4,7 @@ import (
 	"context"
 
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
+	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app/queries"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/domain"
@@ -12,22 +13,18 @@ import (
 // UserHandler implements the UserService gRPC interface.
 type UserHandler struct {
 	userv1.UnimplementedUserServiceServer
-	createUserCommandHandler commands.CreateUserHandler
-	updateUserCommandHandler commands.UpdateUserHandler
-	getUserQueryHandler      queries.GetUserByIDHandler
+	application *app.Application
 }
 
-func NewUserHandler(createUserCommandHandler commands.CreateUserHandler, updateUserCommandHandler commands.UpdateUserHandler, getUserQueryHandler queries.GetUserByIDHandler) *UserHandler {
+func NewUserHandler(application *app.Application) *UserHandler {
 	return &UserHandler{
-		createUserCommandHandler: createUserCommandHandler,
-		updateUserCommandHandler: updateUserCommandHandler,
-		getUserQueryHandler:      getUserQueryHandler,
+		application: application,
 	}
 }
 
 func (h *UserHandler) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
 
-	user, err := h.getUserQueryHandler.Handle(ctx, queries.GetUserByID{UserID: req.GetUserId()})
+	user, err := h.application.Queries.GetUserByID.Handle(ctx, queries.GetUserByID{UserID: req.GetUserId()})
 	if err != nil {
 		return nil, domain.ErrUserNotFound
 	}
@@ -45,7 +42,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequ
 
 	var command = commands.CreateUser{UserData: req}
 
-	user, err := h.createUserCommandHandler.Handle(ctx, command)
+	user, err := h.application.Commands.CreateUser.Handle(ctx, command)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +60,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequ
 func (h *UserHandler) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.User, error) {
 	var command = commands.UpdateUser{UserData: req}
 
-	err := h.updateUserCommandHandler.Handle(ctx, command)
+	err := h.application.Commands.UpdateUser.Handle(ctx, command)
 
 	if err != nil {
 		return nil, err

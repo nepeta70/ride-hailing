@@ -1,13 +1,17 @@
 package app
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
+	"github.com/nepeta70/ride-hailing/services/user-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app/queries"
 )
 
 type Application struct {
-	Commands Commands
-	Queries  Queries
+	Commands *Commands
+	Queries  *Queries
+	logger   logging.Logger
+	config   *config.Config
 }
 
 type Commands struct {
@@ -17,4 +21,13 @@ type Commands struct {
 
 type Queries struct {
 	GetUserByID queries.GetUserByIDHandler
+}
+
+func NewApplication(cfg *config.Config, logger logging.Logger) *Application {
+	return &Application{
+		Commands: &Commands{},
+		Queries:  &Queries{},
+		logger:   logger,
+		config:   cfg,
+	}
 }

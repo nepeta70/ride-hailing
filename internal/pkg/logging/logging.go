@@ -12,7 +12,7 @@ type LoggingConfig struct {
 }
 
 // ConfigureLogger initializes the global slog instance based on config
-func (c *LoggingConfig) ConfigureLogger() *slog.Logger {
+func (c *LoggingConfig) ConfigureLogger() Logger {
 	opts := &slog.HandlerOptions{
 		Level: c.slogLevel(),
 	}

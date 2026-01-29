@@ -3,10 +3,10 @@ package redisStore
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
 	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/redis"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
@@ -21,10 +21,10 @@ const (
 type RedisRepository struct {
 	client *redis.Client
 	cfg    *config.Config
-	logger *slog.Logger
+	logger logging.Logger
 }
 
-func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger *slog.Logger) *RedisRepository {
+func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger logging.Logger) *RedisRepository {
 	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 
