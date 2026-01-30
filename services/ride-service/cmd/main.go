@@ -15,6 +15,7 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/core/service"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -37,7 +38,9 @@ func main() {
 	if err != nil {
 		logger.Error("failed to listen: %v", "error", err)
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.UnaryServerLogging(logger)),
+	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

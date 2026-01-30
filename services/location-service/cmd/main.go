@@ -11,6 +11,7 @@ import (
 	"time"
 
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/redis"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/grpc"
 	redisAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/redis"
@@ -43,7 +44,9 @@ func main() {
 	if err != nil {
 		logger.Error("failed to listen: %v", "error", err)
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.UnaryServerLogging(logger)),
+	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

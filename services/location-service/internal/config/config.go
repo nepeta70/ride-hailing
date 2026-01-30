@@ -1,59 +1,39 @@
 package config
 
 import (
-	"encoding/json"
-	"os"
-
-	"github.com/caarlos0/env/v11"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
-	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
 	"github.com/nepeta70/ride-hailing/internal/pkg/redis"
 )
 
 type Config struct {
-	Server   config.ServerConfig   `json:"server"`
-	Logging  logging.LoggingConfig `json:"logging"`
-	Redis    redis.RedisConfig     `json:"redis"`
-	Logic    LogicConfig           `json:"logic"`
-	Timeouts config.TimeoutsConfig `json:"timeouts"`
+	config.BaseConfig
+	Redis redis.RedisConfig `json:"redis"`
+	Logic LogicConfig       `json:"logic"`
 }
 
 type LogicConfig struct {
-	GeohashPrecision   int `json:"geohash_precision" env:"GEOHASH_PRECISION" envDefault:"7"`
-	LocationTTLSeconds int `json:"location_ttl_seconds" env:"LOCATION_TTL" envDefault:"300"`
-	TopKNearby         int `json:"top_k_nearby" env:"TOP_K_NEARBY" envDefault:"5"`
+	GeohashPrecision   int `json:"geohash_precision" env:"GEOHASH_PRECISION"`
+	LocationTTLSeconds int `json:"location_ttl_seconds" env:"LOCATION_TTL"`
+	TopKNearby         int `json:"top_k_nearby" env:"TOP_K_NEARBY"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Server: config.DefaultServerConfig(),
+		BaseConfig: config.DefaultBaseConfig(),
 		Logic: LogicConfig{
 			GeohashPrecision:   7,
 			LocationTTLSeconds: 300,
 			TopKNearby:         5,
 		},
-		Timeouts: config.DefaultTimeoutsConfig(),
-		Logging:  logging.DefaultLoggingConfig(),
-		Redis:    redis.DefaultRedisConfig(),
+		Redis: redis.DefaultRedisConfig(),
 	}
 }
 
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 
-	// 1. Read JSON file first
-	// Use os.ReadFile to get the bytes
-	data, err := os.ReadFile(path)
-	if err == nil {
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, err
-		}
-	}
-
-	// 2. Parse ENVs second (The Overrider)
-	// This looks for the tags like env:"SERVER_PORT"
-	// If found, it replaces whatever came from the JSON
-	if err := env.Parse(cfg); err != nil {
+	cfg, err := config.LoadGeneric(path, cfg)
+	if err != nil {
 		return nil, err
 	}
 

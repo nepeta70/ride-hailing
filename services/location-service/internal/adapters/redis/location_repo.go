@@ -34,7 +34,7 @@ func userLocationKey(userID string) string {
 
 // Save implements the ports.LocationRepository interface
 func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) error {
-	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Specific metadata for this entity (HASH)
 	userLocationKey := userLocationKey(loc.UserID)
@@ -68,7 +68,7 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 }
 
 func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
-	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	key := userLocationKey(userID)
 
@@ -90,7 +90,7 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 }
 
 func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID string) error {
-	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Remove metadata
 	userLocationKey := userLocationKey(userID)
@@ -107,7 +107,7 @@ func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID string)
 }
 
 func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.Coordinates, radiusKm float32) ([]*domain.UserLocation, error) {
-	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.StandardTimeout)
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index
 	geoResults, err := r.client.GeoRadius(ctx, locationIndexKeyPrefix, coordinates.Longitude, coordinates.Latitude, &redis.GeoRadiusQuery{
@@ -138,7 +138,7 @@ func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.C
 
 func (r *RedisRepository) asyncRemoveFromIndex(userID string) {
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), r.cfg.Timeouts.StandardTimeout)
+		bgCtx, cancel := context.WithTimeout(context.Background(), r.cfg.Timeouts.RequestTimeout)
 		defer cancel()
 		r.client.ZRem(bgCtx, locationIndexKeyPrefix, userID)
 	}()

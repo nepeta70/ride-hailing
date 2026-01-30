@@ -11,6 +11,7 @@ import (
 	"time"
 
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/user-service/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app"
@@ -38,7 +39,9 @@ func main() {
 	if err != nil {
 		logger.Error("failed to listen: %v", "error", err)
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.UnaryServerLogging(logger)),
+	)
 
 	application := app.NewApplication(cfg, logger)
 	handler := grpcAdapters.NewUserHandler(application)

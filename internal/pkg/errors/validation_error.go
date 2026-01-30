@@ -19,16 +19,14 @@ func (e *ValidationError) Unwrap() error {
 	return e.Err
 }
 
-var ErrInvalidBookingData = &ValidationError{Code: "VALIDATION_ERROR", Message: "invalid booking data"}
+var ErrInvalidData = &ValidationError{Code: "VALIDATION_ERROR", Message: "invalid data"}
 
 func NewValidationError(cause error) error {
-	err := &ValidationError{
-		Code:    ErrInvalidBookingData.Code,
-		Message: ErrInvalidBookingData.Message,
-		Err:     cause,
+	return &ValidationError{
+		Code:    ErrInvalidData.Code,
+		Message: ErrInvalidData.Message,
+		Err:     BusinessError(cause),
 	}
-
-	return BusinessError(err)
 }
 
 func NewValidationErrorf(format string, a ...any) error {

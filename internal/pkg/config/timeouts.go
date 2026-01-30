@@ -1,26 +1,44 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+)
 
 type TimeoutsConfig struct {
-	ResetSystemInSeconds int           `json:"reset_system_in_seconds" env:"RESET_SYSTEM_IN_SECONDS" envDefault:"10"`
-	StandardInSeconds    int           `json:"standard_in_seconds" env:"STANDARD_IN_SECONDS" envDefault:"5"`
-	SetFleetTimeout      time.Duration `json:"-"`
-	StandardTimeout      time.Duration `json:"-"`
-}
-
-// SetDurations converts integer seconds to time.Duration fields.
-func (c *TimeoutsConfig) SetDurations() {
-	c.SetFleetTimeout = time.Duration(c.ResetSystemInSeconds) * time.Second
-	c.StandardTimeout = time.Duration(c.StandardInSeconds) * time.Second
+	ShutdownDelayInSeconds int           `json:"shutdown_timeout_seconds" env:"SHUTDOWN_TIMEOUT_SECONDS"`
+	RequestTimeoutSeconds  int           `json:"request_timeout_seconds" env:"REQUEST_TIMEOUT_SECONDS"`
+	ShutdownTimeout        time.Duration `json:"-"`
+	RequestTimeout         time.Duration `json:"-"`
 }
 
 // DefaultTimeoutsConfig returns the default TimeoutsConfig.
 func DefaultTimeoutsConfig() TimeoutsConfig {
 	return TimeoutsConfig{
-		ResetSystemInSeconds: 10,
-		StandardInSeconds:    5,
-		SetFleetTimeout:      10 * time.Second,
-		StandardTimeout:      5 * time.Second,
+		ShutdownDelayInSeconds: 10,
+		RequestTimeoutSeconds:  5,
+		ShutdownTimeout:        10 * time.Second,
+		RequestTimeout:         5 * time.Second,
 	}
 }
+
+func (c *TimeoutsConfig) Validate() error {
+	if c.RequestTimeoutSeconds <= 0 {
+		return errors.NewValidationErrorf("request timeout must be greater than zero")
+	}
+	if c.ShutdownDelayInSeconds < 0 {
+		return errors.NewValidationErrorf("shutdown delay cannot be negative")
+	}
+	return nil
+}
+
+// Init converts integer seconds to time.Duration fields.
+func (c *TimeoutsConfig) Init() error {
+	c.ShutdownTimeout = time.Duration(c.ShutdownDelayInSeconds) * time.Second
+	c.RequestTimeout = time.Duration(c.RequestTimeoutSeconds) * time.Second
+	return nil
+}
+
+var _ Initializer = (*TimeoutsConfig)(nil)
+var _ Validator = (*TimeoutsConfig)(nil)

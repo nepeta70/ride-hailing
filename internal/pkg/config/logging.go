@@ -1,18 +1,28 @@
-package logging
+package config
 
 import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
 )
 
 type LoggingConfig struct {
-	Format string `json:"log_format"`
-	Level  string `json:"log_level"`
+	Format string `json:"log_format" env:"LOG_FORMAT"`
+	Level  string `json:"log_level" env:"LOG_LEVEL"`
+}
+
+// DefaultLoggingConfig returns the default LoggingConfig.
+func DefaultLoggingConfig() LoggingConfig {
+	return LoggingConfig{
+		Level:  "INFO",
+		Format: "json",
+	}
 }
 
 // ConfigureLogger initializes the global slog instance based on config
-func (c *LoggingConfig) ConfigureLogger() Logger {
+func (c *LoggingConfig) ConfigureLogger() logging.Logger {
 	opts := &slog.HandlerOptions{
 		Level: c.slogLevel(),
 	}
@@ -30,13 +40,6 @@ func (c *LoggingConfig) ConfigureLogger() Logger {
 	return logger
 }
 
-// OverrideLogLevelFromEnv sets the LoggingConfig.Level from the LOG_LEVEL environment variable if present.
-func (c *LoggingConfig) OverrideLogLevelFromEnv() {
-	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
-		c.Level = logLevel
-	}
-}
-
 func (c *LoggingConfig) slogLevel() slog.Level {
 	switch strings.ToUpper(c.Level) {
 	case "DEBUG":
@@ -47,13 +50,5 @@ func (c *LoggingConfig) slogLevel() slog.Level {
 		return slog.LevelError
 	default:
 		return slog.LevelInfo
-	}
-}
-
-// DefaultLoggingConfig returns the default LoggingConfig.
-func DefaultLoggingConfig() LoggingConfig {
-	return LoggingConfig{
-		Level:  "INFO",
-		Format: "json",
 	}
 }

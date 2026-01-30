@@ -6,13 +6,18 @@ require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/google/uuid v1.6.0
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/time v0.14.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
