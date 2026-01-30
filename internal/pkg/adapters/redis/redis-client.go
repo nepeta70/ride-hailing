@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -47,3 +48,13 @@ func (c *RedisClient) HealthCheck(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (c *RedisClient) Close() error {
+	return c.Rdb.Close()
+}
+
+func (c *RedisClient) ServiceName() string {
+	return "RedisClient"
+}
+
+var _ ports.HealthProvider = (*RedisClient)(nil)

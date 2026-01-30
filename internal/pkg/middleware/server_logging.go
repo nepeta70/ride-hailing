@@ -5,14 +5,14 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // gRPC Interceptor using our decoupled Logger interface
-func UnaryServerLogging(l logging.Logger) grpc.UnaryServerInterceptor {
+func UnaryServerLogging(l ports.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,

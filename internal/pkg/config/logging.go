@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
+	ports "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type LoggingConfig struct {
@@ -22,7 +22,7 @@ func DefaultLoggingConfig() LoggingConfig {
 }
 
 // ConfigureLogger initializes the global slog instance based on config
-func (c *LoggingConfig) ConfigureLogger() logging.Logger {
+func (c *LoggingConfig) ConfigureLogger() ports.Logger {
 	opts := &slog.HandlerOptions{
 		Level: c.slogLevel(),
 	}

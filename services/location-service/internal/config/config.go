@@ -1,8 +1,8 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
-	"github.com/nepeta70/ride-hailing/internal/pkg/redis"
 )
 
 type Config struct {

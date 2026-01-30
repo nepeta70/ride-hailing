@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
+	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
-	"github.com/nepeta70/ride-hailing/internal/pkg/logging"
-	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/redis/go-redis/v9"
@@ -21,10 +21,10 @@ const (
 type RedisRepository struct {
 	client *redis.Client
 	cfg    *config.Config
-	logger logging.Logger
+	logger ports.Logger
 }
 
-func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger logging.Logger) *RedisRepository {
+func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger ports.Logger) *RedisRepository {
 	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 
