@@ -1,3 +1,8 @@
 package service
 
-// Driver service logic (template)
+type DriverService struct {
+}
+
+func NewDriverService() *DriverService {
+	return &DriverService{}
+}

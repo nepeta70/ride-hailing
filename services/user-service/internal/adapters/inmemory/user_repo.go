@@ -16,7 +16,7 @@ type InMemoryUserRepository struct {
 
 func NewInMemoryUserRepository() *InMemoryUserRepository {
 	return &InMemoryUserRepository{
-		users: make(map[uuid.UUID]*domain.User),
+		users: make(map[uuid.UUID]*domain.User, 1000),
 	}
 }
 

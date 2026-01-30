@@ -14,7 +14,6 @@ import (
 	redisAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/redis"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/service"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -39,8 +38,7 @@ func main() {
 	handler := grpcAdapters.NewLocationHandler(locationService)
 
 	grpcServer := grpc_adapter.NewGRPCAdapter("Location Service", &cfg.BaseConfig, logger)
-	locationv1.RegisterLocationServiceServer(grpcServer.Server, handler)
-	reflection.Register(grpcServer.Server)
+	grpcServer.RegisterService(&locationv1.LocationService_ServiceDesc, handler)
 
 	grpcServer.MonitorHealth(ctx, redisClient)
 

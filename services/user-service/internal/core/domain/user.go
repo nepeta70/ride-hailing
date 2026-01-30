@@ -14,6 +14,7 @@ var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`
 type User struct {
 	id        uuid.UUID
 	userType  UserType
+	userName  string
 	firstName string
 	lastName  string
 	email     string
@@ -23,23 +24,9 @@ type User struct {
 	updatedAt time.Time
 }
 
-// NewUser is the constructor for User
-func NewUser(id uuid.UUID, userType UserType, firstName, lastName, email, phone, password string, createdAt, updatedAt time.Time) *User {
-	return &User{
-		id:        id,
-		userType:  userType,
-		firstName: firstName,
-		lastName:  lastName,
-		email:     email,
-		phone:     phone,
-		password:  password,
-		createdAt: createdAt,
-		updatedAt: updatedAt,
-	}
-}
-
 func (u *User) ID() uuid.UUID        { return u.id }
 func (u *User) UserType() UserType   { return u.userType }
+func (u *User) UserName() string     { return u.userName }
 func (u *User) FirstName() string    { return u.firstName }
 func (u *User) LastName() string     { return u.lastName }
 func (u *User) Email() string        { return u.email }
@@ -59,6 +46,10 @@ func CreateNewUser(payload UserPayload) (*User, error) {
 		return nil, errors.NewBusinessError("invalid user type")
 	}
 	// Sanitize input fields
+	userName := strings.TrimSpace(payload.GetUserName())
+	if userName == "" {
+		return nil, errors.NewBusinessError("user name is required")
+	}
 	firstName := strings.TrimSpace(payload.GetFirstName())
 	if firstName == "" {
 		return nil, errors.NewBusinessError("first name is required")
@@ -83,6 +74,7 @@ func CreateNewUser(payload UserPayload) (*User, error) {
 	user := &User{
 		id:        uuid.New(),
 		userType:  userType,
+		userName:  userName,
 		firstName: firstName,
 		lastName:  lastName,
 		email:     email,

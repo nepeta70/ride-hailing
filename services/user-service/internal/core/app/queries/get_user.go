@@ -24,3 +24,7 @@ func (h GetUserByIDHandler) Handle(ctx context.Context, query GetUserByID) (*dom
 	}
 	return h.readRepo.GetByID(ctx, id)
 }
+
+func NewGetUserByIDHandler(readRepo ports.ReadUserRepository) GetUserByIDHandler {
+	return GetUserByIDHandler{readRepo: readRepo}
+}

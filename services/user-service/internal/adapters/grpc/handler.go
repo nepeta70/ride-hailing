@@ -10,7 +10,6 @@ import (
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/domain"
 )
 
-// UserHandler implements the UserService gRPC interface.
 type UserHandler struct {
 	userv1.UnimplementedUserServiceServer
 	application *app.Application
@@ -31,6 +30,8 @@ func (h *UserHandler) GetUser(ctx context.Context, req *userv1.GetUserRequest) (
 
 	return &userv1.User{
 		UserId:      user.ID().String(),
+		UserType:    user.UserType().String(),
+		UserName:    user.UserName(),
 		FirstName:   user.FirstName(),
 		LastName:    user.LastName(),
 		Email:       user.Email(),
@@ -50,6 +51,7 @@ func (h *UserHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequ
 	return &userv1.User{
 		UserId:      user.ID().String(),
 		UserType:    user.UserType().String(),
+		UserName:    user.UserName(),
 		FirstName:   user.FirstName(),
 		LastName:    user.LastName(),
 		Email:       user.Email(),
@@ -67,6 +69,8 @@ func (h *UserHandler) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequ
 	}
 	return &userv1.User{
 		UserId:      req.GetUserId(),
+		UserType:    req.GetUserType(),
+		UserName:    req.GetUserName(),
 		FirstName:   req.GetFirstName(),
 		LastName:    req.GetLastName(),
 		Email:       req.GetEmail(),

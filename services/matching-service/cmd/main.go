@@ -12,7 +12,6 @@ import (
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/matching-service/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/matching-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching-service/internal/core/service"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -30,8 +29,7 @@ func main() {
 	handler := grpcAdapters.NewMatchingHandler(matchingService)
 
 	grpcServer := grpc_adapter.NewGRPCAdapter("Matching Service", &cfg.BaseConfig, logger)
-	matchingv1.RegisterMatchingServiceServer(grpcServer.Server, handler)
-	reflection.Register(grpcServer.Server)
+	grpcServer.RegisterService(&matchingv1.MatchingService_ServiceDesc, handler)
 
 	grpcServer.MonitorHealth(ctx)
 

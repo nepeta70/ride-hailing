@@ -10,9 +10,9 @@ import (
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/user-service/internal/adapters/grpc"
+	"github.com/nepeta70/ride-hailing/services/user-service/internal/adapters/inmemory"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/user-service/internal/core/app"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -27,11 +27,11 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	application := app.NewApplication(cfg, logger)
+	repo := inmemory.NewInMemoryUserRepository()
+	application := app.NewApplication(cfg, logger, repo, repo)
 	handler := grpcAdapters.NewUserHandler(application)
 	grpcServer := grpc_adapter.NewGRPCAdapter("User Service", &cfg.BaseConfig, logger)
-	userv1.RegisterUserServiceServer(grpcServer.Server, handler)
-	reflection.Register(grpcServer.Server)
+	grpcServer.RegisterService(&userv1.UserService_ServiceDesc, handler)
 
 	grpcServer.MonitorHealth(ctx)
 

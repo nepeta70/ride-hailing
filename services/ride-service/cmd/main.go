@@ -12,8 +12,6 @@ import (
 	grpcHandler "github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/core/service"
-
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -32,8 +30,7 @@ func main() {
 	handler := grpcHandler.NewRideHandler(fareService, rideService)
 
 	grpcServer := grpc_adapter.NewGRPCAdapter("Ride Service", &cfg.BaseConfig, logger)
-	ridev1.RegisterRideServiceServer(grpcServer.Server, handler)
-	reflection.Register(grpcServer.Server)
+	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
 	grpcServer.MonitorHealth(ctx)
 
