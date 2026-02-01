@@ -27,6 +27,7 @@ type FareEstimateRequest struct {
 	RequestId       string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	PickupLocation  string                 `protobuf:"bytes,2,opt,name=pickup_location,json=pickupLocation,proto3" json:"pickup_location,omitempty"`
 	DropoffLocation string                 `protobuf:"bytes,3,opt,name=dropoff_location,json=dropoffLocation,proto3" json:"dropoff_location,omitempty"`
+	CountryCode     string                 `protobuf:"bytes,4,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -78,6 +79,13 @@ func (x *FareEstimateRequest) GetPickupLocation() string {
 func (x *FareEstimateRequest) GetDropoffLocation() string {
 	if x != nil {
 		return x.DropoffLocation
+	}
+	return ""
+}
+
+func (x *FareEstimateRequest) GetCountryCode() string {
+	if x != nil {
+		return x.CountryCode
 	}
 	return ""
 }
@@ -482,12 +490,13 @@ var File_ride_v1_ride_proto protoreflect.FileDescriptor
 
 const file_ride_v1_ride_proto_rawDesc = "" +
 	"\n" +
-	"\x12ride/v1/ride.proto\x12\aride.v1\x1a\x1bgoogle/protobuf/empty.proto\"\x88\x01\n" +
+	"\x12ride/v1/ride.proto\x12\aride.v1\x1a\x1bgoogle/protobuf/empty.proto\"\xab\x01\n" +
 	"\x13FareEstimateRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12'\n" +
 	"\x0fpickup_location\x18\x02 \x01(\tR\x0epickupLocation\x12)\n" +
-	"\x10dropoff_location\x18\x03 \x01(\tR\x0fdropoffLocation\"\xe4\x01\n" +
+	"\x10dropoff_location\x18\x03 \x01(\tR\x0fdropoffLocation\x12!\n" +
+	"\fcountry_code\x18\x04 \x01(\tR\vcountryCode\"\xe4\x01\n" +
 	"\x14FareEstimateResponse\x12\x17\n" +
 	"\afare_id\x18\x01 \x01(\tR\x06fareId\x12%\n" +
 	"\x0eestimated_fare\x18\x02 \x01(\x01R\restimatedFare\x12<\n" +

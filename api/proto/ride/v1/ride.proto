@@ -22,6 +22,7 @@ message FareEstimateRequest {
   string request_id = 1;
   string pickup_location = 2;
   string dropoff_location = 3;
+  string country_code = 4;
 }
 message FareEstimateResponse {
   string fare_id = 1;

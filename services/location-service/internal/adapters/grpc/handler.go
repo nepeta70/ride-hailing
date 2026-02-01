@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	caterrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/service"
@@ -27,14 +28,14 @@ func NewLocationHandler(service *service.LocationService) *LocationHandler {
 
 func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv1.UserLocation) (*emptypb.Empty, error) {
 	// TODO: Determine user type from auth context or request metadata
-	var userType domain.UserType
+	var userType enums.UserType
 	switch {
 	case len(req.UserId) >= 7 && req.UserId[:7] == "driver_":
-		userType = domain.UserTypeDriver
+		userType = enums.UserTypeDriver
 	case len(req.UserId) >= 5 && req.UserId[:5] == "user_":
-		userType = domain.UserTypeUser
+		userType = enums.UserTypeUser
 	default:
-		userType = domain.UserTypeUser
+		userType = enums.UserTypeUser
 	}
 
 	err := h.service.Update(ctx, &service.UpdateRequest{

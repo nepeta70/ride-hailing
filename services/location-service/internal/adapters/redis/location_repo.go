@@ -6,10 +6,12 @@ import (
 	"time"
 
 	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
-	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/location-service/internal/ports"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -21,10 +23,10 @@ const (
 type RedisRepository struct {
 	client *redis.Client
 	cfg    *config.Config
-	logger ports.Logger
+	logger pkgPorts.Logger
 }
 
-func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger ports.Logger) *RedisRepository {
+func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger pkgPorts.Logger) *RedisRepository {
 	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 
@@ -46,7 +48,7 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 
 	pipe := r.client.Pipeline()
 
-	if loc.UserType == domain.UserTypeDriver {
+	if loc.UserType == enums.UserTypeDriver {
 		// 1. Add to Geospatial Index for Drivers
 		pipe.GeoAdd(ctx, locationIndexKeyPrefix, &redis.GeoLocation{
 			Longitude: loc.Coordinates.Longitude,
@@ -143,3 +145,49 @@ func (r *RedisRepository) asyncRemoveFromIndex(userID string) {
 		r.client.ZRem(bgCtx, locationIndexKeyPrefix, userID)
 	}()
 }
+
+func (r *RedisRepository) HealthCheck(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
+	defer cancel()
+	_, err := r.client.Ping(ctx).Result()
+	if err != nil {
+		return errors.NewTransientErrorf("redis ping failed: %w", err)
+	}
+	return nil
+}
+
+func (r *RedisRepository) ServiceName() string {
+	return "Redis Location Repository"
+}
+
+func (r *RedisRepository) Close() error {
+	return r.client.Close()
+}
+
+func (r *RedisRepository) GetDirections(ctx context.Context, origin, destination domain.Coordinates) (*domain.DirectionsResponse, error) {
+	r.client.GeoAdd(ctx, "locations", &redis.GeoLocation{
+		Name:      "PointA",
+		Longitude: 2.17403,
+		Latitude:  41.40338,
+	})
+
+	r.client.GeoAdd(ctx, "locations", &redis.GeoLocation{
+		Name:      "PointB",
+		Longitude: 2.12282,
+		Latitude:  41.38089,
+	})
+
+	dist, err := r.client.GeoDist(ctx, "locations", "PointA", "PointB", "m").Result()
+	if err != nil {
+		return nil, errors.NewTransientErrorf("distance calculation failed: %w", err)
+	}
+
+	response := &domain.DirectionsResponse{
+		Distance: int(dist),                                  // distance is already in meters
+		Duration: time.Duration(dist/50*60*60) * time.Second, // assuming average speed of 50 km/h
+	}
+	return response, nil
+}
+
+var _ pkgPorts.HealthProvider = (*RedisRepository)(nil)
+var _ ports.LocationRepository = (*RedisRepository)(nil)

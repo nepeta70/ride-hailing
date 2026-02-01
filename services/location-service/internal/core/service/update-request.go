@@ -3,13 +3,14 @@ package service
 import (
 	"time"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 )
 
 type UpdateRequest struct {
 	UserID      string
-	UserType    domain.UserType
+	UserType    enums.UserType
 	Coordinates domain.Coordinates
 	Accuracy    float32
 	Heading     float32
@@ -19,7 +20,7 @@ type UpdateRequest struct {
 
 type SearchNearbyRequest struct {
 	UserID      string
-	UserType    domain.UserType
+	UserType    enums.UserType
 	Coordinates domain.Coordinates
 	RadiusKm    float32
 }

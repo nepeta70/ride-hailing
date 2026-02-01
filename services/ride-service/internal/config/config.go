@@ -4,8 +4,13 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
+type RideConfig struct {
+	GoogleMapsAPIKey string `json:"google_maps_api_key"`
+}
+
 type Config struct {
 	config.BaseConfig
+	RideConfig RideConfig `json:"ride"`
 }
 
 func Load(path string) (*Config, error) {

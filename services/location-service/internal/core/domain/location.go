@@ -1,12 +1,9 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-type UserType string
-
-const (
-	UserTypeDriver UserType = "driver"
-	UserTypeUser   UserType = "user"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 )
 
 type Coordinates struct {
@@ -15,15 +12,24 @@ type Coordinates struct {
 }
 
 type UserLocation struct {
-	UserID      string      `json:"user_id"`
-	UserType    UserType    `json:"user_type"`
-	Coordinates Coordinates `json:"coordinates"`
-	Accuracy    float32     `json:"accuracy"`
-	Heading     float32     `json:"heading"`
-	Speed       float32     `json:"speed"`
-	CapturedAt  time.Time   `json:"captured_at"`
+	UserID      string         `json:"user_id"`
+	UserType    enums.UserType `json:"user_type"`
+	Coordinates Coordinates    `json:"coordinates"`
+	Accuracy    float32        `json:"accuracy"`
+	Heading     float32        `json:"heading"`
+	Speed       float32        `json:"speed"`
+	CapturedAt  time.Time      `json:"captured_at"`
 }
 
 func (l *UserLocation) NewLocation() *UserLocation {
 	return &UserLocation{}
+}
+
+type DirectionsResponse struct {
+
+	// Distance in meters.
+	Distance int `json:"distance"`
+
+	// Duration indicates total time required for this leg.
+	Duration time.Duration `json:"duration"`
 }

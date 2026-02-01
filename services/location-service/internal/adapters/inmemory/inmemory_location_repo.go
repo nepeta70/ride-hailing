@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mmcloughlin/geohash"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/domain"
 )
 
@@ -22,7 +23,7 @@ func NewInMemoryLocationRepo() *InMemoryLocationRepo {
 
 func (r *InMemoryLocationRepo) Save(ctx context.Context, loc *domain.UserLocation) error {
 	r.store[loc.UserID] = loc
-	if loc.UserType == domain.UserTypeDriver {
+	if loc.UserType == enums.UserTypeDriver {
 		hash := geohash.EncodeWithPrecision(loc.Coordinates.Latitude, loc.Coordinates.Longitude, 8)
 		r.index[hash] = append(r.index[hash], loc.UserID)
 	}
