@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/uuid"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/ride-service/internal/ports"
 )
 
 const bufferRides = 1000
@@ -61,3 +62,6 @@ func (repo *InMemoryRideRepo) List(ctx context.Context) ([]*domain.Ride, error) 
 	}
 	return rides, nil
 }
+
+var _ ports.RideReadRepository = (*InMemoryRideRepo)(nil)
+var _ ports.RideWriteRepository = (*InMemoryRideRepo)(nil)

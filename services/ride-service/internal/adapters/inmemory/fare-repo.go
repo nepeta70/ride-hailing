@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/distribution/uuid"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/ride-service/internal/ports"
 )
 
 const bufferFares = 1000
@@ -19,7 +20,7 @@ func NewInMemoryFareRepo() *InMemoryFareRepo {
 	}
 }
 
-func (repo *InMemoryFareRepo) Add(ctx context.Context, fare *domain.Fare) error {
+func (repo *InMemoryFareRepo) Save(ctx context.Context, fare *domain.Fare) error {
 	if _, exists := repo.data[fare.ID]; exists {
 		return nil // or return an error if duplicate fares are not allowed
 	}
@@ -34,3 +35,6 @@ func (repo *InMemoryFareRepo) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	}
 	return fare, nil
 }
+
+var _ ports.FareReadRepository = (*InMemoryFareRepo)(nil)
+var _ ports.FareWriteRepository = (*InMemoryFareRepo)(nil)

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
@@ -21,15 +22,17 @@ func DefaultKeysConfig() KeysConfig {
 
 type Config struct {
 	config.BaseConfig
-	KeysConfig KeysConfig `json:"keys"`
-	FareConfig FareConfig `json:"fare"`
+	KeysConfig KeysConfig        `json:"keys"`
+	FareConfig FareConfig        `json:"fare"`
+	Redis      redis.RedisConfig `json:"redis"`
 }
 
 func Load(path string) (*Config, error) {
 	cfg := &Config{
 		BaseConfig: config.DefaultBaseConfig(),
 		KeysConfig: DefaultKeysConfig(),
-		FareConfig: FareConfig{},
+		FareConfig: DefaultFareConfig(),
+		Redis:      redis.DefaultRedisConfig(),
 	}
 
 	cfg, err := config.LoadGeneric(path, cfg)

@@ -11,6 +11,7 @@ import (
 type Application struct {
 	Commands           *Commands
 	Queries            *Queries
+	storage            ridePorts.StorageBundle
 	distanceCalculator service.DirectionsEstimator
 	directionsService  ridePorts.DirectionsService
 	logger             ports.Logger
@@ -34,12 +35,13 @@ func newQueries(config *config.Config, distanceCalculator *service.DirectionsEst
 	}
 }
 
-func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService) *Application {
+func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService, storage ridePorts.StorageBundle) *Application {
 	app := &Application{
 		Commands: newCommands(),
 		Queries:  newQueries(cfg, distanceCalculator, directionsService),
 		logger:   logger,
 		config:   cfg,
+		storage:  storage,
 	}
 	return app
 }
