@@ -4,25 +4,32 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
-type RideConfig struct {
-	GoogleMapsAPIKey string `json:"google_maps_api_key" env:"RIDE_GOOGLE_MAPS_API_KEY"`
+type KeysConfig struct {
+	GoogleMapsAPIKey string `json:"google_maps_api_key" env:"GOOGLE_MAPS_API_KEY"`
 }
 
-func DefaultRideConfig() RideConfig {
-	return RideConfig{
+func (rc *KeysConfig) Validate() error {
+
+	return nil
+}
+
+func DefaultKeysConfig() KeysConfig {
+	return KeysConfig{
 		GoogleMapsAPIKey: "",
 	}
 }
 
 type Config struct {
 	config.BaseConfig
-	RideConfig RideConfig `json:"ride"`
+	KeysConfig KeysConfig `json:"keys"`
+	FareConfig FareConfig `json:"fare"`
 }
 
 func Load(path string) (*Config, error) {
 	cfg := &Config{
 		BaseConfig: config.DefaultBaseConfig(),
-		RideConfig: DefaultRideConfig(),
+		KeysConfig: DefaultKeysConfig(),
+		FareConfig: FareConfig{},
 	}
 
 	cfg, err := config.LoadGeneric(path, cfg)

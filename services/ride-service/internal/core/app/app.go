@@ -25,23 +25,19 @@ func newCommands() *Commands {
 }
 
 type Queries struct {
-	distanceCalculator *service.DirectionsEstimator
-	directionsService  ridePorts.DirectionsService
-	GetFare            queries.GetFareHandler
+	GetFare queries.GetFareHandler
 }
 
-func newQueries(distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService) *Queries {
+func newQueries(config *config.Config, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService) *Queries {
 	return &Queries{
-		distanceCalculator: distanceCalculator,
-		directionsService:  directionsService,
-		GetFare:            queries.NewGetFareHandler(distanceCalculator, directionsService),
+		GetFare: queries.NewGetFareHandler(config, distanceCalculator, directionsService),
 	}
 }
 
 func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService) *Application {
 	app := &Application{
 		Commands: newCommands(),
-		Queries:  newQueries(distanceCalculator, directionsService),
+		Queries:  newQueries(cfg, distanceCalculator, directionsService),
 		logger:   logger,
 		config:   cfg,
 	}

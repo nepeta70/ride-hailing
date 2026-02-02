@@ -16,7 +16,7 @@ type GoogleMapsAdapter struct {
 }
 
 func NewGoogleMapsAdapter(cfg *config.Config) (*GoogleMapsAdapter, error) {
-	client, err := maps.NewClient(maps.WithAPIKey(cfg.RideConfig.GoogleMapsAPIKey))
+	client, err := maps.NewClient(maps.WithAPIKey(cfg.KeysConfig.GoogleMapsAPIKey))
 	if err != nil {
 		return nil, err
 	}
