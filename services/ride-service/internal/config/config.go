@@ -5,7 +5,13 @@ import (
 )
 
 type RideConfig struct {
-	GoogleMapsAPIKey string `json:"google_maps_api_key"`
+	GoogleMapsAPIKey string `json:"google_maps_api_key" env:"RIDE_GOOGLE_MAPS_API_KEY"`
+}
+
+func DefaultRideConfig() RideConfig {
+	return RideConfig{
+		GoogleMapsAPIKey: "",
+	}
 }
 
 type Config struct {
@@ -16,6 +22,7 @@ type Config struct {
 func Load(path string) (*Config, error) {
 	cfg := &Config{
 		BaseConfig: config.DefaultBaseConfig(),
+		RideConfig: DefaultRideConfig(),
 	}
 
 	cfg, err := config.LoadGeneric(path, cfg)

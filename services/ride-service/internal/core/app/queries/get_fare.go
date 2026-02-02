@@ -13,6 +13,7 @@ import (
 type GetFare struct {
 	PickupLocation  string
 	DropoffLocation string
+	CountryCode     string
 }
 
 func (q *GetFare) Validate() error {
@@ -46,12 +47,13 @@ func (h GetFareHandler) Handle(ctx context.Context, query GetFare) (*domain.Fare
 		}
 	}
 
+	distanceInKm := directions.Distance / 1000.0
 	return &domain.Fare{
 		ID:                  uuid.Generate(),
-		EstimatedDistanceKm: directions.Distance,
+		EstimatedDistanceKm: distanceInKm,
 		EstimatedDuration:   directions.Duration,
 		ETA:                 directions.ArrivalTime,
-		Fare:                0.5*directions.Duration.Minutes() + 1.0*directions.Distance/1000,
+		Fare:                3.0 + 0.5*directions.Duration.Minutes() + 1.0*distanceInKm,
 		Currency:            "EUR",
 	}, nil
 }

@@ -41,9 +41,10 @@ func (g *GoogleMapsAdapter) ServiceName() string {
 
 func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destination string) (*domain.DirectionsResponse, error) {
 	routes, _, err := g.client.Directions(ctx, &maps.DirectionsRequest{
-		Origin:      origin,
-		Destination: destination,
-		Mode:        maps.TravelModeDriving,
+		Origin:        origin,
+		Destination:   destination,
+		Mode:          maps.TravelModeDriving,
+		DepartureTime: "now",
 	})
 
 	if err != nil {

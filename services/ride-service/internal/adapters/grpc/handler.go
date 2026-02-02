@@ -26,6 +26,7 @@ func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareE
 	query := &queries.GetFare{
 		PickupLocation:  req.PickupLocation,
 		DropoffLocation: req.DropoffLocation,
+		CountryCode:     req.CountryCode,
 	}
 	fare, err := h.application.Queries.GetFare.Handle(ctx, *query)
 	if err != nil {
@@ -36,6 +37,7 @@ func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareE
 		EstimatedDistanceKm:      int32(fare.EstimatedDistanceKm),
 		EstimatedDurationMinutes: int32(fare.EstimatedDuration.Minutes()),
 		EstimatedFare:            fare.Fare,
+		Currency:                 fare.Currency,
 	}, nil
 }
 

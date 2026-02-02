@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
 // BaseConfig contains the stuff every single service needs
@@ -28,6 +29,7 @@ func DefaultBaseConfig() BaseConfig {
 
 func LoadGeneric[T any](path string, cfg *T) (*T, error) {
 	// 1. Load Data
+	_ = godotenv.Load()
 	data, err := os.ReadFile(path)
 	if err == nil {
 		if err := json.Unmarshal(data, cfg); err != nil {
