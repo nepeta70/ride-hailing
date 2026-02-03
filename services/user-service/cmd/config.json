@@ -1,0 +1,17 @@
+{
+  "server": {
+    "port": 50051,
+    "host": "127.0.0.1"
+  },
+  "logging": {
+    "log_format": "json",
+    "log_level": "DEBUG"
+  },
+  "redis": {
+    "address": "127.0.0.1:6379"
+  },
+  "logic": {
+    "geohash_precision": 8,
+    "location_ttl_seconds": 3600
+  }
+}

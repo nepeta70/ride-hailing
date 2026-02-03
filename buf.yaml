@@ -1,0 +1,8 @@
+version: v2
+modules:
+  - path: api/proto # Where your .proto files live
+deps:
+  - buf.build/googleapis/googleapis
+lint:
+  use:
+    - STANDARD

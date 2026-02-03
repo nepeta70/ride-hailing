@@ -1,0 +1,20 @@
+syntax = "proto3";
+package notification.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/nepeta70/ride-hailing/gen/pb/notification/v1";
+
+service NotificationService {
+  // Other services call this to trigger an alert
+  rpc SendNotification(SendNotificationRequest) returns (google.protobuf.Empty);
+}
+
+message SendNotificationRequest {
+  string user_id = 1; // The Driver or Rider ID
+  string title = 2;
+  string message = 3;
+
+  // Critical: Metadata so the App knows what to do when clicked
+  map<string, string> data = 4; // e.g., {"ride_id": "uuid-123", "type": "OFFER"}
+}

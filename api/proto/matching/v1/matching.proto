@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package matching.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/nepeta70/ride-hailing/gen/pb/matching/v1";
+
+service MatchingService {
+  rpc FindMatchingDrivers(MatchingRequest) returns (MatchingResponse);
+}
+
+message MatchingRequest {
+  string request_id = 1;
+  // Unique identifier for the ride request
+  string ride_request_id = 2;
+}
+message MatchingResponse {
+  string driver_id = 1;
+}

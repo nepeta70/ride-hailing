@@ -1,0 +1,40 @@
+package inmemory
+
+import (
+	"context"
+
+	"github.com/docker/distribution/uuid"
+	"github.com/nepeta70/ride-hailing/services/ride-service/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/ride-service/internal/ports"
+)
+
+const bufferFares = 1000
+
+type InMemoryFareRepo struct {
+	data map[uuid.UUID]*domain.Fare
+}
+
+func NewInMemoryFareRepo() *InMemoryFareRepo {
+	return &InMemoryFareRepo{
+		data: make(map[uuid.UUID]*domain.Fare, bufferFares),
+	}
+}
+
+func (repo *InMemoryFareRepo) Save(ctx context.Context, fare *domain.Fare) error {
+	if _, exists := repo.data[fare.ID]; exists {
+		return nil // or return an error if duplicate fares are not allowed
+	}
+	repo.data[fare.ID] = fare
+	return nil
+}
+
+func (repo *InMemoryFareRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Fare, error) {
+	fare, exists := repo.data[id]
+	if !exists {
+		return nil, nil // or return a domain.ErrFareNotFound if defined
+	}
+	return fare, nil
+}
+
+var _ ports.FareReadRepository = (*InMemoryFareRepo)(nil)
+var _ ports.FareWriteRepository = (*InMemoryFareRepo)(nil)

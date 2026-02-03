@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package ride.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/nepeta70/ride-hailing/gen/pb/ride/v1";
+
+service RideService {
+  // Rider requests
+  rpc RequestFareEstimate(FareEstimateRequest) returns (FareEstimateResponse);
+  rpc RequestRide(RideRequest) returns (RideResponse);
+  rpc CancelRide(CancelRideRequest) returns (google.protobuf.Empty);
+
+  //Driver requests
+  rpc AcceptOrRejectRide(AcceptOrRejectRideRequest) returns (google.protobuf.Empty);
+  rpc StartRide(StartRideRequest) returns (google.protobuf.Empty);
+  rpc CompleteRide(CompleteRideRequest) returns (google.protobuf.Empty);
+}
+
+message FareEstimateRequest {
+  string request_id = 1;
+  string pickup_location = 2;
+  string dropoff_location = 3;
+  string country_code = 4;
+}
+message FareEstimateResponse {
+  string fare_id = 1;
+  double estimated_fare = 2;
+  int32 estimated_duration_minutes = 3;
+  int32 estimated_distance_km = 4;
+  string currency = 5;
+}
+message RideRequest {
+  string request_id = 1;
+  string user_id = 2;
+  string pickup_location = 3;
+  string dropoff_location = 4;
+}
+message RideResponse {
+  string ride_id = 1;
+  string driver_id = 2;
+  string vehicle_info = 3;
+}
+message CancelRideRequest {
+  string ride_id = 1;
+}
+
+message AcceptOrRejectRideRequest {
+  string ride_id = 1;
+  string driver_id = 2;
+  bool accept = 3;
+}
+message StartRideRequest {
+  string ride_id = 1;
+}
+message CompleteRideRequest {
+  string ride_id = 1;
+}

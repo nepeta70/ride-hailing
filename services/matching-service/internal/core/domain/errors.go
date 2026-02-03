@@ -1,0 +1,3 @@
+package domain
+
+// ...placeholder for domain errors...
