@@ -2,15 +2,16 @@ package redis
 
 import (
 	"context"
-	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	retry "github.com/nepeta70/ride-hailing/internal/pkg/resiliency"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisClient struct {
-	Rdb *redis.Client
+	Rdb    *redis.Client
+	config RedisConfig
 }
 
 // NewClient returns our wrapped client
@@ -29,18 +30,28 @@ func NewClient(cfg RedisConfig) (*RedisClient, error) {
 	})
 
 	// Initial check
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, errors.NewPermanentErrorf("redis connection failed: %w", err)
+	strategy := retry.DefaultConfig()
+
+	err := retry.Do(ctx, retry.NewExponentialBackoff(strategy), func() error {
+		err := rdb.Ping(ctx).Err()
+		if err != nil {
+			return errors.NewTransientErrorf("redis not ready: %w", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, errors.NewPermanentErrorf("redis initialization exhausted: %w", err)
 	}
 
-	return &RedisClient{Rdb: rdb}, nil
+	return &RedisClient{Rdb: rdb, config: cfg}, nil
 }
 
 func (c *RedisClient) HealthCheck(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.config.DialTimeout)
 	defer cancel()
 
 	if err := c.Rdb.Ping(ctx).Err(); err != nil {

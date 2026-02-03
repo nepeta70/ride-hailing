@@ -8,8 +8,7 @@
     "log_level": "DEBUG"
   },
   "redis": {
-    "address": "127.0.0.1:6379",
-    "password": "mysecurepassword"
+    "address": "127.0.0.1:6379"
   },
   "logic": {
     "geohash_precision": 8,
