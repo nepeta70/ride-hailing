@@ -1,14 +1,14 @@
 package config
 
 import (
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
 type Config struct {
 	config.BaseConfig
-	Redis redis.RedisConfig `json:"redis"`
-	Logic LogicConfig       `json:"logic"`
+	Redis rdstore.RedisConfig `json:"redis"`
+	Logic LogicConfig         `json:"logic"`
 }
 
 type LogicConfig struct {
@@ -25,7 +25,7 @@ func DefaultConfig() *Config {
 			LocationTTLSeconds: 300,
 			TopKNearby:         5,
 		},
-		Redis: redis.DefaultRedisConfig(),
+		Redis: rdstore.DefaultRedisConfig(),
 	}
 }
 

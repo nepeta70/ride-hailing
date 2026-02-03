@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
@@ -22,9 +22,9 @@ func DefaultKeysConfig() KeysConfig {
 
 type Config struct {
 	config.BaseConfig
-	KeysConfig KeysConfig        `json:"keys"`
-	FareConfig FareConfig        `json:"fare"`
-	Redis      redis.RedisConfig `json:"redis"`
+	KeysConfig KeysConfig          `json:"keys"`
+	FareConfig FareConfig          `json:"fare"`
+	Redis      rdstore.RedisConfig `json:"redis"`
 }
 
 func Load(path string) (*Config, error) {
@@ -32,7 +32,7 @@ func Load(path string) (*Config, error) {
 		BaseConfig: config.DefaultBaseConfig(),
 		KeysConfig: DefaultKeysConfig(),
 		FareConfig: DefaultFareConfig(),
-		Redis:      redis.DefaultRedisConfig(),
+		Redis:      rdstore.DefaultRedisConfig(),
 	}
 
 	cfg, err := config.LoadGeneric(path, cfg)

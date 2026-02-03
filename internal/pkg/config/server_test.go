@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	. "github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultServerConfig(t *testing.T) {
-	cfg := config.DefaultServerConfig()
+	cfg := DefaultServerConfig()
 
 	assert.Equal(t, 5001, cfg.Port)
 	assert.Equal(t, "127.0.0.1", cfg.Host)
@@ -20,7 +20,7 @@ func TestDefaultServerConfig(t *testing.T) {
 
 func TestServerConfig_SetDurations(t *testing.T) {
 	t.Run("converts seconds to time.Duration correctly", func(t *testing.T) {
-		cfg := config.ServerConfig{
+		cfg := ServerConfig{
 			ReadTimeoutSeconds:  10,
 			WriteTimeoutSeconds: 20,
 			IdleTimeoutSeconds:  120,
@@ -37,32 +37,32 @@ func TestServerConfig_SetDurations(t *testing.T) {
 func TestServerConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     config.ServerConfig
+		cfg     ServerConfig
 		wantErr bool
 	}{
 		{
 			name:    "port too low",
-			cfg:     config.ServerConfig{Port: 0, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 0, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "empty host",
-			cfg:     config.ServerConfig{Port: 5001, Host: "", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "zero read timeout",
-			cfg:     config.ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 0, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 0, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "negative write timeout",
-			cfg:     config.ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: -1, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: -1, IdleTimeoutSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "valid config with timeouts",
-			cfg:     config.ServerConfig{Port: 5001, Host: "localhost", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 10, IdleTimeoutSeconds: 120},
+			cfg:     ServerConfig{Port: 5001, Host: "localhost", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 10, IdleTimeoutSeconds: 120},
 			wantErr: false,
 		},
 	}

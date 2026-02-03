@@ -1,4 +1,4 @@
-package kafka
+package pubsub
 
 // import (
 // 	"context"
@@ -17,7 +17,7 @@ package kafka
 // 	logger        ports.Logger
 // }
 
-// func NewEventPublisher(cfg config.KafkaConfig, topicProvider domain.TopicProvider, logger ports.Logger) domain.EventPublisher {
+// func NewEventPublisher(cfg KafkaConfig, topicProvider domain.TopicProvider, logger ports.Logger) domain.EventPublisher {
 // 	kp := &KafkaPublisher{
 // 		brokers:       cfg.Brokers,
 // 		topicProvider: topicProvider,

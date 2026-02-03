@@ -3,10 +3,11 @@ package config_test
 import (
 	"encoding/json"
 	"os"
-	"reflect"
 	"testing"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/stretchr/testify/assert"
+
+	. "github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
 type ConfigMock struct {
@@ -25,52 +26,67 @@ func (d *ConfigMock) Init() error {
 }
 
 func TestDefaultBaseConfig(t *testing.T) {
-	cfg := config.DefaultBaseConfig()
-	if reflect.DeepEqual(cfg, config.BaseConfig{}) {
-		t.Error("DefaultBaseConfig should not return zero value")
-	}
+	cfg := DefaultBaseConfig()
+	assert.NotEqual(t, BaseConfig{}, cfg, "DefaultBaseConfig should not return zero value")
 }
 
 func TestLoadGeneric_FileNotFound(t *testing.T) {
 	type TestConfig struct {
 		A string `json:"a"`
 	}
+
 	var cfg TestConfig
-	_, err := config.LoadGeneric("nonexistent.json", &cfg)
-	if err != nil && !os.IsNotExist(err) {
-		t.Errorf("Expected file not found or nil error, got: %v", err)
-	}
+	_, err := LoadGeneric("nonexistent.json", &cfg)
+
+	assert.True(t,
+		err == nil || os.IsNotExist(err),
+		"expected file not found error or nil, got %v", err,
+	)
 }
 
 func TestLoadGeneric_Validator(t *testing.T) {
 	type TestConfig struct {
 		Dummy ConfigMock
 	}
-	// Write a config file with valid=false
-	tmp, err := os.CreateTemp("", "testcfg-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
+
+	tests := []struct {
+		name      string
+		valid     bool
+		expectErr bool
+	}{
+		{
+			name:      "invalid config",
+			valid:     false,
+			expectErr: true,
+		},
+		{
+			name:      "valid config",
+			valid:     true,
+			expectErr: false,
+		},
 	}
-	defer os.Remove(tmp.Name())
-	json.NewEncoder(tmp).Encode(map[string]any{"Dummy": map[string]any{"Valid": false}})
-	tmp.Close()
-	var cfg TestConfig
-	_, err = config.LoadGeneric(tmp.Name(), &cfg)
-	if err == nil {
-		t.Error("Expected error from invalid validator, got nil")
-	}
-	// Now test with valid=true
-	tmp2, err := os.CreateTemp("", "testcfg-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmp2.Name())
-	json.NewEncoder(tmp2).Encode(map[string]any{"Dummy": map[string]any{"Valid": true}})
-	tmp2.Close()
-	var cfg2 TestConfig
-	_, err = config.LoadGeneric(tmp2.Name(), &cfg2)
-	if err != nil {
-		t.Errorf("Expected nil error from valid validator, got: %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp, err := os.CreateTemp("", "testcfg-*.json")
+			assert.NoError(t, err)
+			defer os.Remove(tmp.Name())
+
+			err = json.NewEncoder(tmp).Encode(map[string]any{
+				"Dummy": map[string]any{"Valid": tt.valid},
+			})
+			assert.NoError(t, err)
+			assert.NoError(t, tmp.Close())
+
+			var cfg TestConfig
+			_, err = LoadGeneric(tmp.Name(), &cfg)
+
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 
@@ -78,19 +94,34 @@ func TestLoadGeneric_JSONUnmarshal(t *testing.T) {
 	type TestConfig struct {
 		A string `json:"a"`
 	}
-	file, err := os.CreateTemp("", "testcfg-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
+
+	tests := []struct {
+		name     string
+		input    map[string]string
+		expected string
+	}{
+		{
+			name:     "valid json",
+			input:    map[string]string{"a": "hello"},
+			expected: "hello",
+		},
 	}
-	defer os.Remove(file.Name())
-	json.NewEncoder(file).Encode(map[string]string{"a": "hello"})
-	file.Close()
-	var cfg TestConfig
-	_, err = config.LoadGeneric(file.Name(), &cfg)
-	if err != nil {
-		t.Errorf("Expected nil error, got: %v", err)
-	}
-	if cfg.A != "hello" {
-		t.Errorf("Expected 'hello', got: %v", cfg.A)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := os.CreateTemp("", "testcfg-*.json")
+			assert.NoError(t, err)
+			defer os.Remove(file.Name())
+
+			err = json.NewEncoder(file).Encode(tt.input)
+			assert.NoError(t, err)
+			assert.NoError(t, file.Close())
+
+			var cfg TestConfig
+			_, err = LoadGeneric(file.Name(), &cfg)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg.A)
+		})
 	}
 }

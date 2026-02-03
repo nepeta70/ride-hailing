@@ -1,4 +1,4 @@
-package kafka
+package pubsub
 
 import "github.com/nepeta70/ride-hailing/internal/pkg/errors"
 

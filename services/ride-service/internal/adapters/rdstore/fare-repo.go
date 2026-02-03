@@ -1,11 +1,11 @@
-package redis
+package rdstore
 
 import (
 	"context"
 	"encoding/json"
 
 	"github.com/docker/distribution/uuid"
-	redisAdapters "github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/config"
@@ -22,7 +22,7 @@ type FareRepository struct {
 	logger pkgPorts.Logger
 }
 
-func NewFareRepository(cfg *config.Config, client *redisAdapters.RedisClient, logger pkgPorts.Logger) *FareRepository {
+func NewFareRepository(cfg *config.Config, client *rdstore.RedisClient, logger pkgPorts.Logger) *FareRepository {
 	return &FareRepository{
 		cfg:    cfg,
 		client: client.Rdb,

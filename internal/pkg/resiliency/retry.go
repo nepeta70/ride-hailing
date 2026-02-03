@@ -88,7 +88,10 @@ func (e *ExponentialBackoff) ShouldRetry(err error, attempt int) bool {
 // NextDelay calculates the next delay with exponential backoff and jitter
 func (e *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 	// Calculate exponential backoff
-	delay := float64(e.Config.InitialDelay) * math.Pow(e.Config.Multiplier, float64(attempt))
+	delay := float64(e.Config.InitialDelay)
+	if attempt > 1 {
+		delay *= math.Pow(e.Config.Multiplier, float64(attempt-1))
+	}
 
 	// Cap at max delay
 	maxDelay := float64(e.Config.MaxDelay)

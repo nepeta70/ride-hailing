@@ -1,11 +1,11 @@
-package redisStore
+package rdstore
 
 import (
 	"context"
 	"encoding/json"
 	"time"
 
-	redisClient "github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -26,7 +26,7 @@ type RedisRepository struct {
 	logger pkgPorts.Logger
 }
 
-func NewRedisRepository(cfg *config.Config, client *redisClient.RedisClient, logger pkgPorts.Logger) *RedisRepository {
+func NewRedisRepository(cfg *config.Config, client *rdstore.RedisClient, logger pkgPorts.Logger) *RedisRepository {
 	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 

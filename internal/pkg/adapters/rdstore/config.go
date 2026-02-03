@@ -1,4 +1,4 @@
-package redis
+package rdstore
 
 import (
 	"fmt"
@@ -47,8 +47,10 @@ func DefaultRedisConfig() RedisConfig {
 }
 
 func (c *RedisConfig) Validate() error {
-	if c.Address == "" || c.Host == "" || c.Port == 0 {
-		return errors.NewValidationErrorf("redis address or host/port are required")
+	if c.Address == "" {
+		if c.Host == "" || c.Port == 0 {
+			return errors.NewValidationErrorf("redis address or host/port are required")
+		}
 	}
 
 	if c.DialSeconds <= 0 {

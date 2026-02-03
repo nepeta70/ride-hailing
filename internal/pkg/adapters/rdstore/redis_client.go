@@ -1,4 +1,4 @@
-package redis
+package rdstore
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 
 type RedisClient struct {
 	Rdb    *redis.Client
-	config RedisConfig
+	config *RedisConfig
 }
 
 // NewClient returns our wrapped client
-func NewClient(cfg RedisConfig) (*RedisClient, error) {
+func NewClient(cfg *RedisConfig) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,

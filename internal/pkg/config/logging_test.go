@@ -3,12 +3,12 @@ package config_test
 import (
 	"testing"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	. "github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultLoggingConfig(t *testing.T) {
-	cfg := config.DefaultLoggingConfig()
+	cfg := DefaultLoggingConfig()
 
 	assert.Equal(t, "INFO", cfg.Level)
 	assert.Equal(t, "json", cfg.Format)
@@ -24,7 +24,7 @@ func TestConfigureLogger_DoesNotPanic(t *testing.T) {
 			format := format
 
 			t.Run(level+"/"+format, func(t *testing.T) {
-				cfg := config.LoggingConfig{
+				cfg := LoggingConfig{
 					Level:  level,
 					Format: format,
 				}

@@ -9,9 +9,9 @@ import (
 
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/grpc"
-	redisAdapters "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/redis"
+	rdstore "github.com/nepeta70/ride-hailing/services/location-service/internal/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location-service/internal/core/service"
 )
@@ -27,13 +27,13 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := redis.NewClient(cfg.Redis)
+	redisClient, err := rd.NewClient(&cfg.Redis)
 	if err != nil {
 		logger.Error("failed to init redis: %v", "error", err)
 	}
 	defer redisClient.Close()
 
-	locationRepository := redisAdapters.NewRedisRepository(cfg, redisClient, logger)
+	locationRepository := rdstore.NewRedisRepository(cfg, redisClient, logger)
 	locationService := service.NewLocationService(locationRepository)
 	handler := grpcAdapters.NewLocationHandler(locationService)
 

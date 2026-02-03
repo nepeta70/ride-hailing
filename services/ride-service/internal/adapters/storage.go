@@ -3,10 +3,11 @@ package adapters
 import (
 	"context"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/inmemory"
-	redisAdapters "github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/redis"
+	"github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/rdstore"
+
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/ports"
 )
@@ -56,11 +57,11 @@ func (sa *RedisStorage) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func NewRedisStorageBundle(cfg *config.Config, client *redis.RedisClient, logger pkgPorts.Logger) (*RedisStorage, error) {
+func NewRedisStorageBundle(cfg *config.Config, client *rd.RedisClient, logger pkgPorts.Logger) (*RedisStorage, error) {
 	rideReadRepo := inmemory.NewInMemoryRideRepo()
 	rideWriteRepo := inmemory.NewInMemoryRideRepo()
-	fareReadRepo := redisAdapters.NewFareRepository(cfg, client, logger)
-	fareWriteRepo := redisAdapters.NewFareRepository(cfg, client, logger)
+	fareReadRepo := rdstore.NewFareRepository(cfg, client, logger)
+	fareWriteRepo := rdstore.NewFareRepository(cfg, client, logger)
 	return newRedisStorage(rideReadRepo, rideWriteRepo, fareReadRepo, fareWriteRepo), nil
 }
 

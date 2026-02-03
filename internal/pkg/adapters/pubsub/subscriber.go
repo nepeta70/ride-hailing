@@ -1,24 +1,25 @@
-package kafka
+package pubsub
 
 // import (
 // 	"context"
-// 	"log/slog"
 // 	"sync"
 // 	"time"
 
+// 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+// 	retry "github.com/nepeta70/ride-hailing/internal/pkg/resiliency"
 // 	"github.com/segmentio/kafka-go"
 // )
 
 // type KafkaSubscriber struct {
-// 	config        *config.KafkaConfig
+// 	config        *KafkaConfig
 // 	groupID       string
-// 	logger        *slog.Logger
+// 	logger        ports.Logger
 // 	readers       []*kafka.Reader
 // 	mu            sync.Mutex // Protects the readers slice
 // 	retryStrategy retry.RetryStrategy
 // }
 
-// func NewKafkaSubscriber(config *config.KafkaConfig, groupID string, logger *slog.Logger) *KafkaSubscriber {
+// func NewKafkaSubscriber(config *KafkaConfig, groupID string, logger ports.Logger) *KafkaSubscriber {
 // 	return &KafkaSubscriber{
 // 		config:        config,
 // 		groupID:       groupID,

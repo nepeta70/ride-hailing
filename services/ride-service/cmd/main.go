@@ -9,7 +9,7 @@ import (
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/redis"
+	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters"
 	"github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/googlemaps"
 	grpcHandler "github.com/nepeta70/ride-hailing/services/ride-service/internal/adapters/grpc"
@@ -29,7 +29,7 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := redis.NewClient(cfg.Redis)
+	redisClient, err := rd.NewClient(&cfg.Redis)
 	if err != nil {
 		logger.Error("failed to init redis: %v", "error", err)
 	}

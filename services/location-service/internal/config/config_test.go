@@ -5,60 +5,68 @@ import (
 	"os"
 	"testing"
 
-	locationconfig "github.com/nepeta70/ride-hailing/services/location-service/internal/config"
+	"github.com/stretchr/testify/assert"
+
+	. "github.com/nepeta70/ride-hailing/services/location-service/internal/config"
 )
 
 func TestDefaultConfig(t *testing.T) {
-	cfg := locationconfig.DefaultConfig()
-	if cfg == nil {
-		t.Fatal("DefaultConfig returned nil")
-	}
-	if cfg.Logic.GeohashPrecision != 7 {
-		t.Errorf("Expected GeohashPrecision 7, got %d", cfg.Logic.GeohashPrecision)
-	}
-	if cfg.Logic.LocationTTLSeconds != 300 {
-		t.Errorf("Expected LocationTTLSeconds 300, got %d", cfg.Logic.LocationTTLSeconds)
-	}
-	if cfg.Logic.TopKNearby != 5 {
-		t.Errorf("Expected TopKNearby 5, got %d", cfg.Logic.TopKNearby)
-	}
+	cfg := DefaultConfig()
+
+	assert.NotNil(t, cfg)
+	assert.Equal(t, 7, cfg.Logic.GeohashPrecision)
+	assert.Equal(t, 300, cfg.Logic.LocationTTLSeconds)
+	assert.Equal(t, 5, cfg.Logic.TopKNearby)
 }
 
 func TestLoad_JSON(t *testing.T) {
-	file, err := os.CreateTemp("", "location-cfg-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(file.Name())
-	json.NewEncoder(file).Encode(map[string]any{
-		"logic": map[string]any{
-			"geohash_precision":    9,
-			"location_ttl_seconds": 100,
-			"top_k_nearby":         10,
+	tests := []struct {
+		name   string
+		input  map[string]any
+		expect LogicConfig
+	}{
+		{
+			name: "valid json overrides defaults",
+			input: map[string]any{
+				"logic": map[string]any{
+					"geohash_precision":    9,
+					"location_ttl_seconds": 100,
+					"top_k_nearby":         10,
+				},
+			},
+			expect: LogicConfig{
+				GeohashPrecision:   9,
+				LocationTTLSeconds: 100,
+				TopKNearby:         10,
+			},
 		},
-	})
-	file.Close()
-	cfg, err := locationconfig.Load(file.Name())
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
 	}
-	if cfg.Logic.GeohashPrecision != 9 {
-		t.Errorf("Expected GeohashPrecision 9, got %d", cfg.Logic.GeohashPrecision)
-	}
-	if cfg.Logic.LocationTTLSeconds != 100 {
-		t.Errorf("Expected LocationTTLSeconds 100, got %d", cfg.Logic.LocationTTLSeconds)
-	}
-	if cfg.Logic.TopKNearby != 10 {
-		t.Errorf("Expected TopKNearby 10, got %d", cfg.Logic.TopKNearby)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := os.CreateTemp("", "location-cfg-*.json")
+			assert.NoError(t, err)
+			defer os.Remove(file.Name())
+
+			assert.NoError(t, json.NewEncoder(file).Encode(tt.input))
+			assert.NoError(t, file.Close())
+
+			cfg, err := Load(file.Name())
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.expect.GeohashPrecision, cfg.Logic.GeohashPrecision)
+			assert.Equal(t, tt.expect.LocationTTLSeconds, cfg.Logic.LocationTTLSeconds)
+			assert.Equal(t, tt.expect.TopKNearby, cfg.Logic.TopKNearby)
+		})
 	}
 }
 
 func TestLoad_FileNotFound(t *testing.T) {
-	cfg, err := locationconfig.Load("/nonexistent/location-cfg.json")
-	if err == nil {
-		t.Error("Expected error for missing file, got nil")
-	}
-	if cfg != nil {
-		t.Error("Expected nil config for missing file")
-	}
+	cfg, err := Load("/nonexistent/location-cfg.json")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	def := DefaultConfig()
+	assert.Equal(t, *def, *cfg)
 }
