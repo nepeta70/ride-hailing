@@ -22,16 +22,15 @@ type ServerConfig struct {
 }
 
 func DefaultServerConfig() ServerConfig {
-	return ServerConfig{
+	cfg := ServerConfig{
 		Port:                5001,
 		Host:                "127.0.0.1",
 		ReadTimeoutSeconds:  5,
 		WriteTimeoutSeconds: 10,
 		IdleTimeoutSeconds:  120,
-		ReadTimeout:         5 * time.Second,
-		WriteTimeout:        10 * time.Second,
-		IdleTimeout:         120 * time.Second,
 	}
+	cfg.Init()
+	return cfg
 }
 
 func (c *ServerConfig) Init() error {

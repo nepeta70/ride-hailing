@@ -29,7 +29,7 @@ type RedisConfig struct {
 }
 
 func DefaultRedisConfig() RedisConfig {
-	return RedisConfig{
+	cfg := RedisConfig{
 		Host:         "127.0.0.1",
 		Port:         6379,
 		Password:     "",
@@ -37,15 +37,17 @@ func DefaultRedisConfig() RedisConfig {
 		Address:      "127.0.0.1:6379",
 		PoolSize:     10,
 		MinIdle:      2,
-		PoolTimeout:  30 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		DialTimeout:  5 * time.Second,
+		PoolSeconds:  30,
+		ReadSeconds:  3,
+		WriteSeconds: 3,
+		DialSeconds:  5,
 	}
+	cfg.Init()
+	return cfg
 }
 
 func (c *RedisConfig) Validate() error {
-	if c.Address == "" || (c.Host == "" && c.Port == 0) {
+	if c.Address == "" || c.Host == "" || c.Port == 0 {
 		return errors.NewValidationErrorf("redis address or host/port are required")
 	}
 
@@ -53,8 +55,8 @@ func (c *RedisConfig) Validate() error {
 		return errors.NewValidationErrorf("redis dial timeout must be greater than zero")
 	}
 
-	if c.ReadSeconds < 0 || c.WriteSeconds < 0 {
-		return errors.NewValidationErrorf("redis read/write timeouts cannot be negative")
+	if c.ReadSeconds < 0 || c.WriteSeconds < 0 || c.PoolSeconds < 0 {
+		return errors.NewValidationErrorf("redis read/write/pool timeouts cannot be negative")
 	}
 	return nil
 }

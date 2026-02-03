@@ -3,8 +3,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"time"
 
+	_ "github.com/lib/pq"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	retry "github.com/nepeta70/ride-hailing/internal/pkg/resiliency"
@@ -22,7 +22,7 @@ func NewPostgresDB(config *PostgresConfig) (*PostgresDB, error) {
 		return nil, errors.NewPermanentErrorf("failed to open postgres connection: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.PingTimeout)
 	defer cancel()
 
 	strategy := retry.NewExponentialBackoff(retry.DefaultConfig())

@@ -20,7 +20,7 @@ func TestMaxBodyBytes(t *testing.T) {
 	cfg := config.SecurityConfig{MaxBodyMB: 2}
 	expectedBytes := int64(2 * 1024 * 1024)
 
-	assert.Equal(t, expectedBytes, cfg.MaxBodyBytes())
+	assert.Equal(t, expectedBytes, cfg.MaxBodyBytes)
 }
 
 func TestSecurityConfig_Validate(t *testing.T) {
