@@ -14,19 +14,18 @@ type FareRateData struct {
 }
 
 func (c *FareRateData) Validate() error {
-
-	if c.CountryCode == "" || c.RegionCode == "" || c.ServiceType == "" {
-		return errors.NewValidationErrorf("country code, region code, and service type are required")
-	}
 	if len(c.CountryCode) != 2 {
-		return errors.NewValidationErrorf("country code must be 2 characters")
+		return errors.NewValidationErrorf("country code must have 2 characters")
 	}
-	if len(c.RegionCode) != 2 {
-		return errors.NewValidationErrorf("region code must be 2 characters")
+
+	if len(c.RegionCode) != 2 && len(c.RegionCode) != 0 {
+		return errors.NewValidationErrorf("region code must have 2 characters or be empty")
 	}
+
 	if len(c.ServiceType) == 0 {
 		return errors.NewValidationErrorf("service type must be provided")
 	}
+
 	if c.BaseFare < 0 || c.FarePerKm < 0 || c.FarePerMinute < 0 || c.MinimumFare < 0 {
 		return errors.NewValidationErrorf("fare components must be non-negative")
 	}

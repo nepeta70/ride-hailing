@@ -14,15 +14,12 @@ type GetFareRates struct {
 }
 
 func (q *GetFareRates) Validate() error {
-	if q.CountryCode == "" || q.Region == "" {
-		return errors.NewValidationErrorf("country code and region are required")
-	}
 	if len(q.CountryCode) != 2 {
 		return errors.NewValidationErrorf("country code must be 2 characters")
 	}
 
 	if len(q.Region) != 0 && len(q.Region) != 2 {
-		return errors.NewValidationErrorf("region must be 2 characters")
+		return errors.NewValidationErrorf("region must be 2 characters or be empty")
 	}
 
 	return nil

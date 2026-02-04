@@ -20,8 +20,13 @@ type Application struct {
 }
 
 type Commands struct {
-	CreateFareRate *commands.CreateFareRateHandler
-	UpdateFareRate *commands.UpdateFareRateHandler
+	CreateFareRate     *commands.CreateFareRateHandler
+	UpdateFareRate     *commands.UpdateFareRateHandler
+	RequestRide        *commands.RequestRideHandler
+	CancelRide         *commands.CancelRideHandler
+	AcceptOrRejectRide *commands.AcceptOrRejectRideHandler
+	StartRide          *commands.StartRideHandler
+	CompleteRide       *commands.CompleteRideHandler
 }
 
 type Queries struct {
@@ -32,8 +37,13 @@ type Queries struct {
 func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService, storage ridePorts.StorageBundle) *Application {
 	app := &Application{
 		Commands: &Commands{
-			CreateFareRate: commands.NewCreateFareRateHandler(storage.FareRatesWriteRepo()),
-			UpdateFareRate: commands.NewUpdateFareRateHandler(storage.FareRatesWriteRepo()),
+			CreateFareRate:     commands.NewCreateFareRateHandler(storage.FareRatesWriteRepo()),
+			UpdateFareRate:     commands.NewUpdateFareRateHandler(storage.FareRatesWriteRepo()),
+			RequestRide:        commands.NewRequestRideHandler(storage.RideWriteRepo()),
+			CancelRide:         commands.NewCancelRideHandler(storage.RideWriteRepo()),
+			AcceptOrRejectRide: commands.NewAcceptOrRejectRideHandler(storage.RideWriteRepo()),
+			StartRide:          commands.NewStartRideHandler(storage.RideWriteRepo()),
+			CompleteRide:       commands.NewCompleteRideHandler(storage.RideWriteRepo()),
 		},
 		Queries: &Queries{
 			FareEstimate: queries.NewFareEstimateHandler(cfg, distanceCalculator, directionsService, storage.FareRatesReadRepo()),

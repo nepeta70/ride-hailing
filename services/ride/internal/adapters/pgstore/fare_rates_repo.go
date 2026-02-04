@@ -16,3 +16,12 @@ func NewFareRatesRepo(config *config.Config, db *pgstore.PostgresDB) *FareRatesR
 		db:     db,
 	}
 }
+
+func (r *FareRatesRepo) TableName() string {
+	return "fare_rates"
+}
+
+func (r *FareRatesRepo) Close() error {
+	return r.db.Close()
+}
+

@@ -5,6 +5,7 @@ import (
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
 	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -47,27 +48,63 @@ func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareE
 }
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
-	// TODO: Call the ride service logic here
-	return &ridev1.RideResponse{}, nil
+	cmd := commands.RequestRide{
+		RequestID:       req.RequestId,
+		UserID:          req.UserId,
+		PickupLocation:  req.PickupLocation,
+		DropoffLocation: req.DropoffLocation,
+	}
+	rideID, driverID, vehicleInfo, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ridev1.RideResponse{
+		RideId:      rideID,
+		DriverId:    driverID,
+		VehicleInfo: vehicleInfo,
+	}, nil
 }
 
 func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequest) (*emptypb.Empty, error) {
-	// TODO: Call the ride service logic here
+	cmd := commands.CancelRide{
+		RideID: req.RideId,
+	}
+	if err := h.application.Commands.CancelRide.Handle(ctx, cmd); err != nil {
+		return nil, err
+	}
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.AcceptOrRejectRideRequest) (*emptypb.Empty, error) {
-	// TODO: Call the ride service logic here
+	cmd := commands.AcceptOrRejectRide{
+		RideID:   req.RideId,
+		DriverID: req.DriverId,
+		Accept:   req.Accept,
+	}
+	if err := h.application.Commands.AcceptOrRejectRide.Handle(ctx, cmd); err != nil {
+		return nil, err
+	}
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) StartRide(ctx context.Context, req *ridev1.StartRideRequest) (*emptypb.Empty, error) {
-	// TODO: Call the ride service logic here
+	cmd := commands.StartRide{
+		RideID: req.RideId,
+	}
+	if err := h.application.Commands.StartRide.Handle(ctx, cmd); err != nil {
+		return nil, err
+	}
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) CompleteRide(ctx context.Context, req *ridev1.CompleteRideRequest) (*emptypb.Empty, error) {
-	// TODO: Call the ride service logic here
+	cmd := commands.CompleteRide{
+		RideID: req.RideId,
+	}
+	if err := h.application.Commands.CompleteRide.Handle(ctx, cmd); err != nil {
+		return nil, err
+	}
 	return &emptypb.Empty{}, nil
 }
 
