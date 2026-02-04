@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	. "github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultTimeoutsConfig(t *testing.T) {
-	cfg := config.DefaultTimeoutsConfig()
+	cfg := DefaultTimeoutsConfig()
 
 	assert.Equal(t, 10, cfg.ShutdownDelayInSeconds)
 	assert.Equal(t, 5, cfg.RequestTimeoutSeconds)
@@ -20,7 +20,7 @@ func TestDefaultTimeoutsConfig(t *testing.T) {
 }
 
 func TestSetDurations(t *testing.T) {
-	cfg := config.TimeoutsConfig{
+	cfg := TimeoutsConfig{
 		ShutdownDelayInSeconds: 2,
 		RequestTimeoutSeconds:  3,
 	}
@@ -34,12 +34,12 @@ func TestSetDurations(t *testing.T) {
 func TestTimeoutsConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     config.TimeoutsConfig
+		cfg     TimeoutsConfig
 		wantErr bool
 	}{
 		{
 			name: "invalid request timeout",
-			cfg: config.TimeoutsConfig{
+			cfg: TimeoutsConfig{
 				RequestTimeoutSeconds:  0,
 				ShutdownDelayInSeconds: 1,
 			},
@@ -47,7 +47,7 @@ func TestTimeoutsConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "negative shutdown delay",
-			cfg: config.TimeoutsConfig{
+			cfg: TimeoutsConfig{
 				RequestTimeoutSeconds:  1,
 				ShutdownDelayInSeconds: -1,
 			},
@@ -55,7 +55,7 @@ func TestTimeoutsConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "valid timeouts",
-			cfg: config.TimeoutsConfig{
+			cfg: TimeoutsConfig{
 				RequestTimeoutSeconds:  1,
 				ShutdownDelayInSeconds: 1,
 			},

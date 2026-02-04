@@ -13,14 +13,13 @@ type TimeoutsConfig struct {
 	RequestTimeout         time.Duration `json:"-"`
 }
 
-// DefaultTimeoutsConfig returns the default TimeoutsConfig.
 func DefaultTimeoutsConfig() TimeoutsConfig {
-	return TimeoutsConfig{
+	cfg := TimeoutsConfig{
 		ShutdownDelayInSeconds: 10,
 		RequestTimeoutSeconds:  5,
-		ShutdownTimeout:        10 * time.Second,
-		RequestTimeout:         5 * time.Second,
 	}
+	cfg.Init()
+	return cfg
 }
 
 func (c *TimeoutsConfig) Validate() error {

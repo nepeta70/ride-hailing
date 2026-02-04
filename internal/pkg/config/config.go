@@ -7,6 +7,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
 // BaseConfig contains the stuff every single service needs
@@ -33,7 +34,7 @@ func LoadGeneric[T any](path string, cfg *T) (*T, error) {
 	data, err := os.ReadFile(path)
 	if err == nil {
 		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, err
+			return nil, errors.NewErrJSONUnmarshal(err)
 		}
 	}
 

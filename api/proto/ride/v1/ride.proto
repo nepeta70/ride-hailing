@@ -16,20 +16,32 @@ service RideService {
   rpc AcceptOrRejectRide(AcceptOrRejectRideRequest) returns (google.protobuf.Empty);
   rpc StartRide(StartRideRequest) returns (google.protobuf.Empty);
   rpc CompleteRide(CompleteRideRequest) returns (google.protobuf.Empty);
+
+  // Fare configuration management
+  rpc CreateFareRate(FareRate) returns (FareRate);
+  rpc GetFareRates(GetFareRatesRequest) returns (GetFareRatesResponse);
+  rpc UpdateFareRate(FareRate) returns (FareRate);
 }
 
 message FareEstimateRequest {
   string request_id = 1;
   string pickup_location = 2;
   string dropoff_location = 3;
-  string country_code = 4;
+  string country = 4;
+  string region = 5;
 }
-message FareEstimateResponse {
-  string fare_id = 1;
+
+message FareEstimate {
+  string service_type = 1;
   double estimated_fare = 2;
-  int32 estimated_duration_minutes = 3;
-  int32 estimated_distance_km = 4;
-  string currency = 5;
+}
+
+message FareEstimateResponse {
+  string id = 1;
+  int32 estimated_duration_minutes = 2;
+  int32 estimated_distance_km = 3;
+  string currency = 4;
+  repeated FareEstimate fare_estimate = 5;
 }
 message RideRequest {
   string request_id = 1;
@@ -56,4 +68,27 @@ message StartRideRequest {
 }
 message CompleteRideRequest {
   string ride_id = 1;
+}
+
+message FareRate {
+  string id = 1;
+  double base_fare = 2;
+  double cost_per_km = 3;
+  double cost_per_minute = 4;
+  double minimum_fare = 5;
+  string currency = 6;
+  string country = 7;
+  string region = 8;
+  string service_type = 9;
+}
+
+message GetFareRatesRequest {
+  string country = 1;
+  string region = 2;
+}
+
+message GetFareRatesResponse {
+  string country = 1;
+  string region = 2;
+  repeated FareRate fare_rates = 3;
 }

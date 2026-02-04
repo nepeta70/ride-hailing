@@ -3,13 +3,13 @@ package config_test
 import (
 	"testing"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	. "github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultSecurityConfig(t *testing.T) {
-	cfg := config.DefaultSecurityConfig()
+	cfg := DefaultSecurityConfig()
 
 	assert.Equal(t, 10.0, cfg.RateLimit)
 	assert.Equal(t, 20, cfg.RateBurst)
@@ -17,31 +17,32 @@ func TestDefaultSecurityConfig(t *testing.T) {
 }
 
 func TestMaxBodyBytes(t *testing.T) {
-	cfg := config.SecurityConfig{MaxBodyMB: 2}
+	cfg := SecurityConfig{MaxBodyMB: 2}
+	cfg.Init()
 	expectedBytes := int64(2 * 1024 * 1024)
 
-	assert.Equal(t, expectedBytes, cfg.MaxBodyBytes())
+	assert.Equal(t, expectedBytes, cfg.MaxBodyBytes)
 }
 
 func TestSecurityConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		cfg     config.SecurityConfig
+		cfg     SecurityConfig
 		wantErr bool
 	}{
 		{
 			name:    "invalid rate limit",
-			cfg:     config.SecurityConfig{RateLimit: 0, MaxBodyMB: 1},
+			cfg:     SecurityConfig{RateLimit: 0, MaxBodyMB: 1},
 			wantErr: true,
 		},
 		{
 			name:    "invalid max body",
-			cfg:     config.SecurityConfig{RateLimit: 1, MaxBodyMB: 0},
+			cfg:     SecurityConfig{RateLimit: 1, MaxBodyMB: 0},
 			wantErr: true,
 		},
 		{
 			name:    "valid config",
-			cfg:     config.SecurityConfig{RateLimit: 1, MaxBodyMB: 1},
+			cfg:     SecurityConfig{RateLimit: 1, MaxBodyMB: 1},
 			wantErr: false,
 		},
 	}

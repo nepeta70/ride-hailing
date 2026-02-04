@@ -32,7 +32,7 @@ func NewGRPCAdapter(serviceName string, cfg *config.BaseConfig, logger ports.Log
 	if err != nil {
 		logger.Error("failed to listen: %v", "error", err)
 	}
-	maxMsgSize := int(cfg.Security.MaxBodyBytes())
+	maxMsgSize := int(cfg.Security.MaxBodyBytes)
 
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(maxMsgSize),
