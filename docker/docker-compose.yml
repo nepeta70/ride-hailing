@@ -1,12 +1,12 @@
 services:
-  location-service:
+  location:
     build:
       context: ..
-      dockerfile: services/location-service/docker/Dockerfile
+      dockerfile: services/location/docker/Dockerfile
     ports:
       - "50051:50051"
     volumes:
-      - ../services/location-service/cmd/config.json:/home/appuser/config/config.json:ro
+      - ../services/location/cmd/config.json:/home/appuser/config/config.json:ro
     environment:
       - REDIS_ADDRESS=${REDIS_ADDRESS}
       - REDIS_PASSWORD=${REDIS_PASSWORD}

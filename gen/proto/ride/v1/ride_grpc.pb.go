@@ -26,6 +26,9 @@ const (
 	RideService_AcceptOrRejectRide_FullMethodName  = "/ride.v1.RideService/AcceptOrRejectRide"
 	RideService_StartRide_FullMethodName           = "/ride.v1.RideService/StartRide"
 	RideService_CompleteRide_FullMethodName        = "/ride.v1.RideService/CompleteRide"
+	RideService_CreateFareRate_FullMethodName      = "/ride.v1.RideService/CreateFareRate"
+	RideService_GetFareRates_FullMethodName        = "/ride.v1.RideService/GetFareRates"
+	RideService_UpdateFareRate_FullMethodName      = "/ride.v1.RideService/UpdateFareRate"
 )
 
 // RideServiceClient is the client API for RideService service.
@@ -40,6 +43,10 @@ type RideServiceClient interface {
 	AcceptOrRejectRide(ctx context.Context, in *AcceptOrRejectRideRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StartRide(ctx context.Context, in *StartRideRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CompleteRide(ctx context.Context, in *CompleteRideRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Fare configuration management
+	CreateFareRate(ctx context.Context, in *FareRate, opts ...grpc.CallOption) (*FareRate, error)
+	GetFareRates(ctx context.Context, in *GetFareRatesRequest, opts ...grpc.CallOption) (*GetFareRatesResponse, error)
+	UpdateFareRate(ctx context.Context, in *FareRate, opts ...grpc.CallOption) (*FareRate, error)
 }
 
 type rideServiceClient struct {
@@ -110,6 +117,36 @@ func (c *rideServiceClient) CompleteRide(ctx context.Context, in *CompleteRideRe
 	return out, nil
 }
 
+func (c *rideServiceClient) CreateFareRate(ctx context.Context, in *FareRate, opts ...grpc.CallOption) (*FareRate, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FareRate)
+	err := c.cc.Invoke(ctx, RideService_CreateFareRate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rideServiceClient) GetFareRates(ctx context.Context, in *GetFareRatesRequest, opts ...grpc.CallOption) (*GetFareRatesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFareRatesResponse)
+	err := c.cc.Invoke(ctx, RideService_GetFareRates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rideServiceClient) UpdateFareRate(ctx context.Context, in *FareRate, opts ...grpc.CallOption) (*FareRate, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FareRate)
+	err := c.cc.Invoke(ctx, RideService_UpdateFareRate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RideServiceServer is the server API for RideService service.
 // All implementations should embed UnimplementedRideServiceServer
 // for forward compatibility.
@@ -122,6 +159,10 @@ type RideServiceServer interface {
 	AcceptOrRejectRide(context.Context, *AcceptOrRejectRideRequest) (*emptypb.Empty, error)
 	StartRide(context.Context, *StartRideRequest) (*emptypb.Empty, error)
 	CompleteRide(context.Context, *CompleteRideRequest) (*emptypb.Empty, error)
+	// Fare configuration management
+	CreateFareRate(context.Context, *FareRate) (*FareRate, error)
+	GetFareRates(context.Context, *GetFareRatesRequest) (*GetFareRatesResponse, error)
+	UpdateFareRate(context.Context, *FareRate) (*FareRate, error)
 }
 
 // UnimplementedRideServiceServer should be embedded to have
@@ -148,6 +189,15 @@ func (UnimplementedRideServiceServer) StartRide(context.Context, *StartRideReque
 }
 func (UnimplementedRideServiceServer) CompleteRide(context.Context, *CompleteRideRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method CompleteRide not implemented")
+}
+func (UnimplementedRideServiceServer) CreateFareRate(context.Context, *FareRate) (*FareRate, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateFareRate not implemented")
+}
+func (UnimplementedRideServiceServer) GetFareRates(context.Context, *GetFareRatesRequest) (*GetFareRatesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFareRates not implemented")
+}
+func (UnimplementedRideServiceServer) UpdateFareRate(context.Context, *FareRate) (*FareRate, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateFareRate not implemented")
 }
 func (UnimplementedRideServiceServer) testEmbeddedByValue() {}
 
@@ -277,6 +327,60 @@ func _RideService_CompleteRide_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RideService_CreateFareRate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FareRate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).CreateFareRate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RideService_CreateFareRate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).CreateFareRate(ctx, req.(*FareRate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RideService_GetFareRates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFareRatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).GetFareRates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RideService_GetFareRates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).GetFareRates(ctx, req.(*GetFareRatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RideService_UpdateFareRate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FareRate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).UpdateFareRate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RideService_UpdateFareRate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).UpdateFareRate(ctx, req.(*FareRate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RideService_ServiceDesc is the grpc.ServiceDesc for RideService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -307,6 +411,18 @@ var RideService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteRide",
 			Handler:    _RideService_CompleteRide_Handler,
+		},
+		{
+			MethodName: "CreateFareRate",
+			Handler:    _RideService_CreateFareRate_Handler,
+		},
+		{
+			MethodName: "GetFareRates",
+			Handler:    _RideService_GetFareRates_Handler,
+		},
+		{
+			MethodName: "UpdateFareRate",
+			Handler:    _RideService_UpdateFareRate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
