@@ -3,35 +3,39 @@ package inmemory
 import (
 	"context"
 
-	"github.com/docker/distribution/uuid"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
-type InMemoryFareConfigRepo struct {
-	data map[uuid.UUID]*domain.FareRate
+type InMemoryFareRateRepo struct {
+	data map[string][]*domain.FareRate
 }
 
-func NewInMemoryFareConfigRepo() *InMemoryFareConfigRepo {
-	return &InMemoryFareConfigRepo{
-		data: make(map[uuid.UUID]*domain.FareRate),
+func NewInMemoryFareRateRepo() *InMemoryFareRateRepo {
+	return &InMemoryFareRateRepo{
+		data: make(map[string][]*domain.FareRate),
 	}
 }
 
-func (repo *InMemoryFareConfigRepo) Save(ctx context.Context, fareRate *domain.FareRate) error {
-	repo.data[fareRate.ID] = fareRate
+func (repo *InMemoryFareRateRepo) Save(ctx context.Context, fareRate *domain.FareRate) error {
+	rates, exists := repo.data[fareRate.CountryCode]
+	if !exists {
+		rates = []*domain.FareRate{fareRate}
+	} else {
+		rates = append(rates, fareRate)
+	}
+	repo.data[fareRate.CountryCode] = rates
+
 	return nil
 }
 
-func (repo *InMemoryFareConfigRepo) GetRatesByRegion(ctx context.Context, countryCode, region string) ([]*domain.FareRate, error) {
-	var rates []*domain.FareRate
-	for _, rate := range repo.data {
-		if rate.CountryCode == countryCode && rate.RegionCode == region {
-			rates = append(rates, rate)
-		}
+func (repo *InMemoryFareRateRepo) GetRatesByCountry(ctx context.Context, countryCode string) ([]*domain.FareRate, error) {
+	rates, exists := repo.data[countryCode]
+	if !exists {
+		return nil, nil
 	}
 	return rates, nil
 }
 
-var _ ports.FareRatesReadRepository = (*InMemoryFareConfigRepo)(nil)
-var _ ports.FareRatesWriteRepository = (*InMemoryFareConfigRepo)(nil)
+var _ ports.FareRatesReadRepository = (*InMemoryFareRateRepo)(nil)
+var _ ports.FareRatesWriteRepository = (*InMemoryFareRateRepo)(nil)

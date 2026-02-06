@@ -12,6 +12,11 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 )
 
+const (
+	// 30 km/h -> 500 m/min
+	averageCitySpeedMetersPerMin = 500.0
+)
+
 type DirectionsEstimator struct {
 }
 
@@ -54,18 +59,35 @@ func (dc *DirectionsEstimator) GetDirections(ctx context.Context, origin, destin
 	if err != nil {
 		return nil, errors.BusinessError(err)
 	}
-	a := dc.Distance(
+
+	meters := dc.Distance(
 		*pickupCoords,
 		*dropoffCoords,
 	)
 
-	duration := time.Duration((a/40000)*3600) * time.Second
+	distance := meters * getCircuityFactor(meters)
+
+	durationMinutes := time.Duration(distance/averageCitySpeedMetersPerMin) * time.Minute
+
 	return &domain.DirectionsResponse{
-		Distance:          a,
-		Duration:          duration,
-		DurationInTraffic: duration,
-		ArrivalTime:       time.Now().Add(duration),
+		DistanceMeters:    distance,
+		DurationMinutes:   durationMinutes,
+		DurationInTraffic: durationMinutes,
+		ArrivalTime:       time.Now().Add(durationMinutes),
 	}, nil
+}
+
+func getCircuityFactor(distanceMeters float64) float64 {
+	// Short trips are winding (high detour index)
+	if distanceMeters < 5000.0 {
+		return 1.45
+	}
+	// Medium trips stabilize
+	if distanceMeters < 15000.0 {
+		return 1.34
+	}
+	// Long trips use highways (more direct)
+	return 1.25
 }
 
 func CoordinatesFromString(s string) (*valueobjects.Coordinates, error) {

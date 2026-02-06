@@ -1,7 +1,6 @@
 CREATE TABLE fare_rates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     country_code VARCHAR(2) NOT NULL REFERENCES countries(code),
-    region_code VARCHAR(2) DEFAULT NULL, 
     service_type VARCHAR(20) NOT NULL REFERENCES service_types(id), 
     
     base_fare NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
@@ -11,22 +10,16 @@ CREATE TABLE fare_rates (
     
     is_active BOOLEAN NOT NULL DEFAULT true,
     version INT NOT NULL DEFAULT 1,
-    version_by VARCHAR(50) NOT NULL DEFAULT 'system',
+    version_by VARCHAR(50) NOT NULL DEFAULT 'system'
 );
 
 -- 1. Ensure uniqueness for National rates (where region is NULL)
 CREATE UNIQUE INDEX uq_fare_rates_national 
-ON fare_rates (country_code, service_type) 
-WHERE region_code IS NULL;
-
--- 2. Ensure uniqueness for Regional rates (where region is NOT NULL)
-CREATE UNIQUE INDEX uq_fare_rates_regional 
-ON fare_rates (country_code, region_code, service_type) 
-WHERE region_code IS NOT NULL;
+ON fare_rates (country_code, service_type);
 
 -- 3. lookup index
 CREATE INDEX idx_fare_rates_lookup 
-ON fare_rates (country_code, region_code, is_active);
+ON fare_rates (country_code, is_active);
 
 
 CREATE TABLE fare_rates_audit (
@@ -40,7 +33,7 @@ CREATE TABLE fare_rates_audit (
     cost_per_minute NUMERIC(12, 2) NOT NULL,
     minimum_fare NUMERIC(12, 2) NOT NULL,
     version_by VARCHAR(50) NOT NULL DEFAULT 'system',
-    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE(fare_rate_id, version)
 );

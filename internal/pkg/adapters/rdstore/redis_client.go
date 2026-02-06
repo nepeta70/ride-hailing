@@ -5,17 +5,20 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	retry "github.com/nepeta70/ride-hailing/internal/pkg/resiliency"
+	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
+
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisClient struct {
-	Rdb    *redis.Client
-	config *RedisConfig
+	Rdb     *redis.Client
+	config  *RedisConfig
+	logger  ports.Logger
+	retrier *retry.Retrier
 }
 
 // NewClient returns our wrapped client
-func NewClient(cfg *RedisConfig) (*RedisClient, error) {
+func NewClient(cfg *RedisConfig, logger ports.Logger) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,
@@ -33,9 +36,8 @@ func NewClient(cfg *RedisConfig) (*RedisClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
-	strategy := retry.DefaultConfig()
-
-	err := retry.Do(ctx, retry.NewExponentialBackoff(strategy), func() error {
+	retrier := retry.NewExponentialBackoffRetrierWithTimeout(cfg.DialTimeout, logger)
+	err := retrier.Do(ctx, func() error {
 		err := rdb.Ping(ctx).Err()
 		if err != nil {
 			return errors.NewTransientErrorf("redis not ready: %w", err)
@@ -47,7 +49,7 @@ func NewClient(cfg *RedisConfig) (*RedisClient, error) {
 		return nil, errors.NewPermanentErrorf("redis initialization exhausted: %w", err)
 	}
 
-	return &RedisClient{Rdb: rdb, config: cfg}, nil
+	return &RedisClient{Rdb: rdb, config: cfg, logger: logger, retrier: retrier}, nil
 }
 
 func (c *RedisClient) HealthCheck(ctx context.Context) error {

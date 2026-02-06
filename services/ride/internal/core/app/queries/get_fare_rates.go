@@ -10,16 +10,11 @@ import (
 
 type GetFareRates struct {
 	CountryCode string
-	Region      string
 }
 
 func (q *GetFareRates) Validate() error {
 	if len(q.CountryCode) != 2 {
 		return errors.NewValidationErrorf("country code must be 2 characters")
-	}
-
-	if len(q.Region) != 0 && len(q.Region) != 2 {
-		return errors.NewValidationErrorf("region must be 2 characters or be empty")
 	}
 
 	return nil
@@ -43,5 +38,5 @@ func (h *GetFareRateHandler) Handle(ctx context.Context, query *GetFareRates) ([
 	if err != nil {
 		return nil, err
 	}
-	return h.repo.GetRatesByRegion(ctx, query.CountryCode, query.Region)
+	return h.repo.GetRatesByCountry(ctx, query.CountryCode)
 }

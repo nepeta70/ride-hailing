@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/docker/distribution/uuid"
+import "github.com/google/uuid"
 
 type FareRate struct {
 	ID            uuid.UUID
@@ -10,8 +10,5 @@ type FareRate struct {
 	MinimumFare   float64
 	Currency      string
 	CountryCode   string
-	RegionCode    string
 	ServiceType   string
 }
-
-

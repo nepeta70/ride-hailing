@@ -27,7 +27,7 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis)
+	redisClient, err := rd.NewClient(&cfg.Redis, logger)
 	if err != nil {
 		logger.Error("failed to init redis: %v", "error", err)
 	}

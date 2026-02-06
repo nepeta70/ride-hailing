@@ -28,7 +28,6 @@ message FareEstimateRequest {
   string pickup_location = 2;
   string dropoff_location = 3;
   string country = 4;
-  string region = 5;
 }
 
 message FareEstimate {
@@ -78,17 +77,13 @@ message FareRate {
   double minimum_fare = 5;
   string currency = 6;
   string country = 7;
-  string region = 8;
-  string service_type = 9;
+  string service_type = 8;
 }
 
 message GetFareRatesRequest {
   string country = 1;
-  string region = 2;
 }
 
 message GetFareRatesResponse {
-  string country = 1;
-  string region = 2;
-  repeated FareRate fare_rates = 3;
+  repeated FareRate fare_rates = 1;
 }

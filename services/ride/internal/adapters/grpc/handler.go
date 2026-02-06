@@ -32,19 +32,23 @@ func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareE
 	if err != nil {
 		return nil, err
 	}
+	n := len(fare.Fares)
+	fareEstimates := make([]*ridev1.FareEstimate, n)
+	for i, f := range fare.Fares {
+		fareEstimates[i] = &ridev1.FareEstimate{
+			ServiceType:   f.ServiceType,
+			EstimatedFare: f.Fare,
+		}
+	}
 
 	return &ridev1.FareEstimateResponse{
 		Id:                       fare.ID.String(),
 		EstimatedDistanceKm:      int32(fare.EstimatedDistanceKm),
-		EstimatedDurationMinutes: int32(fare.EstimatedDuration.Minutes()),
+		EstimatedDurationMinutes: int32(fare.EstimatedDurationMinutes.Minutes()),
 		Currency:                 fare.Currency,
-		FareEstimate: []*ridev1.FareEstimate{
-			{
-				ServiceType:   "Standard", // TODO: map service types properly
-				EstimatedFare: fare.Fare,
-			},
-		},
+		FareEstimate:             fareEstimates,
 	}, nil
+
 }
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
@@ -115,7 +119,6 @@ func (h *RideHandler) CreateFareRate(ctx context.Context, req *ridev1.FareRate) 
 func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRatesRequest) (*ridev1.GetFareRatesResponse, error) {
 	query := &queries.GetFareRates{
 		CountryCode: req.Country,
-		Region:      req.Region,
 	}
 	rates, err := h.application.Queries.FareRates.Handle(ctx, query)
 	if err != nil {
@@ -126,7 +129,6 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 		resp = append(resp, &ridev1.FareRate{
 			Id:            rate.ID.String(),
 			Country:       rate.CountryCode,
-			Region:        rate.RegionCode,
 			BaseFare:      rate.BaseFare,
 			CostPerKm:     rate.FarePerKm,
 			CostPerMinute: rate.FarePerMinute,
@@ -135,8 +137,6 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 		})
 	}
 	response := ridev1.GetFareRatesResponse{
-		Country:   req.Country,
-		Region:    req.Region,
 		FareRates: resp,
 	}
 	return &response, nil

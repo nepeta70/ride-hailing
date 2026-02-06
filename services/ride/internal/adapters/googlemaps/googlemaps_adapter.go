@@ -56,8 +56,8 @@ func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destinati
 	leg := routes[0].Legs[0]
 
 	response := &domain.DirectionsResponse{
-		Distance:          float64(leg.Distance.Meters),
-		Duration:          leg.Duration,
+		DistanceMeters:    float64(leg.Distance.Meters),
+		DurationMinutes:   leg.Duration,
 		DurationInTraffic: leg.DurationInTraffic,
 		ArrivalTime:       leg.ArrivalTime,
 	}

@@ -4,7 +4,6 @@ go 1.25.6
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/docker/distribution v2.8.3+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.11.1

@@ -18,6 +18,18 @@ type PostgresConfig struct {
 	PingTimeout time.Duration `json:"-"`
 }
 
+func DefaultPostgresConfig() PostgresConfig {
+	return PostgresConfig{
+		User:        "",
+		Password:    "",
+		DBName:      "postgres",
+		Host:        "localhost",
+		Port:        5432,
+		SSLMode:     "disable",
+		PingSeconds: 5,
+	}
+}
+
 func (c PostgresConfig) DSN() string {
 	// Template: postgres://user:password@host:port/dbname?sslmode=disable
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",

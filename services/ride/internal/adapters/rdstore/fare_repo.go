@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/docker/distribution/uuid"
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -30,7 +30,7 @@ func NewFareRepository(cfg *config.Config, client *rdstore.RedisClient, logger p
 	}
 }
 
-func (r *FareRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Fare, error) {
+func (r *FareRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Fares, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 
@@ -43,7 +43,7 @@ func (r *FareRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Far
 		return nil, err
 	}
 
-	var fare domain.Fare
+	var fare domain.Fares
 	err = json.Unmarshal([]byte(data), &fare)
 	if err != nil {
 		return nil, errors.NewErrJSONUnmarshal(err)
@@ -52,7 +52,7 @@ func (r *FareRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Far
 	return &fare, nil
 }
 
-func (r *FareRepository) Save(ctx context.Context, fare *domain.Fare) error {
+func (r *FareRepository) Save(ctx context.Context, fare *domain.Fares) error {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 

@@ -16,9 +16,10 @@ This file is intended to contain guidelines and rules that must always be follow
 - Never use TEXT columns
 
 ### Unit tests
-should always be in package folder_test
-should use assert from "github.com/stretchr/testify/assert"
-should use table tests when you're testing the same method
+- should always be in package folder_test
+- should use assert from "github.com/stretchr/testify/assert"
+- should use table driven tests when you're testing the same method
+- refer to the struct folder using . "structbeingtestedpath"
 
 ---
 

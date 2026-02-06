@@ -46,7 +46,7 @@ func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator 
 			CompleteRide:       commands.NewCompleteRideHandler(storage.RideWriteRepo()),
 		},
 		Queries: &Queries{
-			FareEstimate: queries.NewFareEstimateHandler(cfg, distanceCalculator, directionsService, storage.FareRatesReadRepo()),
+			FareEstimate: queries.NewFareEstimateHandler(cfg, storage, distanceCalculator, directionsService),
 			FareRates:    queries.NewGetFareRatesHandler(nil),
 		},
 		logger:  logger,

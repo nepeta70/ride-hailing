@@ -9,6 +9,7 @@ import (
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/googlemaps"
@@ -29,13 +30,19 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis)
+	redisClient, err := rd.NewClient(&cfg.Redis, logger)
 	if err != nil {
 		logger.Error("failed to init redis: %v", "error", err)
 	}
 	defer redisClient.Close()
 
-	storage, err := adapters.NewRedisStorageBundle(cfg, redisClient, logger)
+	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, logger)
+	if err != nil {
+		logger.Error("Failed to create Postgres DB: %v", "PostgresDB", err)
+		return
+	}
+
+	storage, err := adapters.NewRedisStorageBundle(cfg, redisClient, pg, logger)
 	if err != nil {
 		logger.Error("Failed to create storage adapter: %v", "StorageAdapter", err)
 		return
