@@ -1,4 +1,4 @@
-package queries
+package commands
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
-type FareEstimateRequest struct {
+type EstimateFareCommand struct {
 	RequestId       string
 	PickupLocation  string
 	DropoffLocation string
 	CountryCode     string
 }
 
-func (q *FareEstimateRequest) Validate() error {
+func (q *EstimateFareCommand) Validate() error {
 	if q.PickupLocation == "" || q.DropoffLocation == "" {
 		return errors.NewValidationErrorf("pickup and dropoff locations are required")
 	}
@@ -37,7 +37,7 @@ type FareEstimateHandler struct {
 	fareRateRepo        ports.FareRatesReadRepository
 }
 
-func NewFareEstimateHandler(config *config.Config, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *FareEstimateHandler {
+func NewEstimateFareHandler(config *config.Config, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *FareEstimateHandler {
 	return &FareEstimateHandler{
 		config:              config,
 		countryCache:        storage.CountryCache(),
@@ -47,7 +47,7 @@ func NewFareEstimateHandler(config *config.Config, storage ports.StorageBundle, 
 	}
 }
 
-func (h *FareEstimateHandler) Handle(ctx context.Context, query FareEstimateRequest) (*domain.Fares, error) {
+func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareCommand) (*domain.Fares, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -72,13 +72,9 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query FareEstimateRequ
 		return nil, errors.NewErrNotFound("no fare rates found for country")
 	}
 
-	directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
-	if err != nil || directions == nil {
-		directions, err = h.directionsEstimator.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
-
-		if err != nil {
-			return nil, err
-		}
+	directions, err := h.getDirections(ctx, query)
+	if err != nil {
+		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
 	}
 
 	fares := make([]*domain.Fare, 0, n)
@@ -99,4 +95,15 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query FareEstimateRequ
 		Currency:                 country.Currency,
 		Fares:                    fares,
 	}, nil
+}
+
+func (h *FareEstimateHandler) getDirections(ctx context.Context, query EstimateFareCommand) (*domain.DirectionsResponse, error) {
+	if h.directionsService != nil {
+		directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
+		if err == nil && directions != nil {
+			return directions, nil
+		}
+	}
+
+	return h.directionsEstimator.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 }

@@ -20,6 +20,7 @@ type Application struct {
 }
 
 type Commands struct {
+	FareEstimate       *commands.FareEstimateHandler
 	CreateFareRate     *commands.CreateFareRateHandler
 	UpdateFareRate     *commands.UpdateFareRateHandler
 	RequestRide        *commands.RequestRideHandler
@@ -30,13 +31,13 @@ type Commands struct {
 }
 
 type Queries struct {
-	FareEstimate *queries.FareEstimateHandler
-	FareRates    *queries.GetFareRateHandler
+	FareRates *queries.GetFareRateHandler
 }
 
 func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator *service.DirectionsEstimator, directionsService ridePorts.DirectionsService, storage ridePorts.StorageBundle) *Application {
 	app := &Application{
 		Commands: &Commands{
+			FareEstimate:       commands.NewEstimateFareHandler(cfg, storage, distanceCalculator, directionsService),
 			CreateFareRate:     commands.NewCreateFareRateHandler(storage.FareRatesWriteRepo()),
 			UpdateFareRate:     commands.NewUpdateFareRateHandler(storage.FareRatesWriteRepo()),
 			RequestRide:        commands.NewRequestRideHandler(storage.RideWriteRepo()),
@@ -46,8 +47,7 @@ func NewApplication(cfg *config.Config, logger ports.Logger, distanceCalculator 
 			CompleteRide:       commands.NewCompleteRideHandler(storage.RideWriteRepo()),
 		},
 		Queries: &Queries{
-			FareEstimate: queries.NewFareEstimateHandler(cfg, storage, distanceCalculator, directionsService),
-			FareRates:    queries.NewGetFareRatesHandler(nil),
+			FareRates: queries.NewGetFareRatesHandler(nil),
 		},
 		logger:  logger,
 		config:  cfg,

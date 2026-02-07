@@ -22,13 +22,13 @@ func NewRideHandler(application *app.Application, storageBundle ridePorts.Storag
 	return &RideHandler{application: application, storageBundle: storageBundle}
 }
 
-func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
-	query := &queries.FareEstimateRequest{
+func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
+	query := &commands.EstimateFareCommand{
 		PickupLocation:  req.PickupLocation,
 		DropoffLocation: req.DropoffLocation,
 		CountryCode:     req.Country,
 	}
-	fare, err := h.application.Queries.FareEstimate.Handle(ctx, *query)
+	fare, err := h.application.Commands.FareEstimate.Handle(ctx, *query)
 	if err != nil {
 		return nil, err
 	}

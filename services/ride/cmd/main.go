@@ -53,6 +53,7 @@ func main() {
 	googleMaps, err := googlemaps.NewGoogleMapsAdapter(cfg)
 	if err != nil {
 		logger.Error("Failed to create Google Maps adapter: %v", "GoogleMapsAdapter", err)
+		googleMaps = nil // Set to nil to allow service to degrade gracefully
 	}
 	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage)
 
@@ -61,7 +62,7 @@ func main() {
 	grpcServer := grpc_adapter.NewGRPCAdapter("Ride Service", &cfg.BaseConfig, logger)
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, redisClient)
+	grpcServer.MonitorHealth(ctx, redisClient, pg, googleMaps)
 
 	grpcServer.Run(ctx)
 }
