@@ -4,10 +4,12 @@ import (
 	"context"
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
 	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -23,10 +25,22 @@ func NewRideHandler(application *app.Application, storageBundle ridePorts.Storag
 }
 
 func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		h.application.Logger.Info("Received metadata: %v", md)
+	}
+
+	info, ok := h.application.ContextManager.Extract(ctx)
+
+	if !ok {
+		h.application.Logger.Error("No country code found in context.")
+		return nil, errors.NewPermanentError("no country code found in context")
+	}
+
 	query := &commands.EstimateFareCommand{
 		PickupLocation:  req.PickupLocation,
 		DropoffLocation: req.DropoffLocation,
-		CountryCode:     req.Country,
+		CountryCode:     info.Location.CountryCode,
 	}
 	fare, err := h.application.Commands.FareEstimate.Handle(ctx, *query)
 	if err != nil {
@@ -53,20 +67,15 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
 	cmd := commands.RequestRide{
-		RequestID:       req.RequestId,
-		UserID:          req.UserId,
-		PickupLocation:  req.PickupLocation,
-		DropoffLocation: req.DropoffLocation,
+		FareId: req.FareId,
 	}
-	rideID, driverID, vehicleInfo, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
+	ride, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ridev1.RideResponse{
-		RideId:      rideID,
-		DriverId:    driverID,
-		VehicleInfo: vehicleInfo,
+		RideId: ride.ID.String(),
 	}, nil
 }
 
@@ -82,9 +91,8 @@ func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequ
 
 func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.AcceptOrRejectRideRequest) (*emptypb.Empty, error) {
 	cmd := commands.AcceptOrRejectRide{
-		RideID:   req.RideId,
-		DriverID: req.DriverId,
-		Accept:   req.Accept,
+		RideID: req.RideId,
+		Accept: req.Accept,
 	}
 	if err := h.application.Commands.AcceptOrRejectRide.Handle(ctx, cmd); err != nil {
 		return nil, err

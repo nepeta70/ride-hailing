@@ -64,15 +64,13 @@ func (sa *StorageBundle) HealthCheck(ctx context.Context) error {
 func NewRedisStorageBundle(cfg *config.Config, rdclient *rd.RedisClient, pgdb *pg.PostgresDB, logger pkgPorts.Logger) (*StorageBundle, error) {
 	countryRepo := pgstore.NewCountryReadRepo(cfg, pgdb)
 	countryCache := cache.NewCountryCache(countryRepo)
-	rideReadRepo := inmemory.NewInMemoryRideRepo()
-	rideWriteRepo := inmemory.NewInMemoryRideRepo()
-	fareReadRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
-	fareWriteRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
+	rideRepo := inmemory.NewInMemoryRideRepo()
+	fareRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
 	return &StorageBundle{
-		rideReadRepo:       rideReadRepo,
-		rideWriteRepo:      rideWriteRepo,
-		fareReadRepo:       fareReadRepo,
-		fareWriteRepo:      fareWriteRepo,
+		rideReadRepo:       rideRepo,
+		rideWriteRepo:      rideRepo,
+		fareReadRepo:       fareRepo,
+		fareWriteRepo:      fareRepo,
 		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,

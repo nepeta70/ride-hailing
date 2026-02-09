@@ -4,36 +4,37 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
 type RequestRide struct {
-	RequestID       string
-	UserID          string
-	PickupLocation  string
-	DropoffLocation string
+	FareId string
 }
 
 func (c *RequestRide) Validate() error {
-	if c.RequestID == "" || c.UserID == "" || c.PickupLocation == "" || c.DropoffLocation == "" {
+	if c.FareId == "" {
 		return errors.NewValidationErrorf("request information is incomplete")
 	}
 	return nil
 }
 
 type RequestRideHandler struct {
-	repo ports.RideWriteRepository
+	storage ports.StorageBundle
+	logger  pkgPorts.Logger
 }
 
-func NewRequestRideHandler(repo ports.RideWriteRepository) *RequestRideHandler {
-	return &RequestRideHandler{repo: repo}
+func NewRequestRideHandler(config *config.Config, storage ports.StorageBundle, logger pkgPorts.Logger) *RequestRideHandler {
+	return &RequestRideHandler{storage: storage, logger: logger}
 }
 
-func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (rideID, driverID, vehicleInfo string, err error) {
+func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*domain.Ride, error) {
 	if err := ctx.Err(); err != nil {
-		return "", "", "", errors.ErrContextError
+		return nil, errors.ErrContextError
 	}
 
 	// TODO: Implement ride request logic
-	return "", "", "", nil
+	return nil, nil
 }

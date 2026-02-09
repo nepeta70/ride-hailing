@@ -16,6 +16,7 @@ type BaseConfig struct {
 	Logging  LoggingConfig  `json:"logging"`
 	Timeouts TimeoutsConfig `json:"timeouts"`
 	Security SecurityConfig `json:"security"`
+	APIKey   string         `env:"API_KEY,required"`
 }
 
 // DefaultBaseConfig returns the boilerplate defaults
@@ -25,6 +26,7 @@ func DefaultBaseConfig() BaseConfig {
 		Timeouts: DefaultTimeoutsConfig(),
 		Logging:  DefaultLoggingConfig(),
 		Security: DefaultSecurityConfig(),
+		APIKey:   "",
 	}
 }
 

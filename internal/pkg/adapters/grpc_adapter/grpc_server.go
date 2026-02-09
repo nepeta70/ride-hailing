@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -34,14 +34,12 @@ func NewGRPCAdapter(serviceName string, cfg *config.BaseConfig, logger ports.Log
 	}
 	maxMsgSize := int(cfg.Security.MaxBodyBytes)
 
+	contextManager := ctxmgr.NewContextManager()
+
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(maxMsgSize),
 		grpc.MaxSendMsgSize(maxMsgSize),
-		grpc.ChainUnaryInterceptor(
-			middleware.UnaryTimeout(cfg.Server.WriteTimeout),
-			middleware.UnaryRateLimit(rate.Limit(cfg.Security.RateLimit), cfg.Security.RateBurst),
-			middleware.UnaryServerLogging(logger),
-		),
+		grpc.ChainUnaryInterceptor(middleware.FilteredChain(cfg, logger, contextManager)),
 	)
 
 	healthService := health.NewServer()

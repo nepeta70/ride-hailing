@@ -11,6 +11,8 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/googlemaps"
 	grpcHandler "github.com/nepeta70/ride-hailing/services/ride/internal/adapters/grpc"
@@ -55,7 +57,9 @@ func main() {
 		logger.Error("Failed to create Google Maps adapter: %v", "GoogleMapsAdapter", err)
 		googleMaps = nil // Set to nil to allow service to degrade gracefully
 	}
-	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage)
+
+	contextManager := ctxmgr.NewContextManager()
+	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage, contextManager)
 
 	handler := grpcHandler.NewRideHandler(application, storage)
 

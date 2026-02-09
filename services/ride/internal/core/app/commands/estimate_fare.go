@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
@@ -34,16 +35,18 @@ type FareEstimateHandler struct {
 	countryCache        ports.CountryCacheInterface
 	directionsEstimator *service.DirectionsEstimator
 	directionsService   ports.DirectionsService
-	fareRateRepo        ports.FareRatesReadRepository
+	storage             ports.StorageBundle
+	logger              pkgPorts.Logger
 }
 
-func NewEstimateFareHandler(config *config.Config, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *FareEstimateHandler {
+func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *FareEstimateHandler {
 	return &FareEstimateHandler{
 		config:              config,
 		countryCache:        storage.CountryCache(),
 		directionsEstimator: directionsEstimator,
 		directionsService:   directionsService,
-		fareRateRepo:        storage.FareRatesReadRepo(),
+		storage:             storage,
+		logger:              logger,
 	}
 }
 
@@ -59,21 +62,24 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	country, exists := h.countryCache.GetCountryByCode(ctx, query.CountryCode)
 	if !exists {
+		h.logger.Error("country not found: %s", query.CountryCode)
 		return nil, errors.NewErrNotFound("country not found")
 	}
 
-	fareRates, err := h.fareRateRepo.GetRatesByCountry(ctx, query.CountryCode)
+	fareRates, err := h.storage.FareRatesReadRepo().GetRatesByCountry(ctx, query.CountryCode)
 	if err != nil {
 		return nil, err
 	}
 
 	n := len(fareRates)
 	if n == 0 {
+		h.logger.Error("no fare rates found for country: %s", query.CountryCode)
 		return nil, errors.NewErrNotFound("no fare rates found for country")
 	}
 
 	directions, err := h.getDirections(ctx, query)
 	if err != nil {
+		h.logger.Error("failed to get directions: %v", err)
 		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
 	}
 
@@ -87,14 +93,21 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareComm
 		})
 	}
 
-	return &domain.Fares{
+	record := &domain.Fares{
 		ID:                       uuid.New(),
 		EstimatedDistanceKm:      distanceInKm,
 		EstimatedDurationMinutes: directions.DurationMinutes,
 		ETA:                      directions.ArrivalTime,
 		Currency:                 country.Currency,
 		Fares:                    fares,
-	}, nil
+	}
+
+	err = h.storage.FareWriteRepo().Save(ctx, record)
+	if err != nil {
+		h.logger.Error("failed to save fare estimate: %v", err)
+		return nil, errors.NewPermanentErrorf("failed to save fare estimate: %w", err)
+	}
+	return record, nil
 }
 
 func (h *FareEstimateHandler) getDirections(ctx context.Context, query EstimateFareCommand) (*domain.DirectionsResponse, error) {
@@ -104,6 +117,7 @@ func (h *FareEstimateHandler) getDirections(ctx context.Context, query EstimateF
 			return directions, nil
 		}
 	}
+	h.logger.Warn("directions service failed, falling back to estimator")
 
 	return h.directionsEstimator.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 }
