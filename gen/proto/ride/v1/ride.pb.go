@@ -24,11 +24,8 @@ const (
 
 type FareEstimateRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	RequestId       string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	PickupLocation  string                 `protobuf:"bytes,2,opt,name=pickup_location,json=pickupLocation,proto3" json:"pickup_location,omitempty"`
-	DropoffLocation string                 `protobuf:"bytes,3,opt,name=dropoff_location,json=dropoffLocation,proto3" json:"dropoff_location,omitempty"`
-	Country         string                 `protobuf:"bytes,4,opt,name=country,proto3" json:"country,omitempty"`
-	Region          string                 `protobuf:"bytes,5,opt,name=region,proto3" json:"region,omitempty"`
+	PickupLocation  string                 `protobuf:"bytes,1,opt,name=pickup_location,json=pickupLocation,proto3" json:"pickup_location,omitempty"`
+	DropoffLocation string                 `protobuf:"bytes,2,opt,name=dropoff_location,json=dropoffLocation,proto3" json:"dropoff_location,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -63,13 +60,6 @@ func (*FareEstimateRequest) Descriptor() ([]byte, []int) {
 	return file_ride_v1_ride_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *FareEstimateRequest) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
 func (x *FareEstimateRequest) GetPickupLocation() string {
 	if x != nil {
 		return x.PickupLocation
@@ -80,20 +70,6 @@ func (x *FareEstimateRequest) GetPickupLocation() string {
 func (x *FareEstimateRequest) GetDropoffLocation() string {
 	if x != nil {
 		return x.DropoffLocation
-	}
-	return ""
-}
-
-func (x *FareEstimateRequest) GetCountry() string {
-	if x != nil {
-		return x.Country
-	}
-	return ""
-}
-
-func (x *FareEstimateRequest) GetRegion() string {
-	if x != nil {
-		return x.Region
 	}
 	return ""
 }
@@ -227,13 +203,11 @@ func (x *FareEstimateResponse) GetFareEstimate() []*FareEstimate {
 }
 
 type RideRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	RequestId       string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	UserId          string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	PickupLocation  string                 `protobuf:"bytes,3,opt,name=pickup_location,json=pickupLocation,proto3" json:"pickup_location,omitempty"`
-	DropoffLocation string                 `protobuf:"bytes,4,opt,name=dropoff_location,json=dropoffLocation,proto3" json:"dropoff_location,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FareId        string                 `protobuf:"bytes,1,opt,name=fare_id,json=fareId,proto3" json:"fare_id,omitempty"`
+	ServiceType   string                 `protobuf:"bytes,2,opt,name=service_type,json=serviceType,proto3" json:"service_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RideRequest) Reset() {
@@ -266,30 +240,16 @@ func (*RideRequest) Descriptor() ([]byte, []int) {
 	return file_ride_v1_ride_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *RideRequest) GetRequestId() string {
+func (x *RideRequest) GetFareId() string {
 	if x != nil {
-		return x.RequestId
+		return x.FareId
 	}
 	return ""
 }
 
-func (x *RideRequest) GetUserId() string {
+func (x *RideRequest) GetServiceType() string {
 	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *RideRequest) GetPickupLocation() string {
-	if x != nil {
-		return x.PickupLocation
-	}
-	return ""
-}
-
-func (x *RideRequest) GetDropoffLocation() string {
-	if x != nil {
-		return x.DropoffLocation
+		return x.ServiceType
 	}
 	return ""
 }
@@ -297,8 +257,6 @@ func (x *RideRequest) GetDropoffLocation() string {
 type RideResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RideId        string                 `protobuf:"bytes,1,opt,name=ride_id,json=rideId,proto3" json:"ride_id,omitempty"`
-	DriverId      string                 `protobuf:"bytes,2,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
-	VehicleInfo   string                 `protobuf:"bytes,3,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -336,20 +294,6 @@ func (*RideResponse) Descriptor() ([]byte, []int) {
 func (x *RideResponse) GetRideId() string {
 	if x != nil {
 		return x.RideId
-	}
-	return ""
-}
-
-func (x *RideResponse) GetDriverId() string {
-	if x != nil {
-		return x.DriverId
-	}
-	return ""
-}
-
-func (x *RideResponse) GetVehicleInfo() string {
-	if x != nil {
-		return x.VehicleInfo
 	}
 	return ""
 }
@@ -401,8 +345,7 @@ func (x *CancelRideRequest) GetRideId() string {
 type AcceptOrRejectRideRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RideId        string                 `protobuf:"bytes,1,opt,name=ride_id,json=rideId,proto3" json:"ride_id,omitempty"`
-	DriverId      string                 `protobuf:"bytes,2,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
-	Accept        bool                   `protobuf:"varint,3,opt,name=accept,proto3" json:"accept,omitempty"`
+	Accept        bool                   `protobuf:"varint,2,opt,name=accept,proto3" json:"accept,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -440,13 +383,6 @@ func (*AcceptOrRejectRideRequest) Descriptor() ([]byte, []int) {
 func (x *AcceptOrRejectRideRequest) GetRideId() string {
 	if x != nil {
 		return x.RideId
-	}
-	return ""
-}
-
-func (x *AcceptOrRejectRideRequest) GetDriverId() string {
-	if x != nil {
-		return x.DriverId
 	}
 	return ""
 }
@@ -555,8 +491,7 @@ type FareRate struct {
 	MinimumFare   float64                `protobuf:"fixed64,5,opt,name=minimum_fare,json=minimumFare,proto3" json:"minimum_fare,omitempty"`
 	Currency      string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
 	Country       string                 `protobuf:"bytes,7,opt,name=country,proto3" json:"country,omitempty"`
-	Region        string                 `protobuf:"bytes,8,opt,name=region,proto3" json:"region,omitempty"`
-	ServiceType   string                 `protobuf:"bytes,9,opt,name=service_type,json=serviceType,proto3" json:"service_type,omitempty"`
+	ServiceType   string                 `protobuf:"bytes,8,opt,name=service_type,json=serviceType,proto3" json:"service_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -640,13 +575,6 @@ func (x *FareRate) GetCountry() string {
 	return ""
 }
 
-func (x *FareRate) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
 func (x *FareRate) GetServiceType() string {
 	if x != nil {
 		return x.ServiceType
@@ -657,7 +585,6 @@ func (x *FareRate) GetServiceType() string {
 type GetFareRatesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Country       string                 `protobuf:"bytes,1,opt,name=country,proto3" json:"country,omitempty"`
-	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -699,18 +626,9 @@ func (x *GetFareRatesRequest) GetCountry() string {
 	return ""
 }
 
-func (x *GetFareRatesRequest) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
 type GetFareRatesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Country       string                 `protobuf:"bytes,1,opt,name=country,proto3" json:"country,omitempty"`
-	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	FareRates     []*FareRate            `protobuf:"bytes,3,rep,name=fare_rates,json=fareRates,proto3" json:"fare_rates,omitempty"`
+	FareRates     []*FareRate            `protobuf:"bytes,1,rep,name=fare_rates,json=fareRates,proto3" json:"fare_rates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -745,20 +663,6 @@ func (*GetFareRatesResponse) Descriptor() ([]byte, []int) {
 	return file_ride_v1_ride_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *GetFareRatesResponse) GetCountry() string {
-	if x != nil {
-		return x.Country
-	}
-	return ""
-}
-
-func (x *GetFareRatesResponse) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
 func (x *GetFareRatesResponse) GetFareRates() []*FareRate {
 	if x != nil {
 		return x.FareRates
@@ -770,14 +674,10 @@ var File_ride_v1_ride_proto protoreflect.FileDescriptor
 
 const file_ride_v1_ride_proto_rawDesc = "" +
 	"\n" +
-	"\x12ride/v1/ride.proto\x12\aride.v1\x1a\x1bgoogle/protobuf/empty.proto\"\xba\x01\n" +
-	"\x13FareEstimateRequest\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\x12'\n" +
-	"\x0fpickup_location\x18\x02 \x01(\tR\x0epickupLocation\x12)\n" +
-	"\x10dropoff_location\x18\x03 \x01(\tR\x0fdropoffLocation\x12\x18\n" +
-	"\acountry\x18\x04 \x01(\tR\acountry\x12\x16\n" +
-	"\x06region\x18\x05 \x01(\tR\x06region\"X\n" +
+	"\x12ride/v1/ride.proto\x12\aride.v1\x1a\x1bgoogle/protobuf/empty.proto\"i\n" +
+	"\x13FareEstimateRequest\x12'\n" +
+	"\x0fpickup_location\x18\x01 \x01(\tR\x0epickupLocation\x12)\n" +
+	"\x10dropoff_location\x18\x02 \x01(\tR\x0fdropoffLocation\"X\n" +
 	"\fFareEstimate\x12!\n" +
 	"\fservice_type\x18\x01 \x01(\tR\vserviceType\x12%\n" +
 	"\x0eestimated_fare\x18\x02 \x01(\x01R\restimatedFare\"\xf0\x01\n" +
@@ -786,27 +686,21 @@ const file_ride_v1_ride_proto_rawDesc = "" +
 	"\x1aestimated_duration_minutes\x18\x02 \x01(\x05R\x18estimatedDurationMinutes\x122\n" +
 	"\x15estimated_distance_km\x18\x03 \x01(\x05R\x13estimatedDistanceKm\x12\x1a\n" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12:\n" +
-	"\rfare_estimate\x18\x05 \x03(\v2\x15.ride.v1.FareEstimateR\ffareEstimate\"\x99\x01\n" +
-	"\vRideRequest\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\x12'\n" +
-	"\x0fpickup_location\x18\x03 \x01(\tR\x0epickupLocation\x12)\n" +
-	"\x10dropoff_location\x18\x04 \x01(\tR\x0fdropoffLocation\"g\n" +
+	"\rfare_estimate\x18\x05 \x03(\v2\x15.ride.v1.FareEstimateR\ffareEstimate\"I\n" +
+	"\vRideRequest\x12\x17\n" +
+	"\afare_id\x18\x01 \x01(\tR\x06fareId\x12!\n" +
+	"\fservice_type\x18\x02 \x01(\tR\vserviceType\"'\n" +
 	"\fRideResponse\x12\x17\n" +
-	"\aride_id\x18\x01 \x01(\tR\x06rideId\x12\x1b\n" +
-	"\tdriver_id\x18\x02 \x01(\tR\bdriverId\x12!\n" +
-	"\fvehicle_info\x18\x03 \x01(\tR\vvehicleInfo\",\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\",\n" +
 	"\x11CancelRideRequest\x12\x17\n" +
-	"\aride_id\x18\x01 \x01(\tR\x06rideId\"i\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\"L\n" +
 	"\x19AcceptOrRejectRideRequest\x12\x17\n" +
-	"\aride_id\x18\x01 \x01(\tR\x06rideId\x12\x1b\n" +
-	"\tdriver_id\x18\x02 \x01(\tR\bdriverId\x12\x16\n" +
-	"\x06accept\x18\x03 \x01(\bR\x06accept\"+\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\x12\x16\n" +
+	"\x06accept\x18\x02 \x01(\bR\x06accept\"+\n" +
 	"\x10StartRideRequest\x12\x17\n" +
 	"\aride_id\x18\x01 \x01(\tR\x06rideId\".\n" +
 	"\x13CompleteRideRequest\x12\x17\n" +
-	"\aride_id\x18\x01 \x01(\tR\x06rideId\"\x93\x02\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\"\xfb\x01\n" +
 	"\bFareRate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tbase_fare\x18\x02 \x01(\x01R\bbaseFare\x12\x1e\n" +
@@ -814,19 +708,15 @@ const file_ride_v1_ride_proto_rawDesc = "" +
 	"\x0fcost_per_minute\x18\x04 \x01(\x01R\rcostPerMinute\x12!\n" +
 	"\fminimum_fare\x18\x05 \x01(\x01R\vminimumFare\x12\x1a\n" +
 	"\bcurrency\x18\x06 \x01(\tR\bcurrency\x12\x18\n" +
-	"\acountry\x18\a \x01(\tR\acountry\x12\x16\n" +
-	"\x06region\x18\b \x01(\tR\x06region\x12!\n" +
-	"\fservice_type\x18\t \x01(\tR\vserviceType\"G\n" +
+	"\acountry\x18\a \x01(\tR\acountry\x12!\n" +
+	"\fservice_type\x18\b \x01(\tR\vserviceType\"/\n" +
 	"\x13GetFareRatesRequest\x12\x18\n" +
-	"\acountry\x18\x01 \x01(\tR\acountry\x12\x16\n" +
-	"\x06region\x18\x02 \x01(\tR\x06region\"z\n" +
-	"\x14GetFareRatesResponse\x12\x18\n" +
-	"\acountry\x18\x01 \x01(\tR\acountry\x12\x16\n" +
-	"\x06region\x18\x02 \x01(\tR\x06region\x120\n" +
+	"\acountry\x18\x01 \x01(\tR\acountry\"H\n" +
+	"\x14GetFareRatesResponse\x120\n" +
 	"\n" +
-	"fare_rates\x18\x03 \x03(\v2\x11.ride.v1.FareRateR\tfareRates2\xf4\x04\n" +
-	"\vRideService\x12R\n" +
-	"\x13RequestFareEstimate\x12\x1c.ride.v1.FareEstimateRequest\x1a\x1d.ride.v1.FareEstimateResponse\x12:\n" +
+	"fare_rates\x18\x01 \x03(\v2\x11.ride.v1.FareRateR\tfareRates2\xed\x04\n" +
+	"\vRideService\x12K\n" +
+	"\fEstimateFare\x12\x1c.ride.v1.FareEstimateRequest\x1a\x1d.ride.v1.FareEstimateResponse\x12:\n" +
 	"\vRequestRide\x12\x14.ride.v1.RideRequest\x1a\x15.ride.v1.RideResponse\x12@\n" +
 	"\n" +
 	"CancelRide\x12\x1a.ride.v1.CancelRideRequest\x1a\x16.google.protobuf.Empty\x12P\n" +
@@ -869,7 +759,7 @@ var file_ride_v1_ride_proto_goTypes = []any{
 var file_ride_v1_ride_proto_depIdxs = []int32{
 	1,  // 0: ride.v1.FareEstimateResponse.fare_estimate:type_name -> ride.v1.FareEstimate
 	9,  // 1: ride.v1.GetFareRatesResponse.fare_rates:type_name -> ride.v1.FareRate
-	0,  // 2: ride.v1.RideService.RequestFareEstimate:input_type -> ride.v1.FareEstimateRequest
+	0,  // 2: ride.v1.RideService.EstimateFare:input_type -> ride.v1.FareEstimateRequest
 	3,  // 3: ride.v1.RideService.RequestRide:input_type -> ride.v1.RideRequest
 	5,  // 4: ride.v1.RideService.CancelRide:input_type -> ride.v1.CancelRideRequest
 	6,  // 5: ride.v1.RideService.AcceptOrRejectRide:input_type -> ride.v1.AcceptOrRejectRideRequest
@@ -878,7 +768,7 @@ var file_ride_v1_ride_proto_depIdxs = []int32{
 	9,  // 8: ride.v1.RideService.CreateFareRate:input_type -> ride.v1.FareRate
 	10, // 9: ride.v1.RideService.GetFareRates:input_type -> ride.v1.GetFareRatesRequest
 	9,  // 10: ride.v1.RideService.UpdateFareRate:input_type -> ride.v1.FareRate
-	2,  // 11: ride.v1.RideService.RequestFareEstimate:output_type -> ride.v1.FareEstimateResponse
+	2,  // 11: ride.v1.RideService.EstimateFare:output_type -> ride.v1.FareEstimateResponse
 	4,  // 12: ride.v1.RideService.RequestRide:output_type -> ride.v1.RideResponse
 	12, // 13: ride.v1.RideService.CancelRide:output_type -> google.protobuf.Empty
 	12, // 14: ride.v1.RideService.AcceptOrRejectRide:output_type -> google.protobuf.Empty

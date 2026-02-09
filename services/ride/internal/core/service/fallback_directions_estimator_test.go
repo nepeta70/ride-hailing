@@ -87,9 +87,9 @@ func TestDirectionsEstimator_GetDirections(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
-				assert.Greater(t, resp.Distance, 0.0)
-				assert.Greater(t, resp.Duration, time.Duration(0))
-				assert.WithinDuration(t, time.Now().Add(resp.Duration), resp.ArrivalTime, time.Second)
+				assert.Greater(t, resp.DistanceMeters, 0.0)
+				assert.Greater(t, resp.DurationMinutes, time.Duration(0))
+				assert.WithinDuration(t, time.Now().Add(resp.DurationMinutes), resp.ArrivalTime, time.Second)
 			}
 		})
 	}

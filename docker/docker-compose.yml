@@ -15,6 +15,24 @@ services:
       redis:
         condition: service_healthy
 
+  ride:
+    build:
+      context: ..
+      dockerfile: services/ride/docker/Dockerfile
+    ports:
+      - "50052:50052"
+    volumes:
+      - ../services/ride/cmd/config.json:/home/appuser/config/config.json:ro
+    environment:
+      - REDIS_ADDRESS=${REDIS_ADDRESS}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy       
+
   redis:
     image: redis:8-alpine
     container_name: redis 
@@ -26,3 +44,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  db:
+    image: postgres:18-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ride_db_volume:/var/lib/postgresql/18/data
+      - ../services/ride/internal/adapters/pgstore/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5     
+
+volumes:
+  ride_db_volume:      

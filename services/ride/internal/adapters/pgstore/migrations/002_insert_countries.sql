@@ -1,38 +1,38 @@
 INSERT INTO countries (code, currency_code, is_enabled) VALUES
 -- Eurozone Members
-('at', 'EUR', true),  -- Austria
-('be', 'EUR', true),  -- Belgium
-('bg', 'EUR', true),  -- Bulgaria
-('hr', 'EUR', true),  -- Croatia
-('cy', 'EUR', true),  -- Cyprus
-('ee', 'EUR', true),  -- Estonia
-('fi', 'EUR', true),  -- Finland
-('fr', 'EUR', true),  -- France
-('de', 'EUR', true),  -- Germany
-('gr', 'EUR', true),  -- Greece
-('ie', 'EUR', true),  -- Ireland
-('it', 'EUR', true),  -- Italy
-('lv', 'EUR', true),  -- Latvia
-('lt', 'EUR', true),  -- Lithuania
-('lu', 'EUR', true),  -- Luxembourg
-('mt', 'EUR', true),  -- Malta
-('nl', 'EUR', true),  -- Netherlands
-('pt', 'EUR', true),  -- Portugal
-('sk', 'EUR', true),  -- Slovakia
-('si', 'EUR', true),  -- Slovenia
-('es', 'EUR', true),  -- Spain
+('AT', 'EUR', true),  -- Austria
+('BE', 'EUR', true),  -- Belgium
+('BG', 'EUR', true),  -- Bulgaria
+('HR', 'EUR', true),  -- Croatia
+('CY', 'EUR', true),  -- Cyprus
+('EE', 'EUR', true),  -- Estonia
+('FI', 'EUR', true),  -- Finland
+('FR', 'EUR', true),  -- France
+('DE', 'EUR', true),  -- Germany
+('GR', 'EUR', true),  -- Greece
+('IE', 'EUR', true),  -- Ireland
+('IT', 'EUR', true),  -- Italy
+('LV', 'EUR', true),  -- Latvia
+('LT', 'EUR', true),  -- Lithuania
+('LU', 'EUR', true),  -- Luxembourg
+('MT', 'EUR', true),  -- Malta
+('NL', 'EUR', true),  -- Netherlands
+('PT', 'EUR', true),  -- Portugal
+('SK', 'EUR', true),  -- Slovakia
+('SI', 'EUR', true),  -- Slovenia
+('ES', 'EUR', true),  -- Spain
 
 -- EU Members (Non-Euro)
-('cz', 'CZK', true),  -- Czech Republic
-('dk', 'DKK', true),  -- Denmark
-('hu', 'HUF', true),  -- Hungary
-('pl', 'PLN', true),  -- Poland
-('ro', 'RON', true),  -- Romania
-('se', 'SEK', true),  -- Sweden
+('CZ', 'CZK', true),  -- Czech Republic
+('DK', 'DKK', true),  -- Denmark
+('HU', 'HUF', true),  -- Hungary
+('PL', 'PLN', true),  -- Poland
+('RO', 'RON', true),  -- Romania
+('SE', 'SEK', true),  -- Sweden
 
 -- Non-EU
-('gb', 'GBP', true),  -- United Kingdom
-('ch', 'CHF', true),  -- Switzerland
-('no', 'NOK', true),  -- Norway
-('is', 'ISK', true)   -- Iceland
+('GB', 'GBP', true),  -- United Kingdom
+('CH', 'CHF', true),  -- Switzerland
+('NO', 'NOK', true),  -- Norway
+('IS', 'ISK', true)   -- Iceland
 ON CONFLICT (code) DO UPDATE SET is_enabled = EXCLUDED.is_enabled;

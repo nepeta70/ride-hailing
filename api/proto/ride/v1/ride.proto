@@ -8,7 +8,7 @@ option go_package = "github.com/nepeta70/ride-hailing/gen/pb/ride/v1";
 
 service RideService {
   // Rider requests
-  rpc RequestFareEstimate(FareEstimateRequest) returns (FareEstimateResponse);
+  rpc EstimateFare(FareEstimateRequest) returns (FareEstimateResponse);
   rpc RequestRide(RideRequest) returns (RideResponse);
   rpc CancelRide(CancelRideRequest) returns (google.protobuf.Empty);
 
@@ -24,11 +24,8 @@ service RideService {
 }
 
 message FareEstimateRequest {
-  string request_id = 1;
-  string pickup_location = 2;
-  string dropoff_location = 3;
-  string country = 4;
-  string region = 5;
+  string pickup_location = 1;
+  string dropoff_location = 2;
 }
 
 message FareEstimate {
@@ -43,25 +40,23 @@ message FareEstimateResponse {
   string currency = 4;
   repeated FareEstimate fare_estimate = 5;
 }
+
 message RideRequest {
-  string request_id = 1;
-  string user_id = 2;
-  string pickup_location = 3;
-  string dropoff_location = 4;
+  string fare_id = 1;
+  string service_type = 2;
 }
+
 message RideResponse {
   string ride_id = 1;
-  string driver_id = 2;
-  string vehicle_info = 3;
 }
+
 message CancelRideRequest {
   string ride_id = 1;
 }
 
 message AcceptOrRejectRideRequest {
   string ride_id = 1;
-  string driver_id = 2;
-  bool accept = 3;
+  bool accept = 2;
 }
 message StartRideRequest {
   string ride_id = 1;
@@ -78,17 +73,13 @@ message FareRate {
   double minimum_fare = 5;
   string currency = 6;
   string country = 7;
-  string region = 8;
-  string service_type = 9;
+  string service_type = 8;
 }
 
 message GetFareRatesRequest {
   string country = 1;
-  string region = 2;
 }
 
 message GetFareRatesResponse {
-  string country = 1;
-  string region = 2;
-  repeated FareRate fare_rates = 3;
+  repeated FareRate fare_rates = 1;
 }

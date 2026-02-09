@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/docker/distribution/uuid"
+import "github.com/google/uuid"
 
 type RideStatus string
 

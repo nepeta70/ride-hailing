@@ -13,7 +13,7 @@ COPY . .
 
 # Build from root context
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -o /home/appuser/location-service ./services/location-service/cmd/main.go
+    go build -o /home/appuser/location-service ./services/location/cmd/main.go
 
 FROM alpine:latest
 
@@ -27,7 +27,7 @@ COPY --from=builder /home/appuser/location-service .
 RUN chown appuser:appuser ./location-service && \
     chmod +x ./location-service
 
-COPY services/location-service/cmd/config.json /home/appuser/config/config.json
+COPY services/location/cmd/config.json /home/appuser/config/config.json
 
 EXPOSE 50051
 

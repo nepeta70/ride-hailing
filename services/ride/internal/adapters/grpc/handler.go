@@ -4,10 +4,12 @@ import (
 	"context"
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
 	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -22,47 +24,58 @@ func NewRideHandler(application *app.Application, storageBundle ridePorts.Storag
 	return &RideHandler{application: application, storageBundle: storageBundle}
 }
 
-func (h *RideHandler) RequestFareEstimate(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
-	query := &queries.FareEstimateRequest{
+func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		h.application.Logger.Info("Received metadata: %v", md)
+	}
+
+	info, ok := h.application.ContextManager.Extract(ctx)
+
+	if !ok {
+		h.application.Logger.Error("No country code found in context.")
+		return nil, errors.NewPermanentError("no country code found in context")
+	}
+
+	query := &commands.EstimateFareCommand{
 		PickupLocation:  req.PickupLocation,
 		DropoffLocation: req.DropoffLocation,
-		CountryCode:     req.Country,
+		CountryCode:     info.Location.CountryCode,
 	}
-	fare, err := h.application.Queries.FareEstimate.Handle(ctx, *query)
+	fare, err := h.application.Commands.FareEstimate.Handle(ctx, *query)
 	if err != nil {
 		return nil, err
+	}
+	n := len(fare.Fares)
+	fareEstimates := make([]*ridev1.FareEstimate, n)
+	for i, f := range fare.Fares {
+		fareEstimates[i] = &ridev1.FareEstimate{
+			ServiceType:   f.ServiceType,
+			EstimatedFare: f.Fare,
+		}
 	}
 
 	return &ridev1.FareEstimateResponse{
 		Id:                       fare.ID.String(),
 		EstimatedDistanceKm:      int32(fare.EstimatedDistanceKm),
-		EstimatedDurationMinutes: int32(fare.EstimatedDuration.Minutes()),
+		EstimatedDurationMinutes: int32(fare.EstimatedDurationMinutes.Minutes()),
 		Currency:                 fare.Currency,
-		FareEstimate: []*ridev1.FareEstimate{
-			{
-				ServiceType:   "Standard", // TODO: map service types properly
-				EstimatedFare: fare.Fare,
-			},
-		},
+		FareEstimate:             fareEstimates,
 	}, nil
+
 }
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
 	cmd := commands.RequestRide{
-		RequestID:       req.RequestId,
-		UserID:          req.UserId,
-		PickupLocation:  req.PickupLocation,
-		DropoffLocation: req.DropoffLocation,
+		FareId: req.FareId,
 	}
-	rideID, driverID, vehicleInfo, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
+	ride, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ridev1.RideResponse{
-		RideId:      rideID,
-		DriverId:    driverID,
-		VehicleInfo: vehicleInfo,
+		RideId: ride.ID.String(),
 	}, nil
 }
 
@@ -78,9 +91,8 @@ func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequ
 
 func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.AcceptOrRejectRideRequest) (*emptypb.Empty, error) {
 	cmd := commands.AcceptOrRejectRide{
-		RideID:   req.RideId,
-		DriverID: req.DriverId,
-		Accept:   req.Accept,
+		RideID: req.RideId,
+		Accept: req.Accept,
 	}
 	if err := h.application.Commands.AcceptOrRejectRide.Handle(ctx, cmd); err != nil {
 		return nil, err
@@ -115,7 +127,6 @@ func (h *RideHandler) CreateFareRate(ctx context.Context, req *ridev1.FareRate) 
 func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRatesRequest) (*ridev1.GetFareRatesResponse, error) {
 	query := &queries.GetFareRates{
 		CountryCode: req.Country,
-		Region:      req.Region,
 	}
 	rates, err := h.application.Queries.FareRates.Handle(ctx, query)
 	if err != nil {
@@ -126,7 +137,6 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 		resp = append(resp, &ridev1.FareRate{
 			Id:            rate.ID.String(),
 			Country:       rate.CountryCode,
-			Region:        rate.RegionCode,
 			BaseFare:      rate.BaseFare,
 			CostPerKm:     rate.FarePerKm,
 			CostPerMinute: rate.FarePerMinute,
@@ -135,8 +145,6 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 		})
 	}
 	response := ridev1.GetFareRatesResponse{
-		Country:   req.Country,
-		Region:    req.Region,
 		FareRates: resp,
 	}
 	return &response, nil

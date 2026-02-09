@@ -1,5 +1,5 @@
 CREATE TABLE countries (
-    code VARCHAR(2) PRIMARY,
+    code VARCHAR(2) PRIMARY KEY CHECK (code = UPPER(code)),
     currency_code VARCHAR(3) NOT NULL, -- ISO 4217
     is_enabled BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
