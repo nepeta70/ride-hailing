@@ -19,20 +19,8 @@ const (
 	RideStatusCompleted RideStatus = "COMPLETED"
 )
 
-type Ride struct {
-	ID              uuid.UUID
-	RequestID       uuid.UUID
-	RiderID         uuid.UUID
-	DriverID        *uuid.UUID
-	PickupLocation  string
-	DropoffLocation string
-	Status          RideStatus
-	//Fare            Fare
-	Currency string
-}
-
 const (
-	RideGrainKind enums.AggregateType = "RideGrain"
+	RideGrainKind enums.AggregateType = "Ride"
 )
 
 // RideCore represents the immutable "contract" of the ride

@@ -11,6 +11,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters"
@@ -44,30 +45,50 @@ func main() {
 		return
 	}
 
-	storage, err := adapters.NewRedisStorageBundle(cfg, redisClient, pg, logger)
+	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
+		Config:   cfg,
+		RdClient: redisClient,
+		PgDB:     pg,
+		Logger:   logger,
+	})
 	if err != nil {
 		logger.Error("Failed to create storage adapter: %v", "StorageAdapter", err)
 		return
 	}
 	defer storage.Close()
 
-	directionsEstimator := service.NewDirectionsEstimator()
-	googleMaps, err := googlemaps.NewGoogleMapsAdapter(cfg)
+	googleMaps, err := googlemaps.NewGoogleMapsAdapter(&googlemaps.GoogleMapsAdapterOptions{
+		APIKey:          cfg.KeysConfig.GoogleMapsAPIKey,
+		FallBackService: service.NewDirectionsEstimator(),
+		Logger:          logger,
+	})
 	if err != nil {
 		logger.Error("Failed to create Google Maps adapter: %v", "GoogleMapsAdapter", err)
 		googleMaps = nil // Set to nil to allow service to degrade gracefully
 	}
 
-	contextManager := ctxmgr.NewContextManager()
-	grainSystem := app.NewGrainSystem(&cfg.BaseConfig, storage.GrainStorage(), nil, nil, logger) // Pass nil for event publisher for now
-	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage, grainSystem, contextManager)
+	grainSystem := app.NewGrainSystem(&app.GrainSystemOptions{
+		Topic:          contracts.TopicRide,
+		GrainTimeout:   cfg.Timeouts.RequestTimeout,
+		Storage:        storage.GrainStorage(),
+		EventPublisher: nil, // TODO: Initialize an actual event publisher here
+		Logger:         logger,
+	})
+	application := app.NewApplication(&app.ApplicationOptions{
+		Config:            cfg,
+		Logger:            logger,
+		DirectionsService: googleMaps,
+		Storage:           storage,
+		GrainSystem:       grainSystem,
+		ContextManager:    ctxmgr.NewContextManager(),
+	})
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 
 	grpcServer := grpc_adapter.NewGRPCAdapter("Ride Service", &cfg.BaseConfig, logger)
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, redisClient, pg, googleMaps)
+	grpcServer.MonitorHealth(ctx, redisClient, pg)
 
 	grpcServer.Run(ctx)
 }

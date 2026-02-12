@@ -2,11 +2,11 @@ package app
 
 import (
 	"sync"
+	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/grains"
@@ -14,6 +14,14 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
+
+type GrainSystemOptions struct {
+	Storage        ports.GrainStorage
+	EventPublisher pkgPorts.EventPublisher
+	Logger         pkgPorts.Logger
+	Topic          contracts.Topic
+	GrainTimeout   time.Duration
+}
 
 type GrainSystem struct {
 	si                   *silo.Silo
@@ -23,23 +31,27 @@ type GrainSystem struct {
 	logger               pkgPorts.Logger
 	topic                contracts.Topic
 	processMu            sync.Mutex // prevents concurrent ProcessWaitlist execution
+	grainTimeout         time.Duration
 }
 
-func NewGrainSystem(config *config.BaseConfig, storage ports.GrainStorage, eventStore pkgPorts.EventStore, eventPub pkgPorts.EventPublisher, logger pkgPorts.Logger) *GrainSystem {
-	topic := contracts.TopicRide
-
-	si := silo.NewSilo(&config.Timeouts, logger)
+func NewGrainSystem(opts *GrainSystemOptions) *GrainSystem {
+	si := silo.NewSilo(&silo.SiloOptions{Timeout: opts.GrainTimeout, Logger: opts.Logger})
 	si.RegisterFactory(domain.RideGrainKind, func(identity *grain.GrainIdentity) pkgPorts.Grain {
-		return grains.NewRideGrain(storage, eventPub, logger, topic)
+		return grains.NewRideGrain(&grains.RideGrainOptions{
+			Storage:  opts.Storage,
+			EventPub: opts.EventPublisher,
+			Logger:   opts.Logger,
+			Topic:    opts.Topic})
 	})
 
 	return &GrainSystem{
 		si:                   si,
-		eventPub:             eventPub,
-		logger:               logger,
-		topic:                topic,
-		grainPersistence:     storage,
+		eventPub:             opts.EventPublisher,
+		logger:               opts.Logger,
+		topic:                opts.Topic,
+		grainPersistence:     opts.Storage,
 		grainIdentityFactory: &service.GrainIdentityFactory{},
+		grainTimeout:         opts.GrainTimeout,
 	}
 }
 

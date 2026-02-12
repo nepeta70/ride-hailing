@@ -3,7 +3,6 @@ package adapters
 import (
 	"context"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
 	pg "github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -16,14 +15,20 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
+type StorageBundleOptions struct {
+	Config   *config.Config
+	RdClient *rd.RedisClient
+	PgDB     *pg.PostgresDB
+	Logger   pkgPorts.Logger
+}
+
 type StorageBundle struct {
 	fareReadRepo       ports.FareReadRepository
 	fareWriteRepo      ports.FareWriteRepository
 	fareRatesReadRepo  ports.FareRatesReadRepository
 	fareRatesWriteRepo ports.FareRatesWriteRepository
 	countryCache       ports.CountryCacheInterface
-	silo               pkgPorts.Silo
-	grainStorage       *pgstore.GrainStorage
+	grainStorage       ports.GrainStorage
 }
 
 func (sa *StorageBundle) FareReadRepo() ports.FareReadRepository {
@@ -39,10 +44,6 @@ func (sa *StorageBundle) FareRatesReadRepo() ports.FareRatesReadRepository {
 
 func (sa *StorageBundle) CountryCache() ports.CountryCacheInterface {
 	return sa.countryCache
-}
-
-func (sa *StorageBundle) Silo() pkgPorts.Silo {
-	return sa.silo
 }
 
 func (sa *StorageBundle) GrainStorage() ports.GrainStorage {
@@ -63,11 +64,10 @@ func (sa *StorageBundle) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func NewRedisStorageBundle(cfg *config.Config, rdclient *rd.RedisClient, pgdb *pg.PostgresDB, logger pkgPorts.Logger) (*StorageBundle, error) {
-	countryRepo := pgstore.NewCountryReadRepo(cfg, pgdb)
+func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
+	countryRepo := pgstore.NewCountryReadRepo(opts.Config, opts.PgDB)
 	countryCache := cache.NewCountryCache(countryRepo)
-	fareRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
-	s := silo.NewSilo(&cfg.Timeouts, logger)
+	fareRepo := rdstore.NewFareRepository(opts.Config, opts.RdClient, opts.Logger)
 
 	return &StorageBundle{
 		fareReadRepo:       fareRepo,
@@ -75,8 +75,7 @@ func NewRedisStorageBundle(cfg *config.Config, rdclient *rd.RedisClient, pgdb *p
 		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,
-		silo:               s,
-		grainStorage:       pgstore.NewGrainStorage(pgdb),
+		grainStorage:       pgstore.NewGrainStorage(opts.PgDB),
 	}, nil
 }
 

@@ -9,7 +9,6 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
-	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
@@ -41,22 +40,20 @@ func (q *EstimateFareCommand) Validate() error {
 }
 
 type EstimateFareHandler struct {
-	config              *config.Config
-	countryCache        ports.CountryCacheInterface
-	directionsEstimator *service.DirectionsEstimator
-	directionsService   ports.DirectionsService
-	storage             ports.StorageBundle
-	logger              pkgPorts.Logger
+	config            *config.Config
+	countryCache      ports.CountryCacheInterface
+	directionsService ports.DirectionsService
+	storage           ports.StorageBundle
+	logger            pkgPorts.Logger
 }
 
-func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *EstimateFareHandler {
+func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsService ports.DirectionsService) *EstimateFareHandler {
 	return &EstimateFareHandler{
-		config:              config,
-		countryCache:        storage.CountryCache(),
-		directionsEstimator: directionsEstimator,
-		directionsService:   directionsService,
-		storage:             storage,
-		logger:              logger,
+		config:            config,
+		countryCache:      storage.CountryCache(),
+		directionsService: directionsService,
+		storage:           storage,
+		logger:            logger,
 	}
 }
 
@@ -94,7 +91,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 		return nil, errors.NewErrNotFound("no fare rates found for country")
 	}
 
-	directions, err := h.getDirections(ctx, query)
+	directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 	if err != nil {
 		h.logger.Error("failed to get directions: %v", err)
 		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
@@ -125,16 +122,4 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 		return nil, errors.NewPermanentErrorf("failed to save fare estimate: %w", err)
 	}
 	return record, nil
-}
-
-func (h *EstimateFareHandler) getDirections(ctx context.Context, query EstimateFareCommand) (*domain.DirectionsResponse, error) {
-	if h.directionsService != nil {
-		directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
-		if err == nil && directions != nil {
-			return directions, nil
-		}
-	}
-	h.logger.Warn("directions service failed, falling back to estimator")
-
-	return h.directionsEstimator.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 }

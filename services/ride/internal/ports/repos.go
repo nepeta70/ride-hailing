@@ -45,7 +45,6 @@ type StorageBundle interface {
 	FareRatesReadRepo() FareRatesReadRepository
 	FareRatesWriteRepo() FareRatesWriteRepository
 	CountryCache() CountryCacheInterface
-	Silo() pkgPorts.Silo
 	GrainStorage() GrainStorage
 }
 

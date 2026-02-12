@@ -4,29 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type mockLogger struct {
-	entries []string
-}
-
-func (m *mockLogger) Debug(msg string, args ...any) {
-	m.entries = append(m.entries, "DEBUG:"+msg)
-}
-func (m *mockLogger) Info(msg string, args ...any) {
-	m.entries = append(m.entries, "INFO:"+msg)
-}
-func (m *mockLogger) Warn(msg string, args ...any) {
-	m.entries = append(m.entries, "WARN:"+msg)
-}
-func (m *mockLogger) Error(msg string, args ...any) {
-	m.entries = append(m.entries, "ERROR:"+msg)
-}
 
 func TestUnaryServerLogging_Table(t *testing.T) {
 	type args struct {
@@ -79,7 +63,7 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			logger := &mockLogger{}
+			logger := &mocks.MockLogger{}
 			mw := UnaryServerLogging(logger)
 			resp, err := mw(context.Background(), nil, tc.args.info, tc.args.handler)
 			if tc.wantErr {
@@ -91,22 +75,22 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 			assert.Equal(t, tc.wantResp, resp)
 			if tc.wantError {
 				foundError := false
-				for _, entry := range logger.entries {
+				for _, entry := range logger.Entries {
 					if len(entry) >= 6 && entry[:6] == "ERROR:" {
 						foundError = true
 					}
 				}
-				assert.True(t, foundError, "expected error log, got %v", logger.entries)
+				assert.True(t, foundError, "expected error log, got %v", logger.Entries)
 			}
 			// Always expect an info log
-			assert.NotEmpty(t, logger.entries)
+			assert.NotEmpty(t, logger.Entries)
 			foundInfo := false
-			for _, entry := range logger.entries {
+			for _, entry := range logger.Entries {
 				if len(entry) >= 5 && entry[:5] == "INFO:" {
 					foundInfo = true
 				}
 			}
-			assert.True(t, foundInfo, "expected info log, got %v", logger.entries)
+			assert.True(t, foundInfo, "expected info log, got %v", logger.Entries)
 		})
 	}
 }

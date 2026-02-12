@@ -3,9 +3,9 @@ package silo
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
-	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -19,22 +19,27 @@ type GrainActivation struct {
 	mu       sync.RWMutex
 }
 
+type SiloOptions struct {
+	Timeout time.Duration
+	Logger  ports.Logger
+}
+
 // Silo is the in-memory silo/cluster that hosts and manages grains
 // Similar to Orleans silo - handles activation, deactivation, message routing
 type Silo struct {
 	activations sync.Map // map[string]*GrainActivation
 	factories   sync.Map // map[string]ports.GrainFactory
-	timeouts    *config.TimeoutsConfig
+	timeout     time.Duration
 	retrier     *retry.Retrier
 	logger      ports.Logger
 }
 
-func NewSilo(timeouts *config.TimeoutsConfig, logger ports.Logger) *Silo {
-	strategy := retry.NewExponentialBackoffRetrierWithTimeout(timeouts.RequestTimeout, logger)
+func NewSilo(opts *SiloOptions) *Silo {
+	strategy := retry.NewExponentialBackoffRetrierWithTimeout(opts.Timeout, opts.Logger)
 	return &Silo{
-		timeouts: timeouts,
-		logger:   logger,
-		retrier:  strategy,
+		timeout: opts.Timeout,
+		logger:  opts.Logger,
+		retrier: strategy,
 	}
 }
 
@@ -92,7 +97,7 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 
 // Tell sends a one-way message to a grain (fire and forget)
 func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) error {
-	ctx, cancel := context.WithTimeout(ctx, s.timeouts.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	activation, err := s.GetOrActivate(ctx, identity)
@@ -109,7 +114,7 @@ func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg port
 
 // Ask sends a request message and waits for a response
 func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) (ports.Message, error) {
-	ctx, cancel := context.WithTimeout(ctx, s.timeouts.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	activation, err := s.GetOrActivate(ctx, identity)

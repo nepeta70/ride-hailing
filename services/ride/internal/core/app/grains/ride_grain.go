@@ -14,6 +14,13 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
+type RideGrainOptions struct {
+	Storage  ports.GrainStorage
+	EventPub pkgPorts.EventPublisher
+	Logger   pkgPorts.Logger
+	Topic    contracts.Topic
+}
+
 type RideGrain struct {
 	identity *grain.GrainIdentity
 	core     *domain.RideCore
@@ -27,12 +34,12 @@ type RideGrain struct {
 
 var _ pkgPorts.Grain = (*RideGrain)(nil)
 
-func NewRideGrain(storage ports.GrainStorage, eventPub pkgPorts.EventPublisher, logger pkgPorts.Logger, topic contracts.Topic) *RideGrain {
+func NewRideGrain(options *RideGrainOptions) *RideGrain {
 	return &RideGrain{
-		storage:  storage,
-		eventPub: eventPub,
-		logger:   logger,
-		topic:    topic,
+		storage:  options.Storage,
+		eventPub: options.EventPub,
+		logger:   options.Logger,
+		topic:    options.Topic,
 		state: &domain.RideState{
 			Status: domain.RideStatusNew,
 		},
@@ -44,36 +51,36 @@ func (g *RideGrain) GetIdentity() *grain.GrainIdentity {
 }
 
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
-    g.identity = identity
-    
-    // Try to load existing state from storage
-    version, err := g.storage.Load(ctx, identity, g.state)
-    if err != nil {
-        // Check if it's a "not found" error - this is expected for new grains
-        if errors.IsNotFound(err) {
-            // This is a new grain - initialize with default state
-            g.state = &domain.RideState{
-                Status: domain.RideStatusNew,
-            }
-            g.version = 0
-            g.logger.Info("Activating new ride grain", "identity", identity.String())
-            return nil
-        }
-        
-        // Actual error - failed to load existing grain
-        g.logger.Error("Failed to load state for grain", 
-            "identity", identity.EntityID, 
-            "error", err)
-        return errors.NewTransientErrorf("failed to load ride state: %w", err)
-    }
-    
-    // Successfully loaded existing grain
-    g.version = version
-    g.logger.Debug("Loaded existing ride grain", 
-        "identity", identity.String(), 
-        "version", version,
-        "status", g.state.Status)
-    return nil
+	g.identity = identity
+
+	// Try to load existing state from storage
+	version, err := g.storage.Load(ctx, identity, g.state)
+	if err != nil {
+		// Check if it's a "not found" error - this is expected for new grains
+		if errors.IsNotFound(err) {
+			// This is a new grain - initialize with default state
+			g.state = &domain.RideState{
+				Status: domain.RideStatusNew,
+			}
+			g.version = 0
+			g.logger.Info("Activating new ride grain", "identity", identity.String())
+			return nil
+		}
+
+		// Actual error - failed to load existing grain
+		g.logger.Error("Failed to load state for grain",
+			"identity", identity.EntityID,
+			"error", err)
+		return errors.NewTransientErrorf("failed to load ride state: %w", err)
+	}
+
+	// Successfully loaded existing grain
+	g.version = version
+	g.logger.Debug("Loaded existing ride grain",
+		"identity", identity.String(),
+		"version", version,
+		"status", g.state.Status)
+	return nil
 }
 
 func (g *RideGrain) OnDeactivate(ctx context.Context) error {
