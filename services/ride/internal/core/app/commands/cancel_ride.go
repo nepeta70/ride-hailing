@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
@@ -19,11 +22,17 @@ func (c *CancelRide) Validate() error {
 }
 
 type CancelRideHandler struct {
-	repo ports.RideWriteRepository
+	silo                 pkgPorts.Silo
+	grainIdentityFactory *service.GrainIdentityFactory
+	logger               pkgPorts.Logger
 }
 
-func NewCancelRideHandler(repo ports.RideWriteRepository) *CancelRideHandler {
-	return &CancelRideHandler{repo: repo}
+func NewCancelRideHandler(config *config.Config, storage ports.StorageBundle, grainSystem ports.GrainSystemInterface, logger pkgPorts.Logger) *CancelRideHandler {
+	return &CancelRideHandler{
+		silo:                 grainSystem.Silo(),
+		grainIdentityFactory: grainSystem.GrainIdentityFactory(),
+		logger:               logger,
+	}
 }
 
 func (h *CancelRideHandler) Handle(ctx context.Context, cmd CancelRide) error {

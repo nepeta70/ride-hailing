@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
@@ -21,11 +24,17 @@ func (c *AcceptOrRejectRide) Validate() error {
 }
 
 type AcceptOrRejectRideHandler struct {
-	repo ports.RideWriteRepository
+	silo                 pkgPorts.Silo
+	grainIdentityFactory *service.GrainIdentityFactory
+	logger               pkgPorts.Logger
 }
 
-func NewAcceptOrRejectRideHandler(repo ports.RideWriteRepository) *AcceptOrRejectRideHandler {
-	return &AcceptOrRejectRideHandler{repo: repo}
+func NewAcceptOrRejectRideHandler(config *config.Config, storage ports.StorageBundle, grainSystem ports.GrainSystemInterface, logger pkgPorts.Logger) *AcceptOrRejectRideHandler {
+	return &AcceptOrRejectRideHandler{
+		silo:                 grainSystem.Silo(),
+		grainIdentityFactory: grainSystem.GrainIdentityFactory(),
+		logger:               logger,
+	}
 }
 
 func (h *AcceptOrRejectRideHandler) Handle(ctx context.Context, cmd AcceptOrRejectRide) error {

@@ -59,9 +59,10 @@ func main() {
 	}
 
 	contextManager := ctxmgr.NewContextManager()
-	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage, contextManager)
+	grainSystem := app.NewGrainSystem(&cfg.BaseConfig, storage.GrainStorage(), nil, nil, logger) // Pass nil for event publisher for now
+	application := app.NewApplication(cfg, logger, directionsEstimator, googleMaps, storage, grainSystem, contextManager)
 
-	handler := grpcHandler.NewRideHandler(application, storage)
+	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 
 	grpcServer := grpc_adapter.NewGRPCAdapter("Ride Service", &cfg.BaseConfig, logger)
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
@@ -18,41 +19,39 @@ type RideHandler struct {
 	ridev1.UnimplementedRideServiceServer
 	application   *app.Application
 	storageBundle ridePorts.StorageBundle
+	grainSystem   *app.GrainSystem
 }
 
-func NewRideHandler(application *app.Application, storageBundle ridePorts.StorageBundle) *RideHandler {
-	return &RideHandler{application: application, storageBundle: storageBundle}
+func NewRideHandler(application *app.Application, storageBundle ridePorts.StorageBundle, grainSystem *app.GrainSystem) *RideHandler {
+	return &RideHandler{application: application, storageBundle: storageBundle, grainSystem: grainSystem}
 }
 
 func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		h.application.Logger.Info("Received metadata: %v", md)
-	}
-
-	info, ok := h.application.ContextManager.Extract(ctx)
-
-	if !ok {
-		h.application.Logger.Error("No country code found in context.")
-		return nil, errors.NewPermanentError("no country code found in context")
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := &commands.EstimateFareCommand{
+		RequestID:       info.Trace.RequestID,
 		PickupLocation:  req.PickupLocation,
 		DropoffLocation: req.DropoffLocation,
 		CountryCode:     info.Location.CountryCode,
+		RiderID:         info.User.ID,
 	}
-	fare, err := h.application.Commands.FareEstimate.Handle(ctx, *query)
+	fare, err := h.application.Commands.EstimateFare.Handle(ctx, *query)
 	if err != nil {
 		return nil, err
 	}
 	n := len(fare.Fares)
-	fareEstimates := make([]*ridev1.FareEstimate, n)
-	for i, f := range fare.Fares {
-		fareEstimates[i] = &ridev1.FareEstimate{
-			ServiceType:   f.ServiceType,
-			EstimatedFare: f.Fare,
+
+	fareEstimates := make([]*ridev1.FareEstimate, 0, n)
+	for s, f := range fare.Fares {
+		fare := &ridev1.FareEstimate{
+			ServiceType:   s,
+			EstimatedFare: f,
 		}
+		fareEstimates = append(fareEstimates, fare)
 	}
 
 	return &ridev1.FareEstimateResponse{
@@ -66,8 +65,16 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 }
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cmd := commands.RequestRide{
-		FareId: req.FareId,
+		FareID:      req.FareId,
+		ServiceType: req.ServiceType,
+		RiderID:     info.User.ID,
+		RequestID:   info.Trace.RequestID,
 	}
 	ride, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
 	if err != nil {
@@ -75,7 +82,7 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 	}
 
 	return &ridev1.RideResponse{
-		RideId: ride.ID.String(),
+		RideId: ride.RideID.String(),
 	}, nil
 }
 
@@ -152,4 +159,20 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 
 func (h *RideHandler) UpdateFareRate(ctx context.Context, req *ridev1.FareRate) (*ridev1.FareRate, error) {
 	return nil, nil
+}
+
+func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestInfo, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		h.application.Logger.Info("Received metadata: %v", md)
+	}
+
+	info, ok := h.application.ContextManager.Extract(ctx)
+
+	if !ok {
+		e := "no metadata found in context"
+		h.application.Logger.Error(e)
+		return nil, errors.NewPermanentError(e)
+	}
+	return info, nil
 }

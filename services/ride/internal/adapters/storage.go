@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
 	pg "github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -16,22 +17,15 @@ import (
 )
 
 type StorageBundle struct {
-	rideReadRepo       ports.RideReadRepository
-	rideWriteRepo      ports.RideWriteRepository
 	fareReadRepo       ports.FareReadRepository
 	fareWriteRepo      ports.FareWriteRepository
 	fareRatesReadRepo  ports.FareRatesReadRepository
 	fareRatesWriteRepo ports.FareRatesWriteRepository
 	countryCache       ports.CountryCacheInterface
+	silo               pkgPorts.Silo
+	grainStorage       *pgstore.GrainStorage
 }
 
-func (sa *StorageBundle) RideReadRepo() ports.RideReadRepository {
-	return sa.rideReadRepo
-}
-
-func (sa *StorageBundle) RideWriteRepo() ports.RideWriteRepository {
-	return sa.rideWriteRepo
-}
 func (sa *StorageBundle) FareReadRepo() ports.FareReadRepository {
 	return sa.fareReadRepo
 }
@@ -45,6 +39,14 @@ func (sa *StorageBundle) FareRatesReadRepo() ports.FareRatesReadRepository {
 
 func (sa *StorageBundle) CountryCache() ports.CountryCacheInterface {
 	return sa.countryCache
+}
+
+func (sa *StorageBundle) Silo() pkgPorts.Silo {
+	return sa.silo
+}
+
+func (sa *StorageBundle) GrainStorage() ports.GrainStorage {
+	return sa.grainStorage
 }
 
 func (sa *StorageBundle) FareRatesWriteRepo() ports.FareRatesWriteRepository {
@@ -64,16 +66,17 @@ func (sa *StorageBundle) HealthCheck(ctx context.Context) error {
 func NewRedisStorageBundle(cfg *config.Config, rdclient *rd.RedisClient, pgdb *pg.PostgresDB, logger pkgPorts.Logger) (*StorageBundle, error) {
 	countryRepo := pgstore.NewCountryReadRepo(cfg, pgdb)
 	countryCache := cache.NewCountryCache(countryRepo)
-	rideRepo := inmemory.NewInMemoryRideRepo()
 	fareRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
+	s := silo.NewSilo(&cfg.Timeouts, logger)
+
 	return &StorageBundle{
-		rideReadRepo:       rideRepo,
-		rideWriteRepo:      rideRepo,
 		fareReadRepo:       fareRepo,
 		fareWriteRepo:      fareRepo,
 		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,
+		silo:               s,
+		grainStorage:       pgstore.NewGrainStorage(pgdb),
 	}, nil
 }
 

@@ -14,23 +14,33 @@ import (
 )
 
 type EstimateFareCommand struct {
-	RequestId       string
+	RiderID         string
+	RequestID       string
 	PickupLocation  string
 	DropoffLocation string
 	CountryCode     string
 }
 
 func (q *EstimateFareCommand) Validate() error {
+	err := uuid.Validate(q.RiderID)
+	if err != nil {
+		return errors.NewValidationErrorf("invalid rider ID format")
+	}
+
 	if q.PickupLocation == "" || q.DropoffLocation == "" {
 		return errors.NewValidationErrorf("pickup and dropoff locations are required")
 	}
 	if q.PickupLocation == q.DropoffLocation {
 		return errors.NewValidationErrorf("pickup and dropoff locations cannot be the same")
 	}
+	err = uuid.Validate(q.RequestID)
+	if err != nil {
+		return errors.NewValidationErrorf("invalid request ID format")
+	}
 	return nil
 }
 
-type FareEstimateHandler struct {
+type EstimateFareHandler struct {
 	config              *config.Config
 	countryCache        ports.CountryCacheInterface
 	directionsEstimator *service.DirectionsEstimator
@@ -39,8 +49,8 @@ type FareEstimateHandler struct {
 	logger              pkgPorts.Logger
 }
 
-func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *FareEstimateHandler {
-	return &FareEstimateHandler{
+func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsEstimator *service.DirectionsEstimator, directionsService ports.DirectionsService) *EstimateFareHandler {
+	return &EstimateFareHandler{
 		config:              config,
 		countryCache:        storage.CountryCache(),
 		directionsEstimator: directionsEstimator,
@@ -50,7 +60,7 @@ func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, stora
 	}
 }
 
-func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareCommand) (*domain.Fares, error) {
+func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareCommand) (*domain.Fares, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -58,6 +68,13 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareComm
 	err := query.Validate()
 	if err != nil {
 		return nil, err
+	}
+
+	requestID := uuid.MustParse(query.RequestID)
+	// Idempotent check - if fare estimate already exists for this request, return it
+	f, err := h.storage.FareReadRepo().GetByID(ctx, requestID)
+	if f != nil {
+		return f, nil
 	}
 
 	country, exists := h.countryCache.GetCountryByCode(ctx, query.CountryCode)
@@ -83,18 +100,18 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareComm
 		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
 	}
 
-	fares := make([]*domain.Fare, 0, n)
+	fares := make(map[string]float64, n)
 	distanceInKm := directions.DistanceMeters / 1000.0
 	for _, rate := range fareRates {
 		fareAmount := rate.BaseFare + (rate.FarePerKm * distanceInKm) + (rate.FarePerMinute * directions.DurationMinutes.Minutes())
-		fares = append(fares, &domain.Fare{
-			ServiceType: rate.ServiceType,
-			Fare:        math.Max(rate.MinimumFare, fareAmount),
-		})
+		fares[rate.ServiceType] = math.Max(rate.MinimumFare, fareAmount)
 	}
 
 	record := &domain.Fares{
-		ID:                       uuid.New(),
+		ID:                       requestID,
+		RequestID:                query.RequestID,
+		PickupLocation:           query.PickupLocation,
+		DropoffLocation:          query.DropoffLocation,
 		EstimatedDistanceKm:      distanceInKm,
 		EstimatedDurationMinutes: directions.DurationMinutes,
 		ETA:                      directions.ArrivalTime,
@@ -110,7 +127,7 @@ func (h *FareEstimateHandler) Handle(ctx context.Context, query EstimateFareComm
 	return record, nil
 }
 
-func (h *FareEstimateHandler) getDirections(ctx context.Context, query EstimateFareCommand) (*domain.DirectionsResponse, error) {
+func (h *EstimateFareHandler) getDirections(ctx context.Context, query EstimateFareCommand) (*domain.DirectionsResponse, error) {
 	if h.directionsService != nil {
 		directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 		if err == nil && directions != nil {
