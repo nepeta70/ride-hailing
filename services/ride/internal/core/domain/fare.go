@@ -6,18 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type Fare struct {
-	ServiceType string
-	Fare        float64
-}
-
 type Fares struct {
+	RequestID                string
 	ID                       uuid.UUID
-	Fares                    []*Fare
+	PickupLocation           string
+	DropoffLocation          string
 	EstimatedDistanceKm      float64
 	EstimatedDurationMinutes time.Duration
 	ETA                      time.Time
 	Currency                 string
+	Timestamp                time.Time
+	Fares                    map[string]float64 // service type -> fare
 }
 
 type DirectionsResponse struct {

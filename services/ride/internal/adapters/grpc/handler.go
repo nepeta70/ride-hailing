@@ -3,12 +3,19 @@ package grpc
 import (
 	"context"
 
+	"github.com/google/uuid"
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/validator"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/grains"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
-	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -17,42 +24,40 @@ import (
 type RideHandler struct {
 	ridev1.UnimplementedRideServiceServer
 	application   *app.Application
-	storageBundle ridePorts.StorageBundle
+	storageBundle ports.StorageBundle
+	grainSystem   *app.GrainSystem
 }
 
-func NewRideHandler(application *app.Application, storageBundle ridePorts.StorageBundle) *RideHandler {
-	return &RideHandler{application: application, storageBundle: storageBundle}
+func NewRideHandler(application *app.Application, storageBundle ports.StorageBundle, grainSystem *app.GrainSystem) *RideHandler {
+	return &RideHandler{application: application, storageBundle: storageBundle, grainSystem: grainSystem}
 }
 
 func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		h.application.Logger.Info("Received metadata: %v", md)
-	}
-
-	info, ok := h.application.ContextManager.Extract(ctx)
-
-	if !ok {
-		h.application.Logger.Error("No country code found in context.")
-		return nil, errors.NewPermanentError("no country code found in context")
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := &commands.EstimateFareCommand{
-		PickupLocation:  req.PickupLocation,
-		DropoffLocation: req.DropoffLocation,
+		RequestID:       info.Trace.RequestID,
+		PickupLocation:  req.GetPickupLocation(),
+		DropoffLocation: req.GetDropoffLocation(),
 		CountryCode:     info.Location.CountryCode,
+		RiderID:         info.User.ID,
 	}
-	fare, err := h.application.Commands.FareEstimate.Handle(ctx, *query)
+	fare, err := h.application.Commands.EstimateFare.Handle(ctx, *query)
 	if err != nil {
 		return nil, err
 	}
 	n := len(fare.Fares)
-	fareEstimates := make([]*ridev1.FareEstimate, n)
-	for i, f := range fare.Fares {
-		fareEstimates[i] = &ridev1.FareEstimate{
-			ServiceType:   f.ServiceType,
-			EstimatedFare: f.Fare,
+
+	fareEstimates := make([]*ridev1.FareEstimate, 0, n)
+	for s, f := range fare.Fares {
+		fare := &ridev1.FareEstimate{
+			ServiceType:   s,
+			EstimatedFare: f,
 		}
+		fareEstimates = append(fareEstimates, fare)
 	}
 
 	return &ridev1.FareEstimateResponse{
@@ -66,8 +71,16 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 }
 
 func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) (*ridev1.RideResponse, error) {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cmd := commands.RequestRide{
-		FareId: req.FareId,
+		FareID:      req.GetFareId(),
+		ServiceType: req.GetServiceType(),
+		RiderID:     info.User.ID,
+		RequestID:   info.Trace.RequestID,
 	}
 	ride, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
 	if err != nil {
@@ -75,46 +88,125 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 	}
 
 	return &ridev1.RideResponse{
-		RideId: ride.ID.String(),
+		RideId: ride.RideID.String(),
 	}, nil
 }
 
 func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.CancelRide{
-		RideID: req.RideId,
-	}
-	if err := h.application.Commands.CancelRide.Handle(ctx, cmd); err != nil {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
 		return nil, err
 	}
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.CancelRideCommand{
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+		RiderID:   uuid.MustParse(info.User.ID),
+		RideID:    uuid.MustParse(req.GetRideId()),
+	}
+
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.AcceptOrRejectRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.AcceptOrRejectRide{
-		RideID: req.RideId,
-		Accept: req.Accept,
-	}
-	if err := h.application.Commands.AcceptOrRejectRide.Handle(ctx, cmd); err != nil {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
 		return nil, err
 	}
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	rideID := uuid.MustParse(req.GetRideId())
+	driverID := uuid.MustParse(info.User.ID)
+	requestID := uuid.MustParse(info.Trace.RequestID)
+	var cmd pkgPorts.Command
+	if req.GetAccept() {
+		cmd = &grains.AcceptRideCommand{
+			RequestID: requestID,
+			DriverID:  driverID,
+			RideID:    rideID,
+		}
+	} else {
+		cmd = &grains.RejectRideCommand{
+			RequestID: requestID,
+			DriverID:  driverID,
+			RideID:    rideID,
+		}
+	}
+
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, rideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) StartRide(ctx context.Context, req *ridev1.StartRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.StartRide{
-		RideID: req.RideId,
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if err := h.application.Commands.StartRide.Handle(ctx, cmd); err != nil {
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.StartRideCommand{
+		RideID:    uuid.MustParse(req.GetRideId()),
+		DriverID:  uuid.MustParse(info.User.ID),
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+	}
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) CompleteRide(ctx context.Context, req *ridev1.CompleteRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.CompleteRide{
-		RideID: req.RideId,
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if err := h.application.Commands.CompleteRide.Handle(ctx, cmd); err != nil {
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.CompleteRideCommand{
+		RideID:    uuid.MustParse(req.GetRideId()),
+		DriverID:  uuid.MustParse(info.User.ID),
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+	}
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -152,4 +244,20 @@ func (h *RideHandler) GetFareRates(ctx context.Context, req *ridev1.GetFareRates
 
 func (h *RideHandler) UpdateFareRate(ctx context.Context, req *ridev1.FareRate) (*ridev1.FareRate, error) {
 	return nil, nil
+}
+
+func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestInfo, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		h.application.Logger.Info("Received metadata: %v", "metadata", md)
+	}
+
+	info, ok := h.application.ContextManager.Extract(ctx)
+
+	if !ok {
+		e := "no metadata found in context"
+		h.application.Logger.Error(e)
+		return nil, errors.NewPermanentError(e)
+	}
+	return info, nil
 }

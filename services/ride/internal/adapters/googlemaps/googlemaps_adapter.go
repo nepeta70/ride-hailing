@@ -4,25 +4,54 @@ import (
 	"context"
 	"time"
 
-	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
-	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 
 	"googlemaps.github.io/maps"
 )
 
-type GoogleMapsAdapter struct {
-	client *maps.Client
+type GoogleMapsAdapterOptions struct {
+	APIKey          string
+	FallBackService ports.DirectionsService
+	Logger          pkgPorts.Logger
 }
 
-func NewGoogleMapsAdapter(cfg *config.Config) (*GoogleMapsAdapter, error) {
-	client, err := maps.NewClient(maps.WithAPIKey(cfg.KeysConfig.GoogleMapsAPIKey))
-	if err != nil {
+func (opts *GoogleMapsAdapterOptions) Validate() error {
+	if opts.FallBackService == nil {
+		return errors.NewValidationErrorf("fallback service is required")
+	}
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	return nil
+}
+
+type GoogleMapsAdapter struct {
+	client          *maps.Client
+	fallbackService ports.DirectionsService
+	logger          pkgPorts.Logger
+}
+
+func NewGoogleMapsAdapter(opts *GoogleMapsAdapterOptions) (ports.DirectionsService, error) {
+	if err := opts.Validate(); err != nil {
 		return nil, err
+	}
+	if opts.APIKey == "" {
+		opts.Logger.Warn("Failed to create Google Maps client: API key is empty. Using fallback distance calculator.")
+		return opts.FallBackService, nil // Return fallback service if client initialization fails
+	}
+	client, err := maps.NewClient(maps.WithAPIKey(opts.APIKey))
+	if err != nil {
+		opts.Logger.Warn("Failed to create Google Maps client: %v. Using fallback distance calculator.", "error", err)
+		return opts.FallBackService, nil // Return fallback service if client initialization fails
 	}
 
 	return &GoogleMapsAdapter{
-		client: client,
+		client:          client,
+		fallbackService: opts.FallBackService,
+		logger:          opts.Logger,
 	}, nil
 }
 
@@ -48,7 +77,8 @@ func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destinati
 	})
 
 	if err != nil {
-		return nil, err
+		g.logger.Warn("Google Maps API error: %v. Using fallback distance calculator.", "error", err)
+		return g.fallbackService.GetDirections(ctx, origin, destination)
 	}
 	if len(routes) == 0 || len(routes[0].Legs) == 0 {
 		return nil, nil
@@ -88,4 +118,4 @@ func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destinati
 // 	ViaWaypoint []*ViaWaypoint `json:"via_waypoint"`
 // }
 
-var _ ridePorts.DirectionsService = (*GoogleMapsAdapter)(nil)
+var _ ports.DirectionsService = (*GoogleMapsAdapter)(nil)

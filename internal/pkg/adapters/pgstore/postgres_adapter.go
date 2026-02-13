@@ -44,7 +44,9 @@ func NewPostgresDB(config *PostgresConfig, logger ports.Logger) (*PostgresDB, er
 }
 
 func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.Transaction, error) {
-	tx, err := db.DB.BeginTx(ctx, opts)
+	beginCtx, cancel := context.WithTimeout(ctx, db.config.QueryTimeout)
+	defer cancel()
+	tx, err := db.DB.BeginTx(beginCtx, opts)
 	if err != nil {
 		return nil, errors.NewTransientErrorf("failed to begin postgres transaction: %w", err)
 	}
@@ -52,8 +54,11 @@ func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.T
 }
 
 func (db *PostgresDB) HealthCheck(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, db.config.PingTimeout)
+	defer cancel()
 	if err := db.DB.PingContext(ctx); err != nil {
 		// Database being unreachable is a transient infrastructure issue
+		db.logger.Error("Postgres health check failed", "error", err)
 		return errors.NewTransientErrorf("postgres ping failed: %w", err)
 	}
 	return nil
@@ -65,6 +70,43 @@ func (db *PostgresDB) ServiceName() string {
 
 func (db *PostgresDB) Close() error {
 	return db.DB.Close()
+}
+
+// QueryContext wraps the standard sql.DB QueryContext with retries and timeouts
+func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	strategy := retry.NewExponentialBackoffRetrierWithTimeout(db.config.QueryTimeout, db.logger)
+
+	db.logger.Debug("Executing query with retry", "query", query)
+	var rows *sql.Rows
+	err := strategy.Do(ctx, func() error {
+		var err error
+		rows, err = db.DB.QueryContext(ctx, query, args...)
+		if err != nil {
+			// You can add logic here to check if the error is worth retrying
+			return errors.NewTransientErrorf("query failed: %w", err)
+		}
+		return nil
+	})
+	db.logger.Debug("Query returned rows", "rows", rows, "error", err)
+	return rows, err
+}
+
+// ExecContext follows the same pattern for INSERT/UPDATE/DELETE
+func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	var res sql.Result
+
+	strategy := retry.NewExponentialBackoffRetrierWithTimeout(db.config.QueryTimeout, db.logger)
+
+	err := strategy.Do(ctx, func() error {
+		var err error
+		res, err = db.DB.ExecContext(ctx, query, args...)
+		if err != nil {
+			return errors.NewTransientErrorf("exec failed: %w", err)
+		}
+		return nil
+	})
+
+	return res, err
 }
 
 // PostgresTx wraps *sql.Tx to satisfy ports.Transaction

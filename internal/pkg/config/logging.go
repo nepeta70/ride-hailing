@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	ports "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type LoggingConfig struct {

@@ -23,27 +23,6 @@ type FareRatesWriteRepository interface {
 	Save(ctx context.Context, fareRate *domain.FareRate) error
 }
 
-type RideWriteRepository interface {
-	// Define methods for writing ride data
-}
-type RideReadRepository interface {
-	// Define methods for reading ride data
-}
-
-type StorageBundle interface {
-	RideReadRepo() RideReadRepository
-	RideWriteRepo() RideWriteRepository
-	FareReadRepo() FareReadRepository
-	FareWriteRepo() FareWriteRepository
-	FareRatesReadRepo() FareRatesReadRepository
-	FareRatesWriteRepo() FareRatesWriteRepository
-	CountryCache() CountryCacheInterface
-}
-
-type DirectionsService interface {
-	GetDirections(ctx context.Context, origin, destination string) (*domain.DirectionsResponse, error)
-}
-
 type CountryReadRepoInterface interface {
 	GetAllEnabled(ctx context.Context) (map[string]*domain.Country, error)
 }
@@ -57,7 +36,17 @@ type ServiceTypeReadRepository interface {
 	GetAllEnabled(ctx context.Context) (map[string]*domain.ServiceType, error)
 }
 
-type ServiceTypeInterface interface {
-	GetByCode(ctx context.Context, code string) (*domain.ServiceType, error)
+type ServiceTypeCacheInterface interface {
+	GetServiceTypeByCode(ctx context.Context, code string) (*domain.ServiceType, bool)
 	Refresh(ctx context.Context) error
+}
+
+type StorageBundle interface {
+	FareReadRepo() FareReadRepository
+	FareWriteRepo() FareWriteRepository
+	FareRatesReadRepo() FareRatesReadRepository
+	FareRatesWriteRepo() FareRatesWriteRepository
+	CountryCache() CountryCacheInterface
+	ServiceTypeCache() ServiceTypeCacheInterface
+	GrainStorage() GrainStorage
 }

@@ -3,6 +3,9 @@ package ports
 import (
 	"context"
 	"time"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 )
 
 type Logger interface {
@@ -20,4 +23,29 @@ type HealthProvider interface {
 type CacheService interface {
 	// GetOrSet handles the lookup, miss, and backfill logic
 	GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error
+}
+
+type MessageHandler func(ctx context.Context, msg []byte) error
+
+type EventPublisher interface {
+	Publish(ctx context.Context, topic string, message *contracts.EventMessage) error
+	IsHealthy(ctx context.Context) bool
+	Close() error
+	TopicProvider() TopicProvider
+}
+
+// EventSubscriber defines the contract for listening to external events
+type EventSubscriber interface {
+	Subscribe(ctx context.Context, topic string, handler MessageHandler) error
+	Close() error
+}
+
+type EventStore interface {
+	Append(ctx context.Context, tx Transaction, event *contracts.EventMessage) error
+	GetStream(ctx context.Context, streamId enums.AggregateType, ID string) ([]contracts.EventMessage, error)
+}
+
+type TopicProvider interface {
+	AllTopics() []string
+	GetTopicForEvent(eventType string) (string, error)
 }

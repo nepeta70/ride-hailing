@@ -8,25 +8,28 @@ import (
 )
 
 type PostgresConfig struct {
-	User        string        `json:"user" env:"POSTGRES_USER"`
-	Password    string        `json:"password" env:"POSTGRES_PASSWORD"`
-	DBName      string        `json:"dbname" env:"POSTGRES_DB"`
-	Host        string        `json:"host" env:"POSTGRES_HOST"`
-	Port        int           `json:"port" env:"POSTGRES_PORT"`
-	SSLMode     string        `json:"ssl_mode" env:"POSTGRES_SSLMODE"`
-	PingSeconds int           `json:"ping_timeout_seconds" env:"POSTGRES_PING_TIMEOUT_SECONDS"`
-	PingTimeout time.Duration `json:"-"`
+	User         string        `json:"user" env:"POSTGRES_USER"`
+	Password     string        `json:"password" env:"POSTGRES_PASSWORD"`
+	DBName       string        `json:"dbname" env:"POSTGRES_DB"`
+	Host         string        `json:"host" env:"POSTGRES_HOST"`
+	Port         int           `json:"port" env:"POSTGRES_PORT"`
+	SSLMode      string        `json:"ssl_mode" env:"POSTGRES_SSLMODE"`
+	PingSeconds  int           `json:"ping_timeout_seconds" env:"POSTGRES_PING_TIMEOUT_SECONDS"`
+	PingTimeout  time.Duration `json:"-"`
+	QuerySeconds int           `json:"query_timeout_seconds" env:"POSTGRES_QUERY_TIMEOUT_SECONDS"`
+	QueryTimeout time.Duration `json:"-"`
 }
 
 func DefaultPostgresConfig() PostgresConfig {
 	return PostgresConfig{
-		User:        "",
-		Password:    "",
-		DBName:      "postgres",
-		Host:        "localhost",
-		Port:        5432,
-		SSLMode:     "disable",
-		PingSeconds: 5,
+		User:         "",
+		Password:     "",
+		DBName:       "postgres",
+		Host:         "localhost",
+		Port:         5432,
+		SSLMode:      "disable",
+		PingSeconds:  5,
+		QuerySeconds: 5,
 	}
 }
 
@@ -38,6 +41,7 @@ func (c PostgresConfig) DSN() string {
 
 func (c *PostgresConfig) Init() error {
 	c.PingTimeout = time.Duration(c.PingSeconds) * time.Second
+	c.QueryTimeout = time.Duration(c.QuerySeconds) * time.Second
 	return nil
 }
 
@@ -56,6 +60,9 @@ func (c *PostgresConfig) Validate() error {
 	}
 	if c.PingSeconds <= 0 {
 		return errors.NewValidationErrorf("postgres ping timeout must be greater than zero")
+	}
+	if c.QuerySeconds <= 0 {
+		return errors.NewValidationErrorf("postgres query timeout must be greater than zero")
 	}
 	return nil
 }

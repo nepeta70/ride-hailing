@@ -13,8 +13,8 @@ type RetryConfig struct {
 }
 
 // DefaultConfig returns a sensible default retry configuration
-func DefaultConfig() RetryConfig {
-	return RetryConfig{
+func DefaultConfig() *RetryConfig {
+	return &RetryConfig{
 		MaxAttempts:    3,
 		InitialDelay:   100 * time.Millisecond,
 		MaxDelay:       10 * time.Second,
@@ -24,8 +24,8 @@ func DefaultConfig() RetryConfig {
 }
 
 // AggressiveConfig for critical operations that need more retries
-func AggressiveConfig() RetryConfig {
-	return RetryConfig{
+func AggressiveConfig() *RetryConfig {
+	return &RetryConfig{
 		MaxAttempts:    5,
 		InitialDelay:   50 * time.Millisecond,
 		MaxDelay:       30 * time.Second,
@@ -34,8 +34,8 @@ func AggressiveConfig() RetryConfig {
 	}
 }
 
-func NewRetryConfig(timeout time.Duration) RetryConfig {
-	return RetryConfig{
+func NewRetryConfig(timeout time.Duration) *RetryConfig {
+	return &RetryConfig{
 		MaxAttempts:    5,
 		InitialDelay:   timeout / 20, // 5% of total time
 		MaxDelay:       timeout / 4,  // 25% of total time

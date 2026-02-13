@@ -25,14 +25,24 @@ func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig) gr
 			return nil, status.Error(codes.Unauthenticated, "invalid api key")
 		}
 
+		userID := getMetadata(md, "user-id")
+		if userID == "" {
+			return nil, status.Error(codes.Unauthenticated, "missing user ID")
+		}
+
+		requestID := getMetadata(md, "x-request-id")
+		if requestID == "" {
+			return nil, status.Error(codes.InvalidArgument, "missing request ID")
+		}
+
 		// 2. Assemble the RequestInfo
 		rInfo := ctxmgr.RequestInfo{
 			User: ctxmgr.UserSession{
-				ID:   getMetadata(md, "user-id"),
+				ID:   userID,
 				Role: getMetadata(md, "user-role"), // rider, driver, admin
 			},
 			Trace: ctxmgr.TraceInfo{
-				RequestID:  getMetadata(md, "x-request-id"),
+				RequestID:  requestID,
 				Origin:     getMetadata(md, "x-origin-service"),
 				Timestamp:  getMetadata(md, "x-timestamp"),
 				RetryCount: getIntMetadata(md, "x-retry-count"),

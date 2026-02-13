@@ -18,8 +18,9 @@ This file is intended to contain guidelines and rules that must always be follow
 ### Unit tests
 - should always be in package folder_test
 - should use assert from "github.com/stretchr/testify/assert"
-- should use table driven tests when you're testing the same method
+- should use table driven tests for each method tested
 - refer to the struct folder using . "structbeingtestedpath"
+- Don't mock simple structs
 
 ---
 

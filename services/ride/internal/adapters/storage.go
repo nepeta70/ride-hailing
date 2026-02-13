@@ -5,6 +5,7 @@ import (
 
 	pg "github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/cache"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/inmemory"
@@ -15,23 +16,39 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
+type StorageBundleOptions struct {
+	Config   *config.Config
+	RdClient *rd.RedisClient
+	PgDB     *pg.PostgresDB
+	Logger   pkgPorts.Logger
+}
+
+func (opts *StorageBundleOptions) Validate() error {
+	if opts.Config == nil {
+		return errors.NewValidationErrorf("config is required")
+	}
+	if opts.RdClient == nil {
+		return errors.NewValidationErrorf("redis client is required")
+	}
+	if opts.PgDB == nil {
+		return errors.NewValidationErrorf("postgres db is required")
+	}
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	return nil
+}
+
 type StorageBundle struct {
-	rideReadRepo       ports.RideReadRepository
-	rideWriteRepo      ports.RideWriteRepository
 	fareReadRepo       ports.FareReadRepository
 	fareWriteRepo      ports.FareWriteRepository
 	fareRatesReadRepo  ports.FareRatesReadRepository
 	fareRatesWriteRepo ports.FareRatesWriteRepository
 	countryCache       ports.CountryCacheInterface
+	grainStorage       ports.GrainStorage
+	serviceTypeCache   ports.ServiceTypeCacheInterface
 }
 
-func (sa *StorageBundle) RideReadRepo() ports.RideReadRepository {
-	return sa.rideReadRepo
-}
-
-func (sa *StorageBundle) RideWriteRepo() ports.RideWriteRepository {
-	return sa.rideWriteRepo
-}
 func (sa *StorageBundle) FareReadRepo() ports.FareReadRepository {
 	return sa.fareReadRepo
 }
@@ -47,8 +64,16 @@ func (sa *StorageBundle) CountryCache() ports.CountryCacheInterface {
 	return sa.countryCache
 }
 
+func (sa *StorageBundle) GrainStorage() ports.GrainStorage {
+	return sa.grainStorage
+}
+
 func (sa *StorageBundle) FareRatesWriteRepo() ports.FareRatesWriteRepository {
 	return sa.fareRatesWriteRepo
+}
+
+func (sa *StorageBundle) ServiceTypeCache() ports.ServiceTypeCacheInterface {
+	return sa.serviceTypeCache
 }
 
 func (sa *StorageBundle) Close() error {
@@ -61,19 +86,24 @@ func (sa *StorageBundle) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func NewRedisStorageBundle(cfg *config.Config, rdclient *rd.RedisClient, pgdb *pg.PostgresDB, logger pkgPorts.Logger) (*StorageBundle, error) {
-	countryRepo := pgstore.NewCountryReadRepo(cfg, pgdb)
-	countryCache := cache.NewCountryCache(countryRepo)
-	rideRepo := inmemory.NewInMemoryRideRepo()
-	fareRepo := rdstore.NewFareRepository(cfg, rdclient, logger)
+func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	countryRepo := pgstore.NewCountryReadRepo(opts.Config, opts.PgDB)
+	countryCache := cache.NewCountryCache(countryRepo, opts.Logger)
+	fareRepo := rdstore.NewFareRepository(opts.Config, opts.RdClient, opts.Logger)
+	serviceTypeRepo := pgstore.NewServiceTypeReadRepo(opts.Config, opts.PgDB)
+	serviceTypeCache := cache.NewServiceTypeCache(serviceTypeRepo)
+
 	return &StorageBundle{
-		rideReadRepo:       rideRepo,
-		rideWriteRepo:      rideRepo,
 		fareReadRepo:       fareRepo,
 		fareWriteRepo:      fareRepo,
 		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,
+		grainStorage:       pgstore.NewGrainStorage(opts.PgDB),
+		serviceTypeCache:   serviceTypeCache,
 	}, nil
 }
 
