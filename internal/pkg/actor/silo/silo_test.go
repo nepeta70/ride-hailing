@@ -118,7 +118,7 @@ func TestNewSilo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(tt.opts)
+			silo, _ := NewSilo(tt.opts)
 			if tt.wantNil {
 				assert.Nil(t, silo)
 			} else {
@@ -159,7 +159,7 @@ func TestSilo_RegisterFactory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -223,7 +223,7 @@ func TestSilo_GetOrActivate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -310,7 +310,7 @@ func TestSilo_Tell(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -407,7 +407,7 @@ func TestSilo_Ask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -480,7 +480,7 @@ func TestSilo_Deactivate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -571,7 +571,7 @@ func TestSilo_Reset(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			silo := NewSilo(&SiloOptions{
+			silo, _ := NewSilo(&SiloOptions{
 				Timeout: 5 * time.Second,
 				Logger:  &mocks.MockLogger{},
 			})
@@ -616,7 +616,7 @@ func TestSilo_Reset(t *testing.T) {
 
 func TestSilo_Concurrency(t *testing.T) {
 	t.Run("concurrent activations of same grain", func(t *testing.T) {
-		silo := NewSilo(&SiloOptions{
+		silo, _ := NewSilo(&SiloOptions{
 			Timeout: 5 * time.Second,
 			Logger:  &mocks.MockLogger{},
 		})
@@ -657,7 +657,7 @@ func TestSilo_Concurrency(t *testing.T) {
 	})
 
 	t.Run("concurrent tell operations", func(t *testing.T) {
-		silo := NewSilo(&SiloOptions{
+		silo, _ := NewSilo(&SiloOptions{
 			Timeout: 5 * time.Second,
 			Logger:  &mocks.MockLogger{},
 		})
@@ -706,7 +706,7 @@ func TestSilo_Concurrency(t *testing.T) {
 
 func TestSilo_ContextTimeout(t *testing.T) {
 	t.Run("tell respects context timeout", func(t *testing.T) {
-		silo := NewSilo(&SiloOptions{
+		silo, _ := NewSilo(&SiloOptions{
 			Timeout: 1 * time.Millisecond,
 			Logger:  &mocks.MockLogger{},
 		})
@@ -739,7 +739,7 @@ func TestSilo_ContextTimeout(t *testing.T) {
 	})
 
 	t.Run("ask respects context timeout", func(t *testing.T) {
-		silo := NewSilo(&SiloOptions{
+		silo, _ := NewSilo(&SiloOptions{
 			Timeout: 1 * time.Millisecond,
 			Logger:  &mocks.MockLogger{},
 		})

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
 	. "github.com/nepeta70/ride-hailing/services/ride/internal/adapters/cache"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +70,7 @@ func TestCountryCache_GetCountryByCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup stub
 			stub := &StubCountryRepo{data: tt.repoData, err: tt.repoErr}
-			cache := NewCountryCache(stub)
+			cache := NewCountryCache(stub, &mocks.MockLogger{})
 
 			gotCountry, gotFound := cache.GetCountryByCode(ctx, tt.countryCode)
 
@@ -86,7 +87,7 @@ func TestCountryCache_ConcurrencyAndOnce(t *testing.T) {
 	stub := &StubCountryRepo{
 		data: map[string]*domain.Country{"ES": {Code: "ES", Currency: "EUR"}},
 	}
-	cache := NewCountryCache(stub)
+	cache := NewCountryCache(stub, &mocks.MockLogger{})
 
 	const workers = 100
 	var wg sync.WaitGroup

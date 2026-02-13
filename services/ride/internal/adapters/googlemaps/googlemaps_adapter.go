@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
@@ -17,6 +18,16 @@ type GoogleMapsAdapterOptions struct {
 	Logger          pkgPorts.Logger
 }
 
+func (opts *GoogleMapsAdapterOptions) Validate() error {
+	if opts.FallBackService == nil {
+		return errors.NewValidationErrorf("fallback service is required")
+	}
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	return nil
+}
+
 type GoogleMapsAdapter struct {
 	client          *maps.Client
 	fallbackService ports.DirectionsService
@@ -24,6 +35,13 @@ type GoogleMapsAdapter struct {
 }
 
 func NewGoogleMapsAdapter(opts *GoogleMapsAdapterOptions) (ports.DirectionsService, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	if opts.APIKey == "" {
+		opts.Logger.Warn("Failed to create Google Maps client: API key is empty. Using fallback distance calculator.")
+		return opts.FallBackService, nil // Return fallback service if client initialization fails
+	}
 	client, err := maps.NewClient(maps.WithAPIKey(opts.APIKey))
 	if err != nil {
 		opts.Logger.Warn("Failed to create Google Maps client: %v. Using fallback distance calculator.", "error", err)

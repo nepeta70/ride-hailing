@@ -1,11 +1,11 @@
 package app
 
 import (
-	"sync"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -23,6 +23,26 @@ type GrainSystemOptions struct {
 	GrainTimeout   time.Duration
 }
 
+func (opts *GrainSystemOptions) Validate() error {
+	if opts.Storage == nil {
+		return errors.NewValidationErrorf("grain storage is required")
+	}
+	// TODO: uncomment when event publisher is implemented
+	// if opts.EventPublisher == nil {
+	// 	return errors.NewValidationErrorf("event publisher is required")
+	// }
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	if opts.Topic == "" {
+		return errors.NewValidationErrorf("topic is required")
+	}
+	if opts.GrainTimeout <= 0 {
+		return errors.NewValidationErrorf("grain timeout must be greater than zero")
+	}
+	return nil
+}
+
 type GrainSystem struct {
 	si                   *silo.Silo
 	grainIdentityFactory *service.GrainIdentityFactory
@@ -30,18 +50,28 @@ type GrainSystem struct {
 	eventPub             pkgPorts.EventPublisher
 	logger               pkgPorts.Logger
 	topic                contracts.Topic
-	processMu            sync.Mutex // prevents concurrent ProcessWaitlist execution
 	grainTimeout         time.Duration
 }
 
-func NewGrainSystem(opts *GrainSystemOptions) *GrainSystem {
-	si := silo.NewSilo(&silo.SiloOptions{Timeout: opts.GrainTimeout, Logger: opts.Logger})
+func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	si, err := silo.NewSilo(&silo.SiloOptions{Timeout: opts.GrainTimeout, Logger: opts.Logger})
+	if err != nil {
+		return nil, err
+	}
+
+	grainOpts := &grains.RideGrainOptions{
+		Storage:  opts.Storage,
+		EventPub: opts.EventPublisher,
+		Logger:   opts.Logger,
+		Topic:    opts.Topic}
+	if err := grainOpts.Validate(); err != nil {
+		return nil, err
+	}
 	si.RegisterFactory(domain.RideGrainKind, func(identity *grain.GrainIdentity) pkgPorts.Grain {
-		return grains.NewRideGrain(&grains.RideGrainOptions{
-			Storage:  opts.Storage,
-			EventPub: opts.EventPublisher,
-			Logger:   opts.Logger,
-			Topic:    opts.Topic})
+		return grains.NewRideGrain(grainOpts)
 	})
 
 	return &GrainSystem{
@@ -52,7 +82,7 @@ func NewGrainSystem(opts *GrainSystemOptions) *GrainSystem {
 		grainPersistence:     opts.Storage,
 		grainIdentityFactory: &service.GrainIdentityFactory{},
 		grainTimeout:         opts.GrainTimeout,
-	}
+	}, nil
 }
 
 func (gs *GrainSystem) Silo() pkgPorts.Silo {

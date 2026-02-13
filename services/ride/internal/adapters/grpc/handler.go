@@ -3,13 +3,19 @@ package grpc
 import (
 	"context"
 
+	"github.com/google/uuid"
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/validator"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/grains"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
-	ridePorts "github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
+	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -18,11 +24,11 @@ import (
 type RideHandler struct {
 	ridev1.UnimplementedRideServiceServer
 	application   *app.Application
-	storageBundle ridePorts.StorageBundle
+	storageBundle ports.StorageBundle
 	grainSystem   *app.GrainSystem
 }
 
-func NewRideHandler(application *app.Application, storageBundle ridePorts.StorageBundle, grainSystem *app.GrainSystem) *RideHandler {
+func NewRideHandler(application *app.Application, storageBundle ports.StorageBundle, grainSystem *app.GrainSystem) *RideHandler {
 	return &RideHandler{application: application, storageBundle: storageBundle, grainSystem: grainSystem}
 }
 
@@ -34,8 +40,8 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 
 	query := &commands.EstimateFareCommand{
 		RequestID:       info.Trace.RequestID,
-		PickupLocation:  req.PickupLocation,
-		DropoffLocation: req.DropoffLocation,
+		PickupLocation:  req.GetPickupLocation(),
+		DropoffLocation: req.GetDropoffLocation(),
 		CountryCode:     info.Location.CountryCode,
 		RiderID:         info.User.ID,
 	}
@@ -71,8 +77,8 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 	}
 
 	cmd := commands.RequestRide{
-		FareID:      req.FareId,
-		ServiceType: req.ServiceType,
+		FareID:      req.GetFareId(),
+		ServiceType: req.GetServiceType(),
 		RiderID:     info.User.ID,
 		RequestID:   info.Trace.RequestID,
 	}
@@ -87,41 +93,120 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 }
 
 func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.CancelRide{
-		RideID: req.RideId,
-	}
-	if err := h.application.Commands.CancelRide.Handle(ctx, cmd); err != nil {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
 		return nil, err
 	}
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.CancelRideCommand{
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+		RiderID:   uuid.MustParse(info.User.ID),
+		RideID:    uuid.MustParse(req.GetRideId()),
+	}
+
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.AcceptOrRejectRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.AcceptOrRejectRide{
-		RideID: req.RideId,
-		Accept: req.Accept,
-	}
-	if err := h.application.Commands.AcceptOrRejectRide.Handle(ctx, cmd); err != nil {
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
 		return nil, err
 	}
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	rideID := uuid.MustParse(req.GetRideId())
+	driverID := uuid.MustParse(info.User.ID)
+	requestID := uuid.MustParse(info.Trace.RequestID)
+	var cmd pkgPorts.Command
+	if req.GetAccept() {
+		cmd = &grains.AcceptRideCommand{
+			RequestID: requestID,
+			DriverID:  driverID,
+			RideID:    rideID,
+		}
+	} else {
+		cmd = &grains.RejectRideCommand{
+			RequestID: requestID,
+			DriverID:  driverID,
+			RideID:    rideID,
+		}
+	}
+
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, rideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) StartRide(ctx context.Context, req *ridev1.StartRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.StartRide{
-		RideID: req.RideId,
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if err := h.application.Commands.StartRide.Handle(ctx, cmd); err != nil {
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.StartRideCommand{
+		RideID:    uuid.MustParse(req.GetRideId()),
+		DriverID:  uuid.MustParse(info.User.ID),
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+	}
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (h *RideHandler) CompleteRide(ctx context.Context, req *ridev1.CompleteRideRequest) (*emptypb.Empty, error) {
-	cmd := commands.CompleteRide{
-		RideID: req.RideId,
+	info, err := h.getInfoFromMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if err := h.application.Commands.CompleteRide.Handle(ctx, cmd); err != nil {
+
+	val := validator.New()
+	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
+	cmd := &grains.CompleteRideCommand{
+		RideID:    uuid.MustParse(req.GetRideId()),
+		DriverID:  uuid.MustParse(info.User.ID),
+		RequestID: uuid.MustParse(info.Trace.RequestID),
+	}
+	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+
+	_, err = h.grainSystem.Silo().Ask(ctx, identity, cmd)
+	if err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -164,7 +249,7 @@ func (h *RideHandler) UpdateFareRate(ctx context.Context, req *ridev1.FareRate) 
 func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestInfo, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
-		h.application.Logger.Info("Received metadata: %v", md)
+		h.application.Logger.Info("Received metadata: %v", "metadata", md)
 	}
 
 	info, ok := h.application.ContextManager.Extract(ctx)

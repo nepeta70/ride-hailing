@@ -15,7 +15,7 @@ const (
 	RideStatusRequested RideStatus = "REQUESTED"
 	RideStatusAccepted  RideStatus = "ACCEPTED"
 	RideStatusCancelled RideStatus = "CANCELLED"
-	RideStatusOngoing   RideStatus = "ONGOING"
+	RideStatusStarted   RideStatus = "STARTED"
 	RideStatusCompleted RideStatus = "COMPLETED"
 )
 

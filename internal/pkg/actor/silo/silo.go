@@ -24,6 +24,16 @@ type SiloOptions struct {
 	Logger  ports.Logger
 }
 
+func (opts *SiloOptions) Validate() error {
+	if opts.Timeout <= 0 {
+		return errors.NewValidationErrorf("timeout must be greater than zero")
+	}
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	return nil
+}
+
 // Silo is the in-memory silo/cluster that hosts and manages grains
 // Similar to Orleans silo - handles activation, deactivation, message routing
 type Silo struct {
@@ -34,13 +44,16 @@ type Silo struct {
 	logger      ports.Logger
 }
 
-func NewSilo(opts *SiloOptions) *Silo {
+func NewSilo(opts *SiloOptions) (*Silo, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
 	strategy := retry.NewExponentialBackoffRetrierWithTimeout(opts.Timeout, opts.Logger)
 	return &Silo{
 		timeout: opts.Timeout,
 		logger:  opts.Logger,
 		retrier: strategy,
-	}
+	}, nil
 }
 
 // RegisterFactory registers a grain factory for a given kind

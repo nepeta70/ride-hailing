@@ -14,8 +14,11 @@ type redisCache struct {
 	client *redis.Client
 }
 
-func NewCacheService(client *redis.Client) ports.CacheService {
-	return &redisCache{client: client}
+func NewCacheService(client *redis.Client) (ports.CacheService, error) {
+	if client == nil {
+		return nil, errors.NewValidationErrorf("redis client is required")
+	}
+	return &redisCache{client: client}, nil
 }
 
 func (s *redisCache) GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error {

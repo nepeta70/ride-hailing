@@ -47,6 +47,7 @@ func (c *RequestRide) Validate() error {
 
 type RequestRideHandler struct {
 	fareReadRepo         ports.FareReadRepository
+	serviceTypeCache     ports.ServiceTypeCacheInterface
 	silo                 pkgPorts.Silo
 	grainIdentityFactory *service.GrainIdentityFactory
 	logger               pkgPorts.Logger
@@ -57,6 +58,7 @@ func NewRequestRideHandler(config *config.Config, storage ports.StorageBundle, g
 		fareReadRepo:         storage.FareReadRepo(),
 		silo:                 grainSystem.Silo(),
 		grainIdentityFactory: grainSystem.GrainIdentityFactory(),
+		serviceTypeCache:     storage.ServiceTypeCache(),
 		logger:               logger,
 	}
 }
@@ -80,7 +82,12 @@ func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*grai
 	if fare == nil {
 		return nil, errors.NewErrNotFound("fare not found")
 	}
-	// TODO: servicetype validation
+
+	_, ok := h.serviceTypeCache.GetServiceTypeByCode(ctx, cmd.ServiceType)
+	if !ok {
+		return nil, errors.NewErrNotFound("service type not found")
+	}
+
 	riderId := uuid.MustParse(cmd.RiderID)
 	requestId := uuid.MustParse(cmd.RequestID)
 	identity := h.grainIdentityFactory.NewRideGrainIdentity(riderId, requestId, fareID)
@@ -90,7 +97,7 @@ func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*grai
 		PickupLocation:  fare.PickupLocation,
 		DropoffLocation: fare.DropoffLocation,
 		ServiceType:     cmd.ServiceType,
-		Fare:            fare.Fares[cmd.ServiceType], // TODO: validate it
+		Fare:            fare.Fares[cmd.ServiceType],
 		Currency:        fare.Currency,
 	}
 

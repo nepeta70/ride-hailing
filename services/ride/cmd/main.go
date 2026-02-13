@@ -67,14 +67,18 @@ func main() {
 		googleMaps = nil // Set to nil to allow service to degrade gracefully
 	}
 
-	grainSystem := app.NewGrainSystem(&app.GrainSystemOptions{
+	grainSystem, err := app.NewGrainSystem(&app.GrainSystemOptions{
 		Topic:          contracts.TopicRide,
 		GrainTimeout:   cfg.Timeouts.RequestTimeout,
 		Storage:        storage.GrainStorage(),
 		EventPublisher: nil, // TODO: Initialize an actual event publisher here
 		Logger:         logger,
 	})
-	application := app.NewApplication(&app.ApplicationOptions{
+	if err != nil {
+		logger.Error("Failed to create grain system: %v", "error", err)
+		return
+	}
+	application, err := app.NewApplication(&app.ApplicationOptions{
 		Config:            cfg,
 		Logger:            logger,
 		DirectionsService: googleMaps,
@@ -82,6 +86,10 @@ func main() {
 		GrainSystem:       grainSystem,
 		ContextManager:    ctxmgr.NewContextManager(),
 	})
+	if err != nil {
+		logger.Error("Failed to create application: %v", "error", err)
+		return
+	}
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 

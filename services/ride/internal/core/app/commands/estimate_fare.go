@@ -76,7 +76,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	country, exists := h.countryCache.GetCountryByCode(ctx, query.CountryCode)
 	if !exists {
-		h.logger.Error("country not found: %s", query.CountryCode)
+		h.logger.Error("country not found", "country_code", query.CountryCode)
 		return nil, errors.NewErrNotFound("country not found")
 	}
 
@@ -87,13 +87,13 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	n := len(fareRates)
 	if n == 0 {
-		h.logger.Error("no fare rates found for country: %s", query.CountryCode)
+		h.logger.Error("no fare rates found for country", "country_code", query.CountryCode)
 		return nil, errors.NewErrNotFound("no fare rates found for country")
 	}
 
 	directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 	if err != nil {
-		h.logger.Error("failed to get directions: %v", err)
+		h.logger.Error("failed to get directions", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
 	}
 
@@ -118,7 +118,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	err = h.storage.FareWriteRepo().Save(ctx, record)
 	if err != nil {
-		h.logger.Error("failed to save fare estimate: %v", err)
+		h.logger.Error("failed to save fare estimate", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to save fare estimate: %w", err)
 	}
 	return record, nil

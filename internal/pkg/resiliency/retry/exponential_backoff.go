@@ -10,10 +10,10 @@ import (
 
 // ExponentialBackoff implements exponential backoff with jitter
 type ExponentialBackoff struct {
-	config RetryConfig
+	config *RetryConfig
 }
 
-func NewExponentialBackoff(cfg RetryConfig) *ExponentialBackoff {
+func NewExponentialBackoff(cfg *RetryConfig) *ExponentialBackoff {
 	return &ExponentialBackoff{config: cfg}
 }
 
@@ -41,5 +41,13 @@ func (e *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 
 func NewExponentialBackoffRetrierWithTimeout(timeout time.Duration, logger ports.Logger) *Retrier {
 	cfg := NewRetryConfig(timeout)
-	return NewRetrier(cfg, NewExponentialBackoff(cfg), logger)
+	opts := &RetryOptions{
+		Config:   cfg,
+		Strategy: NewExponentialBackoff(cfg),
+		Logger:   logger,
+	}
+
+	return NewRetrier(opts)
 }
+
+var _ RetryStrategy = (*ExponentialBackoff)(nil)

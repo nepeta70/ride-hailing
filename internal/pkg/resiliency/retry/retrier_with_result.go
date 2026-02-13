@@ -2,19 +2,16 @@ package retry
 
 import (
 	"context"
-
-	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type RetrierWithResult[T any] struct {
 	baseRetrier
 }
 
-func NewRetrierWithResult[T any](cfg RetryConfig, strategy RetryStrategy, logger ports.Logger) *RetrierWithResult[T] {
+func NewRetrierWithResult[T any](opts *RetryOptions) *RetrierWithResult[T] {
 	return &RetrierWithResult[T]{
-
 		baseRetrier: baseRetrier{
-			config: cfg,
+			config: opts.Config,
 		},
 	}
 }

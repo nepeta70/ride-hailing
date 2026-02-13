@@ -11,7 +11,7 @@ import (
 
 type baseRetrier struct {
 	strategy RetryStrategy
-	config   RetryConfig
+	config   *RetryConfig
 	logger   ports.Logger
 }
 
@@ -48,23 +48,24 @@ func (r *baseRetrier) DoWithResult(ctx context.Context, op func() (any, error)) 
 	var lastErr error
 
 	for attempt := 1; ; attempt++ {
+		r.logger.Debug("Attempt for operation", "attempt", attempt)
 		result, lastErr = op()
 		if lastErr == nil {
 			if attempt > 1 {
-				r.logger.Info("operation succeeded after %d attempts", attempt)
+				r.logger.Info("operation succeeded after", "attempts", attempt)
 			}
 			return result, nil
 		}
 
 		if !r.shouldRetry(lastErr, attempt) {
 			if attempt > 1 {
-				r.logger.Warn("operation failed after %d attempts: %v", attempt, lastErr)
+				r.logger.Warn("operation failed after", "attempts", attempt, "error", lastErr)
 			}
 			return result, lastErr
 		}
 
 		delay := r.strategy.NextDelay(attempt)
-		r.logger.Warn("operation failed on attempt %d: %v. Retrying in %s...", attempt, lastErr, delay)
+		r.logger.Warn("operation failed on attempt", "attempt", attempt, "error", lastErr, "retry_in", delay)
 
 		timer := time.NewTimer(delay)
 		select {
