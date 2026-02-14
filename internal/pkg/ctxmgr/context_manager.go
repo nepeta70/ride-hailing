@@ -1,6 +1,10 @@
 package ctxmgr
 
-import "context"
+import (
+	"context"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+)
 
 type RequestInfo struct {
 	User     UserSession
@@ -11,7 +15,7 @@ type RequestInfo struct {
 
 type UserSession struct {
 	ID   string
-	Role string // rider, driver, admin
+	Role enums.UserRole // rider, driver, admin
 }
 
 type TraceInfo struct {

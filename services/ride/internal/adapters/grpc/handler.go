@@ -16,7 +16,6 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -99,7 +98,7 @@ func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequ
 	}
 
 	val := validator.New()
-	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	val.StringField("ride_id", req.GetRideId()).Required().IsUUID()
 	if val.HasErrors() {
 		return nil, val.Errors()
 	}
@@ -127,7 +126,7 @@ func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.Accept
 	}
 
 	val := validator.New()
-	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	val.StringField("ride_id", req.GetRideId()).Required().IsUUID()
 	if val.HasErrors() {
 		return nil, val.Errors()
 	}
@@ -247,11 +246,6 @@ func (h *RideHandler) UpdateFareRate(ctx context.Context, req *ridev1.FareRate) 
 }
 
 func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestInfo, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		h.application.Logger.Info("Received metadata: %v", "metadata", md)
-	}
-
 	info, ok := h.application.ContextManager.Extract(ctx)
 
 	if !ok {
