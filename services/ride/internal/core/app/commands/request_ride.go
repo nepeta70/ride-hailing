@@ -14,29 +14,15 @@ import (
 )
 
 type RequestRide struct {
-	FareID      string
-	RiderID     string
-	RequestID   string
+	FareID      uuid.UUID
+	RiderID     uuid.UUID
+	RequestID   uuid.UUID
 	ServiceType string
 }
 
 func (c *RequestRide) Validate() error {
-	err := uuid.Validate(c.RiderID)
-	if err != nil {
-		return errors.NewValidationErrorf("invalid rider ID format")
-	}
-
-	if c.FareID == "" {
-		return errors.NewValidationErrorf("request information is incomplete")
-	}
-	err = uuid.Validate(c.FareID)
-	if err != nil {
+	if c.FareID == uuid.Nil {
 		return errors.NewValidationErrorf("invalid fare ID format")
-	}
-
-	err = uuid.Validate(c.RequestID)
-	if err != nil {
-		return errors.NewValidationErrorf("invalid request ID format")
 	}
 
 	if c.ServiceType == "" {
@@ -73,8 +59,7 @@ func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*grai
 		return nil, err
 	}
 
-	fareID := uuid.MustParse(cmd.FareID)
-	fare, err := h.fareReadRepo.GetByID(ctx, fareID)
+	fare, err := h.fareReadRepo.GetByID(ctx, cmd.FareID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,12 +73,10 @@ func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*grai
 		return nil, errors.NewErrNotFound("service type not found")
 	}
 
-	riderId := uuid.MustParse(cmd.RiderID)
-	requestId := uuid.MustParse(cmd.RequestID)
-	identity := h.grainIdentityFactory.NewRideGrainIdentity(riderId, requestId, fareID)
+	identity := h.grainIdentityFactory.NewRideGrainIdentity(cmd.RiderID, cmd.RequestID, cmd.FareID)
 	command := &grains.RequestRideCommand{
-		RequestID:       requestId,
-		RiderID:         riderId,
+		RequestID:       cmd.RequestID,
+		RiderID:         cmd.RiderID,
 		PickupLocation:  fare.PickupLocation,
 		DropoffLocation: fare.DropoffLocation,
 		ServiceType:     cmd.ServiceType,

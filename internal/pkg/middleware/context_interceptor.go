@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
@@ -28,8 +29,8 @@ func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, lo
 			return nil, status.Error(codes.Unauthenticated, "invalid api key")
 		}
 
-		userID := getMetadata(md, "user-id")
-		if userID == "" {
+		userID := getUUIDMetadata(md, "user-id")
+		if userID == uuid.Nil {
 			return nil, status.Error(codes.Unauthenticated, "missing user ID")
 		}
 
@@ -38,8 +39,8 @@ func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, lo
 			return nil, status.Error(codes.Unauthenticated, "invalid user role")
 		}
 
-		requestID := getMetadata(md, "x-request-id")
-		if requestID == "" {
+		requestID := getUUIDMetadata(md, "x-request-id")
+		if requestID == uuid.Nil {
 			return nil, status.Error(codes.Unauthenticated, "missing request ID")
 		}
 

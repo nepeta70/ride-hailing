@@ -3,6 +3,7 @@ package ctxmgr
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 )
 
@@ -14,12 +15,12 @@ type RequestInfo struct {
 }
 
 type UserSession struct {
-	ID   string
+	ID   uuid.UUID
 	Role enums.UserRole // rider, driver, admin
 }
 
 type TraceInfo struct {
-	RequestID  string
+	RequestID  uuid.UUID
 	Origin     string
 	Timestamp  string
 	RetryCount int

@@ -13,16 +13,15 @@ import (
 )
 
 type EstimateFareCommand struct {
-	RiderID         string
-	RequestID       string
+	RiderID         uuid.UUID
+	RequestID       uuid.UUID
 	PickupLocation  string
 	DropoffLocation string
 	CountryCode     string
 }
 
 func (q *EstimateFareCommand) Validate() error {
-	err := uuid.Validate(q.RiderID)
-	if err != nil {
+	if q.RiderID == uuid.Nil {
 		return errors.NewValidationErrorf("invalid rider ID format")
 	}
 
@@ -32,8 +31,7 @@ func (q *EstimateFareCommand) Validate() error {
 	if q.PickupLocation == q.DropoffLocation {
 		return errors.NewValidationErrorf("pickup and dropoff locations cannot be the same")
 	}
-	err = uuid.Validate(q.RequestID)
-	if err != nil {
+	if q.RequestID == uuid.Nil {
 		return errors.NewValidationErrorf("invalid request ID format")
 	}
 	return nil
@@ -67,9 +65,8 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 		return nil, err
 	}
 
-	requestID := uuid.MustParse(query.RequestID)
 	// Idempotent check - if fare estimate already exists for this request, return it
-	f, err := h.storage.FareReadRepo().GetByID(ctx, requestID)
+	f, err := h.storage.FareReadRepo().GetByID(ctx, query.RequestID)
 	if f != nil {
 		return f, nil
 	}
@@ -105,7 +102,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 	}
 
 	record := &domain.Fares{
-		ID:                       requestID,
+		ID:                       query.RequestID,
 		RequestID:                query.RequestID,
 		PickupLocation:           query.PickupLocation,
 		DropoffLocation:          query.DropoffLocation,

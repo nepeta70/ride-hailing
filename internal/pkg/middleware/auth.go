@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func APIKeyInterceptor(endpointRoles ports.EndpointRoles, ctxMgr *ctxmgr.ContextManager) grpc.UnaryServerInterceptor {
+func RoleBasedAccessInterceptor(endpointRoles ports.EndpointRoles, ctxMgr *ctxmgr.ContextManager) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		contextInfo, ok := ctxMgr.Extract(ctx)
 		if !ok {

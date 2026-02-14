@@ -49,6 +49,7 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 	interceptors := []grpc.UnaryServerInterceptor{
 		UnaryServerLogging(opts.Logger),
 		ContextInterceptor(opts.ContextManager, opts.Config, opts.Logger),
+		RoleBasedAccessInterceptor(opts.AuthConfiguration, opts.ContextManager),
 		UnaryTimeout(opts.Config.Server.WriteTimeout),
 		UnaryRateLimit(rate.Limit(opts.Config.Security.RateLimit), opts.Config.Security.RateBurst),
 	}
