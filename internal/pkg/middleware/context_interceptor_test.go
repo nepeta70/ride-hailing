@@ -1,0 +1,114 @@
+package middleware_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
+	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+)
+
+func TestContextInterceptor(t *testing.T) {
+	// Setup dependencies
+	cfg := &config.BaseConfig{APIKey: "test-secret"}
+	cm := ctxmgr.NewContextManager()
+	logger := &mocks.MockLogger{}
+
+	validUserID := uuid.New().String()
+	validReqID := uuid.New().String()
+
+	tests := []struct {
+		name         string
+		md           metadata.MD
+		expectedCode codes.Code
+		expectedRole enums.UserRole
+	}{
+		{
+			name: "Success - Full valid metadata",
+			md: metadata.New(map[string]string{
+				"x-api-key":      "test-secret",
+				"user-id":        validUserID,
+				"user-role":      "rider",
+				"x-request-id":   validReqID,
+				"x-country-code": "ES",
+			}),
+			expectedCode: codes.OK,
+			expectedRole: enums.UserRole("rider"),
+		},
+		{
+			name: "Failure - Invalid API Key",
+			md: metadata.New(map[string]string{
+				"x-api-key": "wrong-key",
+			}),
+			expectedCode: codes.Unauthenticated,
+		},
+		{
+			name: "Failure - Missing User ID",
+			md: metadata.New(map[string]string{
+				"x-api-key":    "test-secret",
+				"user-role":    "rider",
+				"x-request-id": validReqID,
+			}),
+			expectedCode: codes.Unauthenticated,
+		},
+		{
+			name: "Failure - Invalid User Role",
+			md: metadata.New(map[string]string{
+				"x-api-key":    "test-secret",
+				"user-id":      validUserID,
+				"user-role":    "invalid-role",
+				"x-request-id": validReqID,
+			}),
+			expectedCode: codes.Unauthenticated,
+		},
+		{
+			name: "Failure - Missing Request ID",
+			md: metadata.New(map[string]string{
+				"x-api-key": "test-secret",
+				"user-id":   validUserID,
+				"user-role": "rider",
+			}),
+			expectedCode: codes.Unauthenticated,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create context with metadata
+			ctx := metadata.NewIncomingContext(context.Background(), tt.md)
+
+			// Mock gRPC handler
+			handler := func(currentCtx context.Context, req any) (any, error) {
+				// For success cases, verify the context was actually injected
+				if tt.expectedCode == codes.OK {
+					rInfo, ok := cm.Extract(currentCtx)
+					assert.True(t, ok)
+					assert.Equal(t, tt.expectedRole, rInfo.User.Role)
+					assert.Equal(t, validUserID, rInfo.User.ID.String())
+				}
+				return "resp", nil
+			}
+
+			// Execute Interceptor
+			interceptor := ContextInterceptor(cm, cfg, logger)
+			_, err := interceptor(ctx, nil, &grpc.UnaryServerInfo{}, handler)
+
+			if tt.expectedCode == codes.OK {
+				assert.NoError(t, err)
+			} else {
+				st, ok := status.FromError(err)
+				assert.True(t, ok)
+				assert.Equal(t, tt.expectedCode, st.Code())
+			}
+		})
+	}
+}

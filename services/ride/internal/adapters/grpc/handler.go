@@ -16,7 +16,6 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/queries"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -76,8 +75,14 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 		return nil, err
 	}
 
+	val := validator.New()
+	val.StringField("fare_id", req.GetFareId()).Required().IsUUID()
+	if val.HasErrors() {
+		return nil, val.Errors()
+	}
+
 	cmd := commands.RequestRide{
-		FareID:      req.GetFareId(),
+		FareID:      uuid.MustParse(req.GetFareId()),
 		ServiceType: req.GetServiceType(),
 		RiderID:     info.User.ID,
 		RequestID:   info.Trace.RequestID,
@@ -99,14 +104,14 @@ func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequ
 	}
 
 	val := validator.New()
-	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	val.StringField("ride_id", req.GetRideId()).Required().IsUUID()
 	if val.HasErrors() {
 		return nil, val.Errors()
 	}
 
 	cmd := &grains.CancelRideCommand{
-		RequestID: uuid.MustParse(info.Trace.RequestID),
-		RiderID:   uuid.MustParse(info.User.ID),
+		RequestID: info.Trace.RequestID,
+		RiderID:   info.User.ID,
 		RideID:    uuid.MustParse(req.GetRideId()),
 	}
 
@@ -127,25 +132,24 @@ func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.Accept
 	}
 
 	val := validator.New()
-	val.StringField("ride-id", req.GetRideId()).Required().IsUUID()
+	val.StringField("ride_id", req.GetRideId()).Required().IsUUID()
 	if val.HasErrors() {
 		return nil, val.Errors()
 	}
 
 	rideID := uuid.MustParse(req.GetRideId())
-	driverID := uuid.MustParse(info.User.ID)
-	requestID := uuid.MustParse(info.Trace.RequestID)
+
 	var cmd pkgPorts.Command
 	if req.GetAccept() {
 		cmd = &grains.AcceptRideCommand{
-			RequestID: requestID,
-			DriverID:  driverID,
+			RequestID: info.Trace.RequestID,
+			DriverID:  info.User.ID,
 			RideID:    rideID,
 		}
 	} else {
 		cmd = &grains.RejectRideCommand{
-			RequestID: requestID,
-			DriverID:  driverID,
+			RequestID: info.Trace.RequestID,
+			DriverID:  info.User.ID,
 			RideID:    rideID,
 		}
 	}
@@ -174,8 +178,8 @@ func (h *RideHandler) StartRide(ctx context.Context, req *ridev1.StartRideReques
 
 	cmd := &grains.StartRideCommand{
 		RideID:    uuid.MustParse(req.GetRideId()),
-		DriverID:  uuid.MustParse(info.User.ID),
-		RequestID: uuid.MustParse(info.Trace.RequestID),
+		DriverID:  info.User.ID,
+		RequestID: info.Trace.RequestID,
 	}
 	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
 
@@ -200,8 +204,8 @@ func (h *RideHandler) CompleteRide(ctx context.Context, req *ridev1.CompleteRide
 
 	cmd := &grains.CompleteRideCommand{
 		RideID:    uuid.MustParse(req.GetRideId()),
-		DriverID:  uuid.MustParse(info.User.ID),
-		RequestID: uuid.MustParse(info.Trace.RequestID),
+		DriverID:  info.User.ID,
+		RequestID: info.Trace.RequestID,
 	}
 	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
 
@@ -247,11 +251,6 @@ func (h *RideHandler) UpdateFareRate(ctx context.Context, req *ridev1.FareRate) 
 }
 
 func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestInfo, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		h.application.Logger.Info("Received metadata: %v", "metadata", md)
-	}
-
 	info, ok := h.application.ContextManager.Extract(ctx)
 
 	if !ok {

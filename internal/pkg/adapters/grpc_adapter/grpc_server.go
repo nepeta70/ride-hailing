@@ -2,12 +2,14 @@ package grpc_adapter
 
 import (
 	"context"
+
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"google.golang.org/grpc"
@@ -15,6 +17,34 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
+
+type GRPGAdapterOptions struct {
+	ServiceName            string
+	Config                 *config.BaseConfig
+	Logger                 ports.Logger
+	ContextManager         *ctxmgr.ContextManager
+	AuthConfiguration      ports.EndpointRoles
+	AdditionalInterceptors []grpc.UnaryServerInterceptor
+}
+
+func (opts *GRPGAdapterOptions) Validate() error {
+	if opts.ServiceName == "" {
+		return errors.NewValidationErrorf("service name is required")
+	}
+	if opts.Config == nil {
+		return errors.NewValidationErrorf("config is required")
+	}
+	if opts.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	if opts.ContextManager == nil {
+		return errors.NewValidationErrorf("context manager is required")
+	}
+	if opts.AuthConfiguration == nil {
+		return errors.NewValidationErrorf("auth configuration is required")
+	}
+	return nil
+}
 
 type GRPCAdapter struct {
 	Server        *grpc.Server
@@ -26,38 +56,54 @@ type GRPCAdapter struct {
 	serviceName   string
 }
 
-func NewGRPCAdapter(serviceName string, cfg *config.BaseConfig, logger ports.Logger) GRPCAdapter {
-	grpcAddr := ":" + strconv.Itoa(cfg.Server.Port)
+func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
+	if err := opts.Validate(); err != nil {
+		opts.Logger.Error("FATAL: failed to create GRPC adapter", "error", err)
+		return nil, err
+	}
+	grpcAddr := ":" + strconv.Itoa(opts.Config.Server.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		logger.Error("failed to listen: %v", "error", err)
+		opts.Logger.Error("failed to listen: %v", "error", err)
+		return nil, err
 	}
-	maxMsgSize := int(cfg.Security.MaxBodyBytes)
 
-	contextManager := ctxmgr.NewContextManager()
+	filteredChainOpts := &middleware.FilteredChainOpts{
+		Config:                 opts.Config,
+		Logger:                 opts.Logger,
+		ContextManager:         opts.ContextManager,
+		AuthConfiguration:      opts.AuthConfiguration,
+		AdditionalInterceptors: opts.AdditionalInterceptors,
+	}
+	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
+	if err != nil {
+		opts.Logger.Error("CRITICAL: failed to create interceptor chain", "error", err)
+		return nil, err
+	}
 
+	maxMsgSize := int(opts.Config.Security.MaxBodyBytes)
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(maxMsgSize),
 		grpc.MaxSendMsgSize(maxMsgSize),
-		grpc.ChainUnaryInterceptor(middleware.FilteredChain(cfg, logger, contextManager)),
+		grpc.ChainUnaryInterceptor(filteredChain.FilteredChain()),
 	)
 
 	healthService := health.NewServer()
 	healthpb.RegisterHealthServer(grpcServer, healthService)
 
-	return GRPCAdapter{
+	return &GRPCAdapter{
 		Server:        grpcServer,
 		Listener:      lis,
 		HealthService: healthService,
 		Address:       grpcAddr,
-		logger:        logger,
-		config:        cfg,
-		serviceName:   serviceName,
-	}
+		logger:        opts.Logger,
+		config:        opts.Config,
+		serviceName:   opts.ServiceName,
+	}, nil
 }
 
 func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.HealthProvider) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(10 * time.Second) // TODO: move to config
 
 	go func() {
 		defer ticker.Stop()

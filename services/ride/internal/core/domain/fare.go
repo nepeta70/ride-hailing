@@ -7,7 +7,7 @@ import (
 )
 
 type Fares struct {
-	RequestID                string
+	RequestID                uuid.UUID
 	ID                       uuid.UUID
 	PickupLocation           string
 	DropoffLocation          string

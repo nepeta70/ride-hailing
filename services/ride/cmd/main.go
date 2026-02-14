@@ -35,13 +35,14 @@ func main() {
 
 	redisClient, err := rd.NewClient(&cfg.Redis, logger)
 	if err != nil {
-		logger.Error("failed to init redis: %v", "error", err)
+		logger.Error("Failed to init Redis:", "error", err)
+		return
 	}
 	defer redisClient.Close()
 
 	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, logger)
 	if err != nil {
-		logger.Error("Failed to create Postgres DB: %v", "PostgresDB", err)
+		logger.Error("Failed to create Postgres DB:", "error", err)
 		return
 	}
 
@@ -52,7 +53,7 @@ func main() {
 		Logger:   logger,
 	})
 	if err != nil {
-		logger.Error("Failed to create storage adapter: %v", "StorageAdapter", err)
+		logger.Error("Failed to create storage adapter:", "error", err)
 		return
 	}
 	defer storage.Close()
@@ -63,7 +64,7 @@ func main() {
 		Logger:          logger,
 	})
 	if err != nil {
-		logger.Error("Failed to create Google Maps adapter: %v", "GoogleMapsAdapter", err)
+		logger.Error("Failed to create Google Maps adapter:", "error", err)
 		googleMaps = nil // Set to nil to allow service to degrade gracefully
 	}
 
@@ -75,7 +76,7 @@ func main() {
 		Logger:         logger,
 	})
 	if err != nil {
-		logger.Error("Failed to create grain system: %v", "error", err)
+		logger.Error("Failed to create grain system:", "error", err)
 		return
 	}
 	application, err := app.NewApplication(&app.ApplicationOptions{
@@ -87,13 +88,24 @@ func main() {
 		ContextManager:    ctxmgr.NewContextManager(),
 	})
 	if err != nil {
-		logger.Error("Failed to create application: %v", "error", err)
+		logger.Error("Failed to create application:", "error", err)
 		return
 	}
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 
-	grpcServer := grpc_adapter.NewGRPCAdapter("Ride Service", &cfg.BaseConfig, logger)
+	opts := &grpc_adapter.GRPGAdapterOptions{
+		ServiceName:       "Ride Service",
+		Config:            &cfg.BaseConfig,
+		Logger:            logger,
+		ContextManager:    ctxmgr.NewContextManager(),
+		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
+	}
+	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
+	if err != nil {
+		logger.Error("Failed to create gRPC adapter:", "error", err)
+		return
+	}
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
 	grpcServer.MonitorHealth(ctx, redisClient, pg)
