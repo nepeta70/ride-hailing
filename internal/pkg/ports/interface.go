@@ -49,3 +49,7 @@ type TopicProvider interface {
 	AllTopics() []string
 	GetTopicForEvent(eventType string) (string, error)
 }
+
+type RetryObserver interface {
+	ObserveRetry(attempt int, err error, delay time.Duration)
+}

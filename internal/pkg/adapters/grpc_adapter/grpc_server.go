@@ -74,6 +74,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		ContextManager:         opts.ContextManager,
 		AuthConfiguration:      opts.AuthConfiguration,
 		AdditionalInterceptors: opts.AdditionalInterceptors,
+		
 	}
 	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
 	if err != nil {

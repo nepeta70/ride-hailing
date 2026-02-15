@@ -8,16 +8,18 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
-func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, logger ports.Logger) grpc.UnaryServerInterceptor {
+func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, logger ports.Logger, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
+			metrics.AuthFailure(info.FullMethod, "missing_metadata")
 			return nil, status.Error(codes.Unauthenticated, "missing metadata")
 		}
 
@@ -26,21 +28,25 @@ func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, lo
 		// 1. Security Check (Fail Fast)
 		apiKey := getMetadata(md, "x-api-key")
 		if apiKey != config.APIKey {
+			metrics.AuthFailure(info.FullMethod, "invalid_api_key")
 			return nil, status.Error(codes.Unauthenticated, "invalid api key")
 		}
 
 		userID := getUUIDMetadata(md, "user-id")
 		if userID == uuid.Nil {
+			metrics.AuthFailure(info.FullMethod, "missing_user_id")
 			return nil, status.Error(codes.Unauthenticated, "missing user ID")
 		}
 
 		userRole := getMetadata(md, "user-role")
 		if !enums.UserRole(userRole).IsValid() {
+			metrics.AuthFailure(info.FullMethod, "invalid_role")
 			return nil, status.Error(codes.Unauthenticated, "invalid user role")
 		}
 
 		requestID := getUUIDMetadata(md, "x-request-id")
 		if requestID == uuid.Nil {
+			metrics.AuthFailure(info.FullMethod, "missing_request_id")
 			return nil, status.Error(codes.Unauthenticated, "missing request ID")
 		}
 

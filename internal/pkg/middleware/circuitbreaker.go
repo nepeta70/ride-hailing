@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 )
 
-func UnaryCircuitBreaker(cb *circuitbreaker.CircuitBreaker) grpc.UnaryServerInterceptor {
+func UnaryCircuitBreaker(cb *circuitbreaker.CircuitBreaker, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -23,8 +24,22 @@ func UnaryCircuitBreaker(cb *circuitbreaker.CircuitBreaker) grpc.UnaryServerInte
 			return err
 		})
 
-		// If Execute returns an error, it could be from the handler
-		// OR a circuit breaker error (ErrCircuitOpen / ErrTooManyRequests)
+		// Check if the error returned came from the CB logic itself
+		if err != nil {
+			switch err {
+			case circuitbreaker.ErrCircuitOpen:
+				metrics.CircuitBreakerError(info.FullMethod, "circuit_open")
+
+			case circuitbreaker.ErrTooManyRequests:
+				metrics.CircuitBreakerError(info.FullMethod, "half_open_limit")
+
+			case circuitbreaker.ErrPanicRecovered:
+				metrics.CircuitBreakerError(info.FullMethod, "panic_recovered")
+
+			default:
+			}
+		}
+
 		return resp, err
 	}
 }

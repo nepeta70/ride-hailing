@@ -6,13 +6,17 @@ import (
 	"time"
 
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestUnaryRateLimit_Table(t *testing.T) {
+	metrics := &mocks.MockMetrics{}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
 	tests := []struct {
 		name     string
 		setup    func() (mw func(context.Context, any, *struct{}, func(context.Context, any) (any, error)) (any, error), handler func(context.Context, any) (any, error))
@@ -23,12 +27,12 @@ func TestUnaryRateLimit_Table(t *testing.T) {
 		{
 			name: "allow",
 			setup: func() (func(context.Context, any, *struct{}, func(context.Context, any) (any, error)) (any, error), func(context.Context, any) (any, error)) {
-				mw := UnaryRateLimit(rate.Every(time.Second), 1)
+				mw := UnaryRateLimit(rate.Every(time.Second), 1, metrics)
 				handler := func(ctx context.Context, req any) (any, error) {
 					return "allowed", nil
 				}
 				return func(ctx context.Context, req any, _ *struct{}, h func(context.Context, any) (any, error)) (any, error) {
-					return mw(ctx, req, nil, h)
+					return mw(ctx, req, info, h)
 				}, handler
 			},
 			wantResp: "allowed",
@@ -38,14 +42,14 @@ func TestUnaryRateLimit_Table(t *testing.T) {
 		{
 			name: "exceed",
 			setup: func() (func(context.Context, any, *struct{}, func(context.Context, any) (any, error)) (any, error), func(context.Context, any) (any, error)) {
-				mw := UnaryRateLimit(rate.Every(time.Second), 1)
+				mw := UnaryRateLimit(rate.Every(time.Second), 1, metrics)
 				handler := func(ctx context.Context, req any) (any, error) {
 					return "should not run", nil
 				}
 				// First call to fill the token bucket
-				_, _ = mw(context.Background(), nil, nil, handler)
+				_, _ = mw(context.Background(), nil, info, handler)
 				return func(ctx context.Context, req any, _ *struct{}, h func(context.Context, any) (any, error)) (any, error) {
-					return mw(ctx, req, nil, h)
+					return mw(ctx, req, info, h)
 				}, handler
 			},
 			wantResp: nil,

@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func UnaryTimeout(timeout time.Duration) grpc.UnaryServerInterceptor {
+func UnaryTimeout(timeout time.Duration, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -32,6 +33,7 @@ func UnaryTimeout(timeout time.Duration) grpc.UnaryServerInterceptor {
 
 		select {
 		case <-ctx.Done():
+			metrics.RequestTimeout(info.FullMethod)
 			return nil, status.Error(codes.DeadlineExceeded, "request timed out")
 		case err := <-errChan:
 			return <-respChan, err

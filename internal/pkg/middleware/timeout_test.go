@@ -7,12 +7,16 @@ import (
 	"time"
 
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestUnaryTimeout_Table(t *testing.T) {
+	metrics := &mocks.MockMetrics{}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
 	tests := []struct {
 		name     string
 		timeout  time.Duration
@@ -55,8 +59,8 @@ func TestUnaryTimeout_Table(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mw := UnaryTimeout(tc.timeout)
-			resp, err := mw(context.Background(), nil, nil, tc.handler)
+			mw := UnaryTimeout(tc.timeout, metrics)
+			resp, err := mw(context.Background(), nil, info, tc.handler)
 			if tc.wantErr {
 				assert.Error(t, err)
 				if tc.wantCode != codes.Unknown {

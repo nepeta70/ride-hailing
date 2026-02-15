@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,6 +17,7 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 		handler func(ctx context.Context, req any) (any, error)
 		info    *grpc.UnaryServerInfo
 	}
+	metrics := &mocks.MockMetrics{}
 	tests := []struct {
 		name      string
 		args      args
@@ -64,7 +65,7 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := &mocks.MockLogger{}
-			mw := UnaryServerLogging(logger)
+			mw := UnaryServerLogging(logger, metrics)
 			resp, err := mw(context.Background(), nil, tc.args.info, tc.args.handler)
 			if tc.wantErr {
 				assert.Error(t, err)

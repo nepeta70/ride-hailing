@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // gRPC Interceptor using our decoupled Logger interface
-func UnaryServerLogging(l ports.Logger) grpc.UnaryServerInterceptor {
+func UnaryServerLogging(l ports.Logger, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -33,13 +34,14 @@ func UnaryServerLogging(l ports.Logger) grpc.UnaryServerInterceptor {
 				err = status.Errorf(codes.Internal, "internal server error")
 			}
 
-			duration := time.Since(start)
 			st, _ := status.FromError(err)
-
+			metrics.GRPCRequestCount(info.FullMethod, st.Code().String())
+			duration := time.Since(start).Seconds()
+			metrics.GRPCLatency(info.FullMethod, duration)
 			l.Info("gRPC request processed",
 				"method", info.FullMethod,
-				"status", st.Code().String(),
-				"duration", duration,
+				"status", uint32(st.Code()),
+				"duration_s", duration,
 			)
 		}()
 

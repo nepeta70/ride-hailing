@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	. "github.com/nepeta70/ride-hailing/services/ride/internal/adapters/cache"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/stretchr/testify/assert"

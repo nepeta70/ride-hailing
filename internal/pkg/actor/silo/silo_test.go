@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
