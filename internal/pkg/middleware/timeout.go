@@ -6,11 +6,24 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-func UnaryTimeout(timeout time.Duration, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
+// TimeoutInterceptor manages request deadlines and timeout telemetry.
+type TimeoutInterceptor struct {
+	timeout time.Duration
+	metrics telemetry.MetricsInterface
+}
+
+// NewTimeoutInterceptor initializes the interceptor struct with dependencies.
+func NewTimeoutInterceptor(timeout time.Duration, m telemetry.MetricsInterface) *TimeoutInterceptor {
+	return &TimeoutInterceptor{
+		timeout: timeout,
+		metrics: m,
+	}
+}
+
+// Unary provides the gRPC interceptor logic for forcing request timeouts via goroutines.
+func (i *TimeoutInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -18,10 +31,10 @@ func UnaryTimeout(timeout time.Duration, metrics telemetry.MetricsInterface) grp
 		handler grpc.UnaryHandler,
 	) (any, error) {
 		// Create a new context with the specified timeout
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(ctx, i.timeout)
 		defer cancel()
 
-		// Channel to capture the result
+		// Channels to capture the result
 		respChan := make(chan any, 1)
 		errChan := make(chan error, 1)
 
@@ -33,8 +46,8 @@ func UnaryTimeout(timeout time.Duration, metrics telemetry.MetricsInterface) grp
 
 		select {
 		case <-ctx.Done():
-			metrics.RequestTimeout(info.FullMethod)
-			return nil, status.Error(codes.DeadlineExceeded, "request timed out")
+			i.metrics.RequestTimeout(info.FullMethod)
+			return nil, errDeadlineExceeded
 		case err := <-errChan:
 			return <-respChan, err
 		}

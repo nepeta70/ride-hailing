@@ -8,12 +8,25 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// gRPC Interceptor using our decoupled Logger interface
-func UnaryServerLogging(l ports.Logger, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
+// ServerInterceptor manages observability and resiliency for gRPC streams.
+type ServerInterceptor struct {
+	logger  ports.Logger
+	metrics telemetry.MetricsInterface
+}
+
+// NewServerInterceptor initializes a new interceptor with necessary dependencies.
+func NewServerInterceptor(l ports.Logger, m telemetry.MetricsInterface) *ServerInterceptor {
+	return &ServerInterceptor{
+		logger:  l,
+		metrics: m,
+	}
+}
+
+// Unary provides logging, metrics collection, and panic recovery.
+func (i *ServerInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -22,31 +35,32 @@ func UnaryServerLogging(l ports.Logger, metrics telemetry.MetricsInterface) grpc
 	) (resp any, err error) {
 		start := time.Now()
 
-		// Panic Recovery
 		defer func() {
+			// 1. Recovery Logic
 			if r := recover(); r != nil {
-				l.Error("gRPC panic recovered",
+				i.logger.Error("gRPC panic recovered",
 					"error", r,
 					"method", info.FullMethod,
 					"stack", string(debug.Stack()),
 				)
-				// Convert panic to a proper gRPC Internal error
-				err = status.Errorf(codes.Internal, "internal server error")
+				err = errInternal
 			}
 
+			// 2. Telemetry & Observability
 			st, _ := status.FromError(err)
-			metrics.GRPCRequestCount(info.FullMethod, st.Code().String())
+			codeStr := st.Code().String()
 			duration := time.Since(start).Seconds()
-			metrics.GRPCLatency(info.FullMethod, duration)
-			l.Info("gRPC request processed",
+
+			i.metrics.GRPCRequestCount(info.FullMethod, codeStr)
+			i.metrics.GRPCLatency(info.FullMethod, duration)
+
+			i.logger.Info("gRPC request processed",
 				"method", info.FullMethod,
 				"status", uint32(st.Code()),
 				"duration_s", duration,
 			)
 		}()
 
-		// Execute the actual RPC handler
-		resp, err = handler(ctx, req)
-		return resp, err
+		return handler(ctx, req)
 	}
 }

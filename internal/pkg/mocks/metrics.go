@@ -32,31 +32,31 @@ func (m *MockMetrics) track(name string, args ...any) {
 // --- Interface Implementation ---
 
 func (m *MockMetrics) GRPCRequestCount(method string, statusCode string) {
-	//m.track("GRPCRequestCount", method, statusCode)
+	m.track("GRPCRequestCount", method, statusCode)
 }
 
 func (m *MockMetrics) GRPCLatency(method string, durationSeconds float64) {
-	//m.track("GRPCLatency", method, durationSeconds)
+	m.track("GRPCLatency", method, durationSeconds)
 }
 
 func (m *MockMetrics) CircuitBreakerState(serviceName string, state int) {
-	//m.track("CircuitBreakerState", serviceName, state)
+	m.track("CircuitBreakerState", serviceName, state)
 }
 
 func (m *MockMetrics) CircuitBreakerError(serviceName string, errorType string) {
-	//m.track("CircuitBreakerError", serviceName, errorType)
+	m.track("CircuitBreakerError", serviceName, errorType)
 }
 
 func (m *MockMetrics) RequestTimeout(method string) {
-	//m.track("RequestTimeout", method)
+	m.track("RequestTimeout", method)
 }
 
 func (m *MockMetrics) RateLimitDrop(method string) {
-	//m.track("RateLimitDrop", method)
+	m.track("RateLimitDrop", method)
 }
 
 func (m *MockMetrics) AuthFailure(method string, reason string) {
-	//m.track("AuthFailure", method, reason)
+	m.track("AuthFailure", method, reason)
 }
 
 var _ telemetry.MetricsInterface = (*MockMetrics)(nil)

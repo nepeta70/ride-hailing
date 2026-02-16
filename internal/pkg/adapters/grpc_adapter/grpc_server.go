@@ -2,9 +2,9 @@ package grpc_adapter
 
 import (
 	"context"
+	"fmt"
 
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
@@ -12,6 +12,8 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -61,20 +63,20 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		opts.Logger.Error("FATAL: failed to create GRPC adapter", "error", err)
 		return nil, err
 	}
-	grpcAddr := ":" + strconv.Itoa(opts.Config.Server.Port)
+	grpcAddr := fmt.Sprintf(":%d", opts.Config.Server.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		opts.Logger.Error("failed to listen: %v", "error", err)
 		return nil, err
 	}
-
+	reg := prometheus.NewRegistry()
 	filteredChainOpts := &middleware.FilteredChainOpts{
 		Config:                 opts.Config,
 		Logger:                 opts.Logger,
 		ContextManager:         opts.ContextManager,
-		AuthConfiguration:      opts.AuthConfiguration,
+		EndpointRoles:          opts.AuthConfiguration,
 		AdditionalInterceptors: opts.AdditionalInterceptors,
-		
+		Metrics:                telemetry.NewMetrics("ride-hailing", opts.ServiceName, reg),
 	}
 	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
 	if err != nil {

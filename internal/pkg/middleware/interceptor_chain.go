@@ -8,9 +8,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
 	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +16,7 @@ type FilteredChainOpts struct {
 	Config                 *config.BaseConfig
 	Logger                 ports.Logger
 	ContextManager         *ctxmgr.ContextManager
-	AuthConfiguration      ports.EndpointRoles
+	EndpointRoles          ports.EndpointRoles
 	AdditionalInterceptors []grpc.UnaryServerInterceptor
 	Metrics                telemetry.MetricsInterface
 }
@@ -33,7 +31,7 @@ func (opts *FilteredChainOpts) Validate() error {
 	if opts.ContextManager == nil {
 		return errors.NewValidationErrorf("context manager is required")
 	}
-	if opts.AuthConfiguration == nil {
+	if opts.EndpointRoles == nil {
 		return errors.NewValidationErrorf("auth configuration is required")
 	}
 	if opts.Metrics == nil {
@@ -53,18 +51,27 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 
-	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig())
+	serverInterceptor := NewServerInterceptor(opts.Logger, opts.Metrics)
+	contextInterceptor, err := NewContextInterceptor(&ContextInterceptorOptions{
+		ContextManager: opts.ContextManager,
+		Config:         opts.Config,
+		Logger:         opts.Logger,
+		Metrics:        opts.Metrics,
+		EndpointRoles:  opts.EndpointRoles,
+	})
 	if err != nil {
 		return nil, err
 	}
-
+	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Metrics)
+	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Metrics)
+	if err != nil {
+		return nil, err
+	}
 	interceptors := []grpc.UnaryServerInterceptor{
-		UnaryServerLogging(opts.Logger, opts.Metrics),
-		ContextInterceptor(opts.ContextManager, opts.Config, opts.Logger, opts.Metrics),
-		RoleBasedAccessInterceptor(opts.AuthConfiguration, opts.ContextManager, opts.Metrics),
-		UnaryTimeout(opts.Config.Server.WriteTimeout, opts.Metrics),
-		UnaryRateLimit(rate.Limit(opts.Config.Security.RateLimit), opts.Config.Security.RateBurst, opts.Metrics),
-		UnaryCircuitBreaker(cb, opts.Metrics),
+		serverInterceptor.Unary(),
+		contextInterceptor.Unary(),
+		timeoutInterceptor.Unary(),
+		resiliencyInterceptor.Unary(),
 	}
 	if len(opts.AdditionalInterceptors) > 0 {
 		interceptors = append(interceptors, opts.AdditionalInterceptors...)

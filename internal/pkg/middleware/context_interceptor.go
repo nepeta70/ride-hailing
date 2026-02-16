@@ -2,59 +2,124 @@ package middleware
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
-func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, logger ports.Logger, metrics telemetry.MetricsInterface) grpc.UnaryServerInterceptor {
+type ContextInterceptorOptions struct {
+	ContextManager *ctxmgr.ContextManager
+	Config         *config.BaseConfig
+	Logger         ports.Logger
+	Metrics        telemetry.MetricsInterface
+	EndpointRoles  ports.EndpointRoles
+}
+
+func (o *ContextInterceptorOptions) Validate() error {
+	if o.ContextManager == nil {
+		return errors.NewValidationErrorf("context manager is required")
+	}
+	if o.Config == nil {
+		return errors.NewValidationErrorf("config is required")
+	}
+	if o.Logger == nil {
+		return errors.NewValidationErrorf("logger is required")
+	}
+	if o.Metrics == nil {
+		return errors.NewValidationErrorf("metrics is required")
+	}
+	if o.EndpointRoles == nil {
+		return errors.NewValidationErrorf("endpoint roles configuration is required")
+	}
+	return nil
+}
+
+// ContextInterceptor handles identity extraction, security checks, and role validation.
+type ContextInterceptor struct {
+	contextManager *ctxmgr.ContextManager
+	config         *config.BaseConfig
+	logger         ports.Logger
+	metrics        telemetry.MetricsInterface
+	endpointRoles  ports.EndpointRoles
+}
+
+// NewContextInterceptor initializes the interceptor struct with dependencies.
+func NewContextInterceptor(options *ContextInterceptorOptions) (*ContextInterceptor, error) {
+	if err := options.Validate(); err != nil {
+		return nil, err
+	}
+	return &ContextInterceptor{
+		contextManager: options.ContextManager,
+		config:         options.Config,
+		logger:         options.Logger,
+		metrics:        options.Metrics,
+		endpointRoles:  options.EndpointRoles,
+	}, nil
+}
+
+// Unary provides the gRPC interceptor logic for identity and context assembly.
+func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
-			metrics.AuthFailure(info.FullMethod, "missing_metadata")
-			return nil, status.Error(codes.Unauthenticated, "missing metadata")
+			i.metrics.AuthFailure(info.FullMethod, "missing_metadata")
+			return nil, errUnauthenticated
 		}
 
-		logger.Info("Received metadata:", "metadata", md)
+		// Note: Keeping this for now as per your request,
+		// but remember logger variadics are a primary source of allocs.
+		i.logger.Info("Received metadata:", "metadata", md)
 
 		// 1. Security Check (Fail Fast)
 		apiKey := getMetadata(md, "x-api-key")
-		if apiKey != config.APIKey {
-			metrics.AuthFailure(info.FullMethod, "invalid_api_key")
-			return nil, status.Error(codes.Unauthenticated, "invalid api key")
+		if apiKey != i.config.APIKey {
+			i.metrics.AuthFailure(info.FullMethod, "invalid_api_key")
+			return nil, errUnauthenticated
 		}
 
 		userID := getUUIDMetadata(md, "user-id")
 		if userID == uuid.Nil {
-			metrics.AuthFailure(info.FullMethod, "missing_user_id")
-			return nil, status.Error(codes.Unauthenticated, "missing user ID")
+			i.metrics.AuthFailure(info.FullMethod, "missing_user_id")
+			return nil, errUnauthenticated
 		}
 
-		userRole := getMetadata(md, "user-role")
-		if !enums.UserRole(userRole).IsValid() {
-			metrics.AuthFailure(info.FullMethod, "invalid_role")
-			return nil, status.Error(codes.Unauthenticated, "invalid user role")
+		userRoleStr := getMetadata(md, "user-role")
+		role := enums.UserRole(userRoleStr)
+		if !role.IsValid() {
+			i.metrics.AuthFailure(info.FullMethod, "invalid_role")
+			return nil, errUnauthenticated
 		}
 
 		requestID := getUUIDMetadata(md, "x-request-id")
 		if requestID == uuid.Nil {
-			metrics.AuthFailure(info.FullMethod, "missing_request_id")
-			return nil, status.Error(codes.Unauthenticated, "missing request ID")
+			i.metrics.AuthFailure(info.FullMethod, "missing_request_id")
+			return nil, errUnauthenticated
 		}
 
-		// 2. Assemble the RequestInfo
-		rInfo := ctxmgr.RequestInfo{
+		// Role validation
+		rolesForRequest := i.endpointRoles.RequestRoles()
+		if len(rolesForRequest) > 0 {
+			if roles, ok := rolesForRequest[info.FullMethod]; ok {
+				if !slices.Contains(roles, role) {
+					i.metrics.AuthFailure(info.FullMethod, "invalid_role")
+					return nil, errPermissionDenied
+				}
+			}
+		}
+
+		// 2. Assemble the RequestInfo (Pointer-based to minimize boxing cost)
+		rInfo := &ctxmgr.RequestInfo{
 			User: ctxmgr.UserSession{
 				ID:   userID,
-				Role: enums.UserRole(userRole),
+				Role: role,
 			},
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
@@ -74,6 +139,6 @@ func ContextInterceptor(cm *ctxmgr.ContextManager, config *config.BaseConfig, lo
 		}
 
 		// 3. Inject and Continue
-		return handler(cm.Inject(ctx, rInfo), req)
+		return handler(i.contextManager.Inject(ctx, rInfo), req)
 	}
 }
