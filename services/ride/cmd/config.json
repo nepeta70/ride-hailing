@@ -19,5 +19,11 @@
       "port": 5432,
       "ping_timeout_seconds": 5,
       "query_timeout_seconds": 5
+  },
+  "telemetry": {
+    "enabled": true,
+    "service_name": "ride-service",
+    "exporter": "otlp",
+    "otlp_endpoint": "http://localhost:4317"
   }
 }

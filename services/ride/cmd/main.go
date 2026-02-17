@@ -11,6 +11,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 
@@ -101,6 +102,14 @@ func main() {
 		ContextManager:    ctxmgr.NewContextManager(),
 		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
 	}
+
+	tel, err := telemetry.NewTelemetryProvider(ctx, opts.ServiceName, &cfg.Telemetry)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {
 		logger.Error("Failed to create gRPC adapter:", "error", err)

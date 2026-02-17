@@ -7,16 +7,19 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
 // BaseConfig contains the stuff every single service needs
 type BaseConfig struct {
-	Server   ServerConfig   `json:"server"`
-	Logging  LoggingConfig  `json:"logging"`
-	Timeouts TimeoutsConfig `json:"timeouts"`
-	Security SecurityConfig `json:"security"`
-	APIKey   string         `env:"API_KEY"`
+	Server    ServerConfig              `json:"server"`
+	Logging   LoggingConfig             `json:"logging"`
+	Timeouts  TimeoutsConfig            `json:"timeouts"`
+	Security  SecurityConfig            `json:"security"`
+	Telemetry telemetry.TelemetryConfig `json:"telemetry"`
+	APIKey    string                    `env:"API_KEY"`
 }
 
 // DefaultBaseConfig returns the boilerplate defaults
