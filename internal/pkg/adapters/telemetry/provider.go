@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	telem "github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/contrib/bridges/prometheus"
@@ -15,18 +16,20 @@ import (
 
 type TelemetryProvider struct {
 	meterProvider *sdkmetric.MeterProvider
-	Metrics       *telem.Metrics // This is your existing business metrics struct
+	metrics       *telem.Metrics // This is your existing business metrics struct
 }
 
-func NewTelemetryProvider(ctx context.Context, serviceName string, cfg *TelemetryConfig) (*TelemetryProvider, error) {
+func NewTelemetryProvider(ctx context.Context, serviceName string, cfg *TelemetryConfig, logger ports.Logger) (*TelemetryProvider, error) {
 	reg := prom.NewRegistry()
 
+	logger.Debug("Initializing telemetry provider", "service", serviceName, "prometheus_address", cfg.PrometheusAddress, "opentelemetry_address", cfg.OpentelemetryAddress, "interval_seconds", cfg.IntervalSeconds)
 	// 1. Setup the gRPC Exporter (pointing to otel-collector:4317)
 	exporter, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithEndpoint(cfg.OpentelemetryAddress),
 		otlpmetricgrpc.WithInsecure(),
 	)
 	if err != nil {
+		logger.Error("Failed to create OTLP gRPC exporter:", "error", err)
 		return nil, err
 	}
 
@@ -57,10 +60,14 @@ func NewTelemetryProvider(ctx context.Context, serviceName string, cfg *Telemetr
 
 	return &TelemetryProvider{
 		meterProvider: provider,
-		Metrics:       appMetrics,
+		metrics:       appMetrics,
 	}, nil
 }
 
 func (p *TelemetryProvider) Shutdown(ctx context.Context) error {
 	return p.meterProvider.Shutdown(ctx)
+}
+
+func (p *TelemetryProvider) GetMetrics() *telem.Metrics {
+	return p.metrics
 }

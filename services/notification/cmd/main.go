@@ -28,7 +28,6 @@ func main() {
 
 	handler := grpc.NewNotificationHandler()
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "Notification Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),

@@ -21,9 +21,8 @@
       "query_timeout_seconds": 5
   },
   "telemetry": {
-    "enabled": true,
-    "service_name": "ride-service",
-    "exporter": "otlp",
-    "otlp_endpoint": "http://localhost:4317"
+    "IntervalSeconds": 15,
+    "prometheus_address": "prometheus:9090",
+    "opentelemetry_address": "otel-collector:4317"
   }
 }

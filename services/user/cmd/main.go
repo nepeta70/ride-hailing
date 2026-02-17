@@ -32,7 +32,6 @@ func main() {
 	application := app.NewApplication(cfg, logger, repo, repo)
 	handler := grpcAdapters.NewUserHandler(application)
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "User Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),

@@ -95,21 +95,20 @@ func main() {
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 
-	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:       "Ride Service",
-		Config:            &cfg.BaseConfig,
-		Logger:            logger,
-		ContextManager:    ctxmgr.NewContextManager(),
-		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
-	}
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, opts.ServiceName, &cfg.Telemetry)
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
 	if err != nil {
 		logger.Error("Failed to create telemetry provider:", "error", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
 
+	opts := &grpc_adapter.GRPGAdapterOptions{
+		Config:            &cfg.BaseConfig,
+		Logger:            logger,
+		ContextManager:    ctxmgr.NewContextManager(),
+		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
+		Telemetry:         tel,
+	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {
 		logger.Error("Failed to create gRPC adapter:", "error", err)

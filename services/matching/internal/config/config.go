@@ -8,10 +8,16 @@ type Config struct {
 	config.BaseConfig
 }
 
-func Load(path string) (*Config, error) {
-	cfg := &Config{
-		BaseConfig: config.DefaultBaseConfig(),
+func DefaultConfig() *Config {
+	base := config.DefaultBaseConfig()
+	base.ServiceName = "Matching Service"
+	return &Config{
+		BaseConfig: base,
 	}
+}
+
+func Load(path string) (*Config, error) {
+	cfg := DefaultConfig()
 
 	cfg, err := config.LoadGeneric(path, cfg)
 	if err != nil {

@@ -29,14 +29,20 @@ type Config struct {
 	Postgres   pgstore.PostgresConfig `json:"postgres"`
 }
 
-func Load(path string) (*Config, error) {
-	cfg := &Config{
-		BaseConfig: config.DefaultBaseConfig(),
+func DefaultConfig() *Config {
+	base := config.DefaultBaseConfig()
+	base.ServiceName = "Ride Service"
+	return &Config{
+		BaseConfig: base,
 		KeysConfig: DefaultKeysConfig(),
 		FareConfig: DefaultFareConfig(),
 		Redis:      rdstore.DefaultRedisConfig(),
 		Postgres:   pgstore.DefaultPostgresConfig(),
 	}
+}
+
+func Load(path string) (*Config, error) {
+	cfg := DefaultConfig()
 
 	cfg, err := config.LoadGeneric(path, cfg)
 	if err != nil {

@@ -30,7 +30,6 @@ func main() {
 	handler := grpcAdapters.NewDriverHandler(driverService)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "Driver Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),

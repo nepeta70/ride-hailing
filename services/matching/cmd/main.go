@@ -30,7 +30,6 @@ func main() {
 	handler := grpcAdapters.NewMatchingHandler(matchingService)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "Matching Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),

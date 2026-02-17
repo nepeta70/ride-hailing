@@ -18,8 +18,10 @@ type LogicConfig struct {
 }
 
 func DefaultConfig() *Config {
+	base := config.DefaultBaseConfig()
+	base.ServiceName = "Location Service"
 	return &Config{
-		BaseConfig: config.DefaultBaseConfig(),
+		BaseConfig: base,
 		Logic: LogicConfig{
 			GeohashPrecision:   7,
 			LocationTTLSeconds: 300,
