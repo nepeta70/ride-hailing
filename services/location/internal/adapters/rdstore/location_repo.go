@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -30,8 +31,8 @@ func NewRedisRepository(cfg *config.Config, client *rdstore.RedisClient, logger 
 	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
 }
 
-func userLocationKey(userID string) string {
-	return userLocationKeyPrefix + userID
+func userLocationKey(userID uuid.UUID) string {
+	return userLocationKeyPrefix + userID.String()
 }
 
 // Save implements the ports.LocationRepository interface
@@ -53,7 +54,7 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 		pipe.GeoAdd(ctx, locationIndexKeyPrefix, &redis.GeoLocation{
 			Longitude: loc.Coordinates.Longitude,
 			Latitude:  loc.Coordinates.Latitude,
-			Name:      loc.UserID,
+			Name:      loc.UserID.String(),
 		})
 	}
 
@@ -69,7 +70,7 @@ func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) er
 	return nil
 }
 
-func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	key := userLocationKey(userID)
@@ -77,7 +78,7 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 	data, err := r.client.HGet(ctx, key, "data").Bytes()
 	if err == redis.Nil {
 		// Not found, return nil, nil
-		return nil, errors.NewErrNotFound("location data for userID " + userID)
+		return nil, errors.NewErrNotFound("location data for userID " + userID.String())
 	}
 	if err != nil {
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
@@ -91,7 +92,7 @@ func (r *RedisRepository) Get(ctx context.Context, userID string) (*domain.UserL
 	return &loc, nil
 }
 
-func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID string) error {
+func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Remove metadata
@@ -112,23 +113,25 @@ func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.C
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index
-	geoResults, err := r.client.GeoRadius(ctx, locationIndexKeyPrefix, coordinates.Longitude, coordinates.Latitude, &redis.GeoRadiusQuery{
-		Radius:    float64(radiusKm),
-		Unit:      "km",
-		WithCoord: false,
-		WithDist:  false,
-		Count:     r.cfg.Logic.TopKNearby,
-		Sort:      "ASC",
-	}).Result()
+	query := &redis.GeoSearchQuery{
+		Radius:     float64(radiusKm),
+		Longitude:  coordinates.Longitude,
+		Latitude:   coordinates.Latitude,
+		RadiusUnit: "km",
+		Count:      r.cfg.Logic.TopKNearby,
+		Sort:       "ASC",
+	}
+	geoResults, err := r.client.GeoSearch(ctx, locationIndexKeyPrefix, query).Result()
+
 	if err != nil {
 		return nil, errors.NewTransientErrorf("redis georadius query failed: %w", err)
 	}
 	var results []*domain.UserLocation
 	for _, geoLocation := range geoResults {
-		loc, err := r.Get(ctx, geoLocation.Name)
+		loc, err := r.Get(ctx, uuid.MustParse(geoLocation))
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.asyncRemoveFromIndex(geoLocation.Name)
+				r.asyncRemoveFromIndex(geoLocation)
 				continue // Skip missing entries
 			}
 			return nil, errors.NewTransientErrorf("get user location failed: %w", err)

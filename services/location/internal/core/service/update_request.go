@@ -3,13 +3,14 @@ package service
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 )
 
 type UpdateRequest struct {
-	UserID      string
+	UserID      uuid.UUID
 	UserType    enums.UserType
 	Coordinates domain.Coordinates
 	Accuracy    float32
@@ -19,7 +20,7 @@ type UpdateRequest struct {
 }
 
 type SearchNearbyRequest struct {
-	UserID      string
+	UserID      uuid.UUID
 	UserType    enums.UserType
 	Coordinates domain.Coordinates
 	RadiusKm    float32
@@ -27,10 +28,6 @@ type SearchNearbyRequest struct {
 
 // Validate ensures the GPS data is physically valid
 func (r UpdateRequest) Validate() error {
-	if r.UserID == "" {
-		return errors.NewBusinessError("user_id is required")
-	}
-
 	// Latitude range: [-90, 90]
 	if r.Coordinates.Latitude < -90 || r.Coordinates.Latitude > 90 {
 		return errors.NewBusinessErrorf("invalid latitude: %f", r.Coordinates.Latitude)

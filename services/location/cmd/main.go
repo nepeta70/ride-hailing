@@ -15,7 +15,7 @@ import (
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/location/internal/adapters/grpc"
 	rdstore "github.com/nepeta70/ride-hailing/services/location/internal/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
-	"github.com/nepeta70/ride-hailing/services/location/internal/core/service"
+	"github.com/nepeta70/ride-hailing/services/location/internal/core/app"
 )
 
 func main() {
@@ -37,8 +37,9 @@ func main() {
 	defer redisClient.Close()
 
 	locationRepository := rdstore.NewRedisRepository(cfg, redisClient, logger)
-	locationService := service.NewLocationService(locationRepository)
-	handler := grpcAdapters.NewLocationHandler(locationService)
+	app := app.NewApplication(ctxmgr.NewContextManager(), logger, locationRepository)
+
+	handler := grpcAdapters.NewLocationHandler(app)
 
 	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
 	if err != nil {

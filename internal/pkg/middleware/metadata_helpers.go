@@ -31,3 +31,12 @@ func getIntMetadata(md metadata.MD, key string) int {
 	}
 	return 0
 }
+
+func getInt64Metadata(md metadata.MD, key string) int64 {
+	if vals := md.Get(key); len(vals) > 0 {
+		if n, err := strconv.ParseInt(vals[0], 10, 64); err == nil {
+			return n
+		}
+	}
+	return 0
+}

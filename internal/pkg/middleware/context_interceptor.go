@@ -76,7 +76,8 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		// Note: Keeping this for now as per your request,
 		// but remember logger variadics are a primary source of allocs.
-		i.logger.Info("Received metadata:", "metadata", md)
+		i.logger.Debug("Received metadata:", "metadata", md)
+		i.logger.Debug("Request", "method", info.FullMethod, "request", req)
 
 		// 1. Security Check (Fail Fast)
 		apiKey := getMetadata(md, "x-api-key")
@@ -124,7 +125,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
 				Origin:     getMetadata(md, "x-origin-service"),
-				Timestamp:  getMetadata(md, "x-timestamp"),
+				Timestamp:  getInt64Metadata(md, "x-timestamp"),
 				RetryCount: getIntMetadata(md, "x-retry-count"),
 			},
 			Location: ctxmgr.LocationInfo{
