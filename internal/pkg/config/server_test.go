@@ -61,8 +61,21 @@ func TestServerConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "valid config with timeouts",
-			cfg:     ServerConfig{Port: 5001, Host: "localhost", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 10, IdleTimeoutSeconds: 120},
+			name:    "negative idle timeout",
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: -1},
+			wantErr: true,
+		},
+		{
+			name:    "zero health check interval",
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5, HealthCheckIntervalSeconds: 0},
+			wantErr: true,
+		},
+		{
+			name: "valid config with timeouts",
+			cfg: ServerConfig{Port: 5001, Host: "localhost",
+				ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 10,
+				IdleTimeoutSeconds: 120,
+			},
 			wantErr: false,
 		},
 	}

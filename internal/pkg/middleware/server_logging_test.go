@@ -17,9 +17,7 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 		handler func(ctx context.Context, req any) (any, error)
 		info    *grpc.UnaryServerInfo
 	}
-	logger := &mocks.MockLogger{}
 	metrics := mocks.NewMockMetrics()
-	serverInterceptor := NewServerInterceptor(logger, metrics)
 	tests := []struct {
 		name      string
 		args      args
@@ -66,7 +64,8 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
+			logger := &mocks.MockLogger{}
+			serverInterceptor := NewServerInterceptor(logger, metrics)
 			mw := serverInterceptor.Unary()
 			resp, err := mw(context.Background(), nil, tc.args.info, tc.args.handler)
 			if tc.wantErr {

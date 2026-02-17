@@ -9,6 +9,7 @@ import (
 
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/user/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/user/internal/adapters/inmemory"
@@ -31,10 +32,19 @@ func main() {
 	repo := inmemory.NewInMemoryUserRepository()
 	application := app.NewApplication(cfg, logger, repo, repo)
 	handler := grpcAdapters.NewUserHandler(application)
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),
+		//AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig), TODO: implemnt it
+		Telemetry: tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {
