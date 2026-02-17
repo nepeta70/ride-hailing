@@ -7,12 +7,15 @@ import (
 	"time"
 
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestUnaryTimeout_Table(t *testing.T) {
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
 	tests := []struct {
 		name     string
 		timeout  time.Duration
@@ -53,14 +56,25 @@ func TestUnaryTimeout_Table(t *testing.T) {
 			wantCode: codes.Unknown,
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mw := UnaryTimeout(tc.timeout)
-			resp, err := mw(context.Background(), nil, nil, tc.handler)
+			// Initialize metrics with maps to avoid nil assignment panics
+			metrics := mocks.NewMockMetrics()
+
+			mw := NewTimeoutInterceptor(tc.timeout, metrics).Unary()
+			resp, err := mw(context.Background(), nil, info, tc.handler)
+
 			if tc.wantErr {
 				assert.Error(t, err)
 				if tc.wantCode != codes.Unknown {
 					assert.Equal(t, tc.wantCode, status.Code(err))
+				}
+
+				// Verify metric was called on timeout
+				if tc.wantCode == codes.DeadlineExceeded {
+					assert.True(t, metrics.Calls["RequestTimeout"] > 0)
+					assert.Equal(t, info.FullMethod, metrics.Args["RequestTimeout"][0])
 				}
 			} else {
 				assert.NoError(t, err)

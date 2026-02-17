@@ -9,6 +9,7 @@ import (
 
 	driverv1 "github.com/nepeta70/ride-hailing/gen/proto/driver/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/driver/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/driver/internal/config"
@@ -29,11 +30,19 @@ func main() {
 	driverService := service.NewDriverService()
 	handler := grpcAdapters.NewDriverHandler(driverService)
 
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "Driver Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),
+		//AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig), TODO: implemnt it
+		Telemetry: tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {

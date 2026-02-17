@@ -1,6 +1,10 @@
 package mocks
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+)
 
 type MockLogger struct {
 	mu      sync.Mutex
@@ -30,3 +34,5 @@ func (m *MockLogger) Error(msg string, args ...any) {
 	defer m.mu.Unlock()
 	m.Entries = append(m.Entries, "ERROR:"+msg)
 }
+
+var _ ports.Logger = (*MockLogger)(nil)

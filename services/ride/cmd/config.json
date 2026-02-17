@@ -19,5 +19,10 @@
       "port": 5432,
       "ping_timeout_seconds": 5,
       "query_timeout_seconds": 5
+  },
+  "telemetry": {
+    "IntervalSeconds": 15,
+    "prometheus_address": "prometheus:9090",
+    "opentelemetry_address": "otel-collector:4317"
   }
 }

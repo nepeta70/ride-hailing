@@ -8,8 +8,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
-	"golang.org/x/time/rate"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 )
 
@@ -17,8 +16,9 @@ type FilteredChainOpts struct {
 	Config                 *config.BaseConfig
 	Logger                 ports.Logger
 	ContextManager         *ctxmgr.ContextManager
-	AuthConfiguration      ports.EndpointRoles
+	EndpointRoles          ports.EndpointRoles
 	AdditionalInterceptors []grpc.UnaryServerInterceptor
+	Metrics                telemetry.MetricsInterface
 }
 
 func (opts *FilteredChainOpts) Validate() error {
@@ -31,15 +31,19 @@ func (opts *FilteredChainOpts) Validate() error {
 	if opts.ContextManager == nil {
 		return errors.NewValidationErrorf("context manager is required")
 	}
-	if opts.AuthConfiguration == nil {
+	if opts.EndpointRoles == nil {
 		return errors.NewValidationErrorf("auth configuration is required")
+	}
+	if opts.Metrics == nil {
+		return errors.NewValidationErrorf("metrics is required")
 	}
 	return nil
 }
 
 type InterceptorChain struct {
-	interceptors []grpc.UnaryServerInterceptor
-	opts         *FilteredChainOpts
+	interceptors     []grpc.UnaryServerInterceptor
+	opts             *FilteredChainOpts
+	finalInterceptor grpc.UnaryServerInterceptor
 }
 
 func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
@@ -47,26 +51,36 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 
-	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig())
+	serverInterceptor := NewServerInterceptor(opts.Logger, opts.Metrics)
+	contextInterceptor, err := NewContextInterceptor(&ContextInterceptorOptions{
+		ContextManager: opts.ContextManager,
+		Config:         opts.Config,
+		Logger:         opts.Logger,
+		Metrics:        opts.Metrics,
+		EndpointRoles:  opts.EndpointRoles,
+	})
 	if err != nil {
 		return nil, err
 	}
-
+	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Metrics)
+	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Metrics)
+	if err != nil {
+		return nil, err
+	}
 	interceptors := []grpc.UnaryServerInterceptor{
-		UnaryServerLogging(opts.Logger),
-		ContextInterceptor(opts.ContextManager, opts.Config, opts.Logger),
-		RoleBasedAccessInterceptor(opts.AuthConfiguration, opts.ContextManager),
-		UnaryTimeout(opts.Config.Server.WriteTimeout),
-		UnaryRateLimit(rate.Limit(opts.Config.Security.RateLimit), opts.Config.Security.RateBurst),
-		UnaryCircuitBreaker(cb),
+		serverInterceptor.Unary(),
+		contextInterceptor.Unary(),
+		timeoutInterceptor.Unary(),
+		resiliencyInterceptor.Unary(),
 	}
 	if len(opts.AdditionalInterceptors) > 0 {
 		interceptors = append(interceptors, opts.AdditionalInterceptors...)
 	}
 
 	return &InterceptorChain{
-		interceptors: interceptors,
-		opts:         opts,
+		interceptors:     interceptors,
+		opts:             opts,
+		finalInterceptor: chainInterceptors(interceptors),
 	}, nil
 }
 
@@ -86,17 +100,22 @@ func (ic *InterceptorChain) FilteredChain() grpc.UnaryServerInterceptor {
 			return res, err
 		}
 
-		// 2. Build the execution chain for business logic
-		// We nest the interceptors so they execute in the order provided
-		chain := handler
-		for i := len(ic.interceptors) - 1; i >= 0; i-- {
-			currentInterceptor := ic.interceptors[i]
-			nextHandler := chain
-			chain = func(currentCtx context.Context, currentReq any) (any, error) {
-				return currentInterceptor(currentCtx, currentReq, info, nextHandler)
+		return ic.finalInterceptor(ctx, req, info, handler)
+	}
+}
+
+func chainInterceptors(interceptors []grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		buildChain := func(currentI grpc.UnaryServerInterceptor, nextH grpc.UnaryHandler) grpc.UnaryHandler {
+			return func(c context.Context, r any) (any, error) {
+				return currentI(c, r, info, nextH)
 			}
 		}
 
+		chain := handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			chain = buildChain(interceptors[i], chain)
+		}
 		return chain(ctx, req)
 	}
 }

@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mocks"
+
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,6 +23,16 @@ func TestContextInterceptor(t *testing.T) {
 	cfg := &config.BaseConfig{APIKey: "test-secret"}
 	cm := ctxmgr.NewContextManager()
 	logger := &mocks.MockLogger{}
+	metrics := mocks.NewMockMetrics()
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
+	endpointRoles := &mocks.EndpointRequests{}
+	contextInterceptor, _ := NewContextInterceptor(&ContextInterceptorOptions{
+		ContextManager: cm,
+		Config:         cfg,
+		Logger:         logger,
+		Metrics:        metrics,
+		EndpointRoles:  endpointRoles,
+	})
 
 	validUserID := uuid.New().String()
 	validReqID := uuid.New().String()
@@ -99,8 +110,8 @@ func TestContextInterceptor(t *testing.T) {
 			}
 
 			// Execute Interceptor
-			interceptor := ContextInterceptor(cm, cfg, logger)
-			_, err := interceptor(ctx, nil, &grpc.UnaryServerInfo{}, handler)
+			interceptor := contextInterceptor.Unary()
+			_, err := interceptor(ctx, nil, info, handler)
 
 			if tt.expectedCode == codes.OK {
 				assert.NoError(t, err)

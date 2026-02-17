@@ -11,6 +11,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 
@@ -94,12 +95,19 @@ func main() {
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
 
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:       "Ride Service",
 		Config:            &cfg.BaseConfig,
 		Logger:            logger,
 		ContextManager:    ctxmgr.NewContextManager(),
 		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
+		Telemetry:         tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {

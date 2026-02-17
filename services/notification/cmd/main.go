@@ -9,6 +9,7 @@ import (
 
 	notificationv1 "github.com/nepeta70/ride-hailing/gen/proto/notification/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/services/notification/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/notification/internal/config"
@@ -27,11 +28,19 @@ func main() {
 	logger := cfg.Logging.ConfigureLogger()
 
 	handler := grpc.NewNotificationHandler()
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		ServiceName:    "Notification Service",
 		Config:         &cfg.BaseConfig,
 		Logger:         logger,
 		ContextManager: ctxmgr.NewContextManager(),
+		//AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig), TODO: implemnt it
+		Telemetry: tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {

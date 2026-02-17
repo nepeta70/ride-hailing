@@ -2,11 +2,12 @@ package grpc_adapter
 
 import (
 	"context"
+	"fmt"
 
 	"net"
-	"strconv"
 	"time"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -19,18 +20,15 @@ import (
 )
 
 type GRPGAdapterOptions struct {
-	ServiceName            string
 	Config                 *config.BaseConfig
 	Logger                 ports.Logger
 	ContextManager         *ctxmgr.ContextManager
 	AuthConfiguration      ports.EndpointRoles
 	AdditionalInterceptors []grpc.UnaryServerInterceptor
+	Telemetry              *telemetry.TelemetryProvider
 }
 
 func (opts *GRPGAdapterOptions) Validate() error {
-	if opts.ServiceName == "" {
-		return errors.NewValidationErrorf("service name is required")
-	}
 	if opts.Config == nil {
 		return errors.NewValidationErrorf("config is required")
 	}
@@ -43,6 +41,9 @@ func (opts *GRPGAdapterOptions) Validate() error {
 	if opts.AuthConfiguration == nil {
 		return errors.NewValidationErrorf("auth configuration is required")
 	}
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
+	}
 	return nil
 }
 
@@ -54,6 +55,7 @@ type GRPCAdapter struct {
 	logger        ports.Logger
 	config        *config.BaseConfig
 	serviceName   string
+	telemetry     *telemetry.TelemetryProvider
 }
 
 func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
@@ -61,7 +63,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		opts.Logger.Error("FATAL: failed to create GRPC adapter", "error", err)
 		return nil, err
 	}
-	grpcAddr := ":" + strconv.Itoa(opts.Config.Server.Port)
+	grpcAddr := fmt.Sprintf(":%d", opts.Config.Server.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		opts.Logger.Error("failed to listen: %v", "error", err)
@@ -72,8 +74,9 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		Config:                 opts.Config,
 		Logger:                 opts.Logger,
 		ContextManager:         opts.ContextManager,
-		AuthConfiguration:      opts.AuthConfiguration,
+		EndpointRoles:          opts.AuthConfiguration,
 		AdditionalInterceptors: opts.AdditionalInterceptors,
+		Metrics:                opts.Telemetry.GetMetrics(),
 	}
 	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
 	if err != nil {
@@ -98,12 +101,13 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		Address:       grpcAddr,
 		logger:        opts.Logger,
 		config:        opts.Config,
-		serviceName:   opts.ServiceName,
+		serviceName:   opts.Config.ServiceName,
+		telemetry:     opts.Telemetry,
 	}, nil
 }
 
 func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.HealthProvider) {
-	ticker := time.NewTicker(10 * time.Second) // TODO: move to config
+	ticker := time.NewTicker(s.config.Server.HealthCheckInterval)
 
 	go func() {
 		defer ticker.Stop()
