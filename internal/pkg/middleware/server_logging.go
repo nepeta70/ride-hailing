@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
@@ -14,11 +13,11 @@ import (
 // ServerInterceptor manages observability and resiliency for gRPC streams.
 type ServerInterceptor struct {
 	logger  ports.Logger
-	metrics telemetry.MetricsInterface
+	metrics ports.Metrics
 }
 
 // NewServerInterceptor initializes a new interceptor with necessary dependencies.
-func NewServerInterceptor(l ports.Logger, m telemetry.MetricsInterface) *ServerInterceptor {
+func NewServerInterceptor(l ports.Logger, m ports.Metrics) *ServerInterceptor {
 	return &ServerInterceptor{
 		logger:  l,
 		metrics: m,

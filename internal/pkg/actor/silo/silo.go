@@ -11,6 +11,8 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
+const siloServiceName = "GrainSilo"
+
 // GrainActivation holds an active grain instance
 type GrainActivation struct {
 	Identity *grain.GrainIdentity
@@ -51,7 +53,7 @@ func NewSilo(opts *SiloOptions) (*Silo, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(opts.Timeout)
+	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(siloServiceName, opts.Timeout)
 	return &Silo{
 		timeout: opts.Timeout,
 		logger:  opts.Logger,

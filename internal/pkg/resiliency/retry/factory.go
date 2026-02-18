@@ -18,14 +18,17 @@ func NewRetrierFactory(logger ports.Logger, metrics ports.RetryObserver) *Retrie
 	}
 }
 
-func (f *RetrierFactory) NewExponentialBackoffRetrier(timeout time.Duration) ports.RetrierInterface {
+func (f *RetrierFactory) NewExponentialBackoffRetrier(serviceName string, timeout time.Duration) ports.RetrierInterface {
 	cfg := NewRetryConfig(timeout)
 	opts := &RetryOptions{
-		Config:   cfg,
-		Strategy: newExponentialBackoff(cfg),
-		Logger:   f.Logger,
-		Metrics:  f.Metrics,
+		Config:      cfg,
+		Strategy:    newExponentialBackoff(cfg),
+		Logger:      f.Logger,
+		ServiceName: serviceName,
+		Metrics:     f.Metrics,
 	}
 
 	return NewRetrier(opts)
 }
+
+var _ ports.RetrierFactoryInterface = (*RetrierFactory)(nil)

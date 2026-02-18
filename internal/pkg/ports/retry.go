@@ -6,7 +6,7 @@ import (
 )
 
 type RetryObserver interface {
-	ObserveRetry(attempt int, err error, delay time.Duration)
+	ObserveRetry(service string, attempt int, err error, delay time.Duration)
 }
 
 type RetrierInterface interface {
@@ -15,5 +15,5 @@ type RetrierInterface interface {
 }
 
 type RetrierFactoryInterface interface {
-	NewExponentialBackoffRetrier(timeout time.Duration) RetrierInterface
+	NewExponentialBackoffRetrier(serviceName string, timeout time.Duration) RetrierInterface
 }

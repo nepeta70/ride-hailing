@@ -9,21 +9,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-type MetricsInterface interface {
-	// --- RPC Metrics ---
-	GRPCRequestCount(method string, statusCode string)
-	GRPCLatency(method string, durationSeconds float64)
-
-	// --- Resiliency & Stability ---
-	CircuitBreakerState(serviceName string, state int)
-	CircuitBreakerError(serviceName string, errorType string)
-	RequestTimeout(method string)
-	RateLimitDrop(method string)
-
-	// --- Auth ---
-	AuthFailure(method string, reason string)
-}
-
 type Metrics struct {
 	// --- RPC Metrics ---
 	grpcRequestCount *prometheus.CounterVec   // Labels: method, status_code
@@ -38,8 +23,9 @@ type Metrics struct {
 	// --- Auth ---
 	authFailures *prometheus.CounterVec // Labels: method, reason
 
-	retriesCounter        *prometheus.CounterVec   // Labels: attempt
-	retriesDelayHistogram *prometheus.HistogramVec // Labels: attempt
+	// --- Retry Metrics ---
+	retryCounter        *prometheus.CounterVec   // Labels: attempt
+	retryDelayHistogram *prometheus.HistogramVec // Labels: attempt
 }
 
 func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *Metrics {
@@ -95,21 +81,26 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 			Name:      "security_auth_failures_total",
 			Help:      "Total number of failed authentication or authorization attempts",
 		}, []string{"method", "reason"}),
-		retriesCounter: prometheus.NewCounterVec(
+
+		retryCounter: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: "resiliency_retries_total",
-				Help: "Total number of retry attempts categorized by attempt number",
+				Namespace: namespace,
+				Subsystem: subSystem,
+				Name:      "resiliency_retries_total",
+				Help:      "Total number of retry attempts categorized by attempt number",
 			},
-			[]string{"attempt"},
+			[]string{"service", "attempt"},
 		),
 		// Histogram to track the distribution of sleep/delay times
-		retriesDelayHistogram: prometheus.NewHistogramVec(
+		retryDelayHistogram: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "resiliency_retry_delay_seconds",
-				Help:    "The duration of backoff delays between retries",
-				Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}, // Seconds
+				Namespace: namespace,
+				Subsystem: subSystem,
+				Name:      "resiliency_retry_delay_seconds",
+				Help:      "The duration of backoff delays between retries",
+				Buckets:   prometheus.DefBuckets, // Seconds
 			},
-			[]string{"attempt"},
+			[]string{"service", "attempt"},
 		),
 	}
 
@@ -144,12 +135,12 @@ func (m *Metrics) AuthFailure(method string, reason string) {
 	m.authFailures.WithLabelValues(method, reason).Inc()
 }
 
-func (m *Metrics) ObserveRetry(attempt int, err error, delay time.Duration) {
+func (m *Metrics) ObserveRetry(service string, attempt int, err error, delay time.Duration) {
 	// This method can be used to track retry attempts and their characteristics.
 	// For example, you could create additional Prometheus metrics here to count retries or observe delay distributions.
 	// This is a simple example that just logs the retry attempt. You can expand this as needed.
-	m.grpcRequestCount.WithLabelValues("retry_attempt", strconv.Itoa(attempt)).Inc()
+	m.retryCounter.WithLabelValues(service, strconv.Itoa(attempt)).Inc()
+	m.retryDelayHistogram.WithLabelValues(service, strconv.Itoa(attempt)).Observe(delay.Seconds())
 }
 
-var _ MetricsInterface = (*Metrics)(nil)
-var _ ports.RetryObserver = (*Metrics)(nil)
+var _ ports.Metrics = (*Metrics)(nil)

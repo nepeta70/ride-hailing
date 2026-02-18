@@ -19,7 +19,7 @@ type LogicConfig struct {
 
 func DefaultConfig() *Config {
 	base := config.DefaultBaseConfig()
-	base.ServiceName = "Location Service"
+	base.ServiceName = "location"
 	return &Config{
 		BaseConfig: base,
 		Logic: LogicConfig{

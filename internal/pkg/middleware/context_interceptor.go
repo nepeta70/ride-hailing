@@ -10,7 +10,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -19,7 +18,7 @@ type ContextInterceptorOptions struct {
 	ContextManager *ctxmgr.ContextManager
 	Config         *config.BaseConfig
 	Logger         ports.Logger
-	Metrics        telemetry.MetricsInterface
+	Metrics        ports.Metrics
 	EndpointRoles  ports.EndpointRoles
 }
 
@@ -47,7 +46,7 @@ type ContextInterceptor struct {
 	contextManager *ctxmgr.ContextManager
 	config         *config.BaseConfig
 	logger         ports.Logger
-	metrics        telemetry.MetricsInterface
+	metrics        ports.Metrics
 	endpointRoles  ports.EndpointRoles
 }
 

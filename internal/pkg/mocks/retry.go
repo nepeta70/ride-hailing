@@ -21,7 +21,7 @@ var _ ports.RetrierInterface = (*NoOpRetrier)(nil)
 
 type NoOpRetrierFactory struct{}
 
-func (f *NoOpRetrierFactory) NewExponentialBackoffRetrier(timeout time.Duration) ports.RetrierInterface {
+func (f *NoOpRetrierFactory) NewExponentialBackoffRetrier(serviceName string, timeout time.Duration) ports.RetrierInterface {
 	return &NoOpRetrier{}
 }
 

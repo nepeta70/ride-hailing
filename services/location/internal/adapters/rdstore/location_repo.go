@@ -159,38 +159,4 @@ func (r *RedisRepository) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func (r *RedisRepository) ServiceName() string {
-	return "Redis Location Repository"
-}
-
-func (r *RedisRepository) Close() error {
-	return r.client.Close()
-}
-
-func (r *RedisRepository) GetDirections(ctx context.Context, origin, destination domain.Coordinates) (*domain.DirectionsResponse, error) {
-	r.client.GeoAdd(ctx, "locations", &redis.GeoLocation{
-		Name:      "PointA",
-		Longitude: 2.17403,
-		Latitude:  41.40338,
-	})
-
-	r.client.GeoAdd(ctx, "locations", &redis.GeoLocation{
-		Name:      "PointB",
-		Longitude: 2.12282,
-		Latitude:  41.38089,
-	})
-
-	dist, err := r.client.GeoDist(ctx, "locations", "PointA", "PointB", "m").Result()
-	if err != nil {
-		return nil, errors.NewTransientErrorf("distance calculation failed: %w", err)
-	}
-
-	response := &domain.DirectionsResponse{
-		Distance: int(dist),                                  // distance is already in meters
-		Duration: time.Duration(dist/50*60*60) * time.Second, // assuming average speed of 50 km/h
-	}
-	return response, nil
-}
-
-var _ pkgPorts.HealthProvider = (*RedisRepository)(nil)
 var _ ports.LocationRepository = (*RedisRepository)(nil)

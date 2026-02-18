@@ -113,5 +113,40 @@ services:
     depends_on:
       - prometheus
 
+  kafka:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: kafka
+    ports:
+      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
+      - "${KAFKA_INTERNAL_PORT}:${KAFKA_INTERNAL_PORT}"
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp ${KAFKA_SMP}
+      - --memory ${KAFKA_MEMORY}
+      - --reserve-memory ${KAFKA_RESERVE_MEMORY}
+      - --node-id ${KAFKA_NODE_ID}
+      - --check=false
+      - --kafka-addr plaintext://0.0.0.0:${KAFKA_INTERNAL_PORT},outside://0.0.0.0:${KAFKA_EXTERNAL_PORT}
+      - --advertise-kafka-addr ${KAFKA_ADVERTISE_INTERNAL},${KAFKA_ADVERTISE_EXTERNAL}
+      - --set redpanda.auto_create_topics_enabled=${KAFKA_AUTO_CREATE_TOPICS_ENABLED}
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-ui:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_BROKERS=${KAFKA_UI_BROKERS}
+    depends_on:
+      kafka:
+        condition: service_healthy
+        
 volumes:
   ride_db_volume:      

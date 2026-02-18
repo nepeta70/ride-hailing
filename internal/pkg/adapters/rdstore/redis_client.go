@@ -9,6 +9,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const redisServiceName = "RedisClient"
+
 type RedisClient struct {
 	Rdb     *redis.Client
 	config  *RedisConfig
@@ -35,7 +37,7 @@ func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, l
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
-	retrier := retrierFactory.NewExponentialBackoffRetrier(cfg.DialTimeout)
+	retrier := retrierFactory.NewExponentialBackoffRetrier(redisServiceName, cfg.DialTimeout)
 	err := retrier.Do(ctx, func() error {
 		err := rdb.Ping(ctx).Err()
 		if err != nil {
@@ -66,7 +68,7 @@ func (c *RedisClient) Close() error {
 }
 
 func (c *RedisClient) ServiceName() string {
-	return "RedisClient"
+	return redisServiceName
 }
 
 var _ ports.HealthProvider = (*RedisClient)(nil)

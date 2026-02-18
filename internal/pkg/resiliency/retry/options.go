@@ -6,10 +6,11 @@ import (
 )
 
 type RetryOptions struct {
-	Config   *RetryConfig
-	Strategy RetryStrategy
-	Logger   ports.Logger
-	Metrics  ports.RetryObserver
+	Config      *RetryConfig
+	Strategy    RetryStrategy
+	Logger      ports.Logger
+	Metrics     ports.RetryObserver
+	ServiceName string
 }
 
 func (o *RetryOptions) Validate() error {
@@ -24,6 +25,9 @@ func (o *RetryOptions) Validate() error {
 	}
 	if o.Metrics == nil {
 		return errors.NewValidationErrorf("Metrics cannot be nil")
+	}
+	if o.ServiceName == "" {
+		return errors.NewValidationErrorf("ServiceName cannot be empty")
 	}
 	return nil
 }
