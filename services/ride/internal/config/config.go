@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
@@ -27,6 +28,7 @@ type Config struct {
 	FareConfig FareConfig             `json:"fare"`
 	Redis      rdstore.RedisConfig    `json:"redis"`
 	Postgres   pgstore.PostgresConfig `json:"postgres"`
+	Kafka      *pubsub.KafkaConfig    `json:"kafka"`
 }
 
 func DefaultConfig() *Config {
@@ -38,6 +40,7 @@ func DefaultConfig() *Config {
 		FareConfig: DefaultFareConfig(),
 		Redis:      rdstore.DefaultRedisConfig(),
 		Postgres:   pgstore.DefaultPostgresConfig(),
+		Kafka:      pubsub.DefaultKafkaConfig(),
 	}
 }
 

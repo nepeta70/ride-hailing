@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
@@ -27,9 +29,9 @@ func (opts *RideGrainOptions) Validate() error {
 	if opts.Storage == nil {
 		return errors.NewValidationErrorf("grain storage is required")
 	}
-	// if opts.EventPub == nil { TODO: uncomment when event publisher is implemented
-	// 	return errors.NewValidationErrorf("event publisher is required")
-	// }
+	if opts.EventPub == nil {
+		return errors.NewValidationErrorf("event publisher is required")
+	}
 	if opts.Logger == nil {
 		return errors.NewValidationErrorf("logger is required")
 	}
@@ -173,6 +175,20 @@ func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideComma
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
+	event := &RideRequestedEvent{
+		RequestID:       cmd.RequestID,
+		RiderID:         cmd.RiderID,
+		PickupLocation:  cmd.PickupLocation,
+		DropoffLocation: cmd.DropoffLocation,
+		ServiceType:     cmd.ServiceType,
+		Fare:            cmd.Fare,
+		Currency:        cmd.Currency,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+
 	return &RequestRideResponse{RideID: g.identity.EntityID}, nil
 }
 
@@ -203,6 +219,15 @@ func (g *RideGrain) handleCancelRide(ctx context.Context, cmd *CancelRideCommand
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
+	event := &RideCanceledEvent{
+		RequestID: cmd.RequestID,
+		RiderID:   cmd.RiderID,
+		RideID:    cmd.RideID,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
 	return &SuccessResponse{}, nil
 }
 
@@ -231,6 +256,15 @@ func (g *RideGrain) handleAcceptRide(ctx context.Context, cmd *AcceptRideCommand
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
+	event := &RideAcceptedEvent{
+		RequestID: cmd.RequestID,
+		DriverID:  cmd.DriverID,
+		RideID:    cmd.RideID,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
 	return &SuccessResponse{}, nil
 }
 
@@ -243,7 +277,15 @@ func (g *RideGrain) handleRejectRide(ctx context.Context, cmd *RejectRideCommand
 		return nil, errors.NewBusinessErrorf("Cannot reject a ride with state %s", g.state.Status)
 	}
 
-	// TODO: publish event that will be consumed by matching service to trigger new driver assignment
+	event := &RideRejectedEvent{
+		RequestID: cmd.RequestID,
+		DriverID:  cmd.DriverID,
+		RideID:    cmd.RideID,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
 
 	return &SuccessResponse{}, nil
 }
@@ -270,6 +312,16 @@ func (g *RideGrain) handleStartRide(ctx context.Context, cmd *StartRideCommand) 
 	}
 	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
+	}
+
+	event := &RideStartedEvent{
+		RequestID: cmd.RequestID,
+		DriverID:  cmd.DriverID,
+		RideID:    cmd.RideID,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
 	}
 
 	return &SuccessResponse{}, nil
@@ -299,5 +351,32 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
+	event := &RideCompletedEvent{
+		RequestID: cmd.RequestID,
+		DriverID:  cmd.DriverID,
+		RideID:    cmd.RideID,
+	}
+	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
 	return &SuccessResponse{}, nil
+}
+
+func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) error {
+	message := &contracts.EventMessage{
+		ID:        uuid.New().String(),
+		EventType: event.EventType(),
+		Timestamp: time.Now(),
+		Payload:   event,
+	}
+	err := g.eventPub.Publish(ctx, contracts.TopicRide, message)
+	if err != nil {
+		g.logger.Error("Failed to publish event",
+			"event_type", event.EventType(),
+			"ride_id", g.identity.EntityID,
+			"error", err)
+		return errors.NewTransientErrorf("failed to publish event %s: %w", event.EventType(), err)
+	}
+	return nil
 }

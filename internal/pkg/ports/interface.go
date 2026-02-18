@@ -28,7 +28,7 @@ type CacheService interface {
 type MessageHandler func(ctx context.Context, msg []byte) error
 
 type EventPublisher interface {
-	Publish(ctx context.Context, topic string, message *contracts.EventMessage) error
+	Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error
 	IsHealthy(ctx context.Context) bool
 	Close() error
 	TopicProvider() TopicProvider
@@ -36,7 +36,7 @@ type EventPublisher interface {
 
 // EventSubscriber defines the contract for listening to external events
 type EventSubscriber interface {
-	Subscribe(ctx context.Context, topic string, handler MessageHandler) error
+	Subscribe(ctx context.Context, topic contracts.Topic, handler MessageHandler) error
 	Close() error
 }
 
@@ -47,5 +47,5 @@ type EventStore interface {
 
 type TopicProvider interface {
 	AllTopics() []string
-	GetTopicForEvent(eventType string) (string, error)
+	GetTopicForEvent(eventType string) (contracts.Topic, error)
 }

@@ -18,7 +18,7 @@ type KafkaPublisher struct {
 	logger        ports.Logger
 }
 
-func NewEventPublisher(cfg KafkaConfig, topicProvider ports.TopicProvider, logger ports.Logger) ports.EventPublisher {
+func NewEventPublisher(cfg *KafkaConfig, topicProvider ports.TopicProvider, logger ports.Logger) ports.EventPublisher {
 	kp := &KafkaPublisher{
 		brokers:       cfg.Brokers,
 		topicProvider: topicProvider,
@@ -46,13 +46,13 @@ func NewEventPublisher(cfg KafkaConfig, topicProvider ports.TopicProvider, logge
 	return kp
 }
 
-func (k *KafkaPublisher) Publish(ctx context.Context, topic string, message *contracts.EventMessage) error {
+func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error {
 	data, err := json.Marshal(message)
 	if err != nil {
 		return errors.NewErrJSONMarshal(err)
 	}
 	return k.writer.WriteMessages(ctx, kafka.Message{
-		Topic:   topic,
+		Topic:   string(topic),
 		Value:   data,
 		Headers: []kafka.Header{{Key: "eventType", Value: []byte(message.EventType)}},
 		Time:    message.Timestamp,
@@ -134,3 +134,5 @@ func (k *KafkaPublisher) verify(required []string) bool {
 	}
 	return true
 }
+
+var _ ports.EventPublisher = (*KafkaPublisher)(nil)

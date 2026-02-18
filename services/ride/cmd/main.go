@@ -10,6 +10,7 @@ import (
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
@@ -57,6 +58,11 @@ func main() {
 		return
 	}
 
+	topicProvider := service.NewTopicProvider()
+
+	eventPublisher := pubsub.NewEventPublisher(cfg.Kafka, topicProvider, logger)
+	defer eventPublisher.Close()
+	
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
 		Config:   cfg,
 		RdClient: redisClient,
@@ -83,7 +89,7 @@ func main() {
 		Topic:          contracts.TopicRide,
 		GrainTimeout:   cfg.Timeouts.RequestTimeout,
 		Storage:        storage.GrainStorage(),
-		EventPublisher: nil, // TODO: Initialize an actual event publisher here
+		EventPublisher: eventPublisher,
 		Logger:         logger,
 		RetrierFactory: retrierFactory,
 	})
