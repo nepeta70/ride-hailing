@@ -42,27 +42,27 @@ func TestServerConfig_Validate(t *testing.T) {
 	}{
 		{
 			name:    "port too low",
-			cfg:     ServerConfig{Port: 0, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 0, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5, HealthCheckIntervalSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "empty host",
-			cfg:     ServerConfig{Port: 5001, Host: "", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5, HealthCheckIntervalSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "zero read timeout",
-			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 0, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 0, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: 5, HealthCheckIntervalSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "negative write timeout",
-			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: -1, IdleTimeoutSeconds: 5},
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: -1, IdleTimeoutSeconds: 5, HealthCheckIntervalSeconds: 5},
 			wantErr: true,
 		},
 		{
 			name:    "negative idle timeout",
-			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: -1},
+			cfg:     ServerConfig{Port: 5001, Host: "127.0.0.1", ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 5, IdleTimeoutSeconds: -1, HealthCheckIntervalSeconds: 5},
 			wantErr: true,
 		},
 		{
@@ -72,9 +72,13 @@ func TestServerConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "valid config with timeouts",
-			cfg: ServerConfig{Port: 5001, Host: "localhost",
-				ReadTimeoutSeconds: 5, WriteTimeoutSeconds: 10,
-				IdleTimeoutSeconds: 120,
+			cfg: ServerConfig{
+				Port:                       5001,
+				Host:                       "localhost",
+				ReadTimeoutSeconds:         5,
+				WriteTimeoutSeconds:        10,
+				IdleTimeoutSeconds:         120,
+				HealthCheckIntervalSeconds: 5,
 			},
 			wantErr: false,
 		},

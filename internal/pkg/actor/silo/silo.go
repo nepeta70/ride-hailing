@@ -9,7 +9,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 )
 
 // GrainActivation holds an active grain instance
@@ -20,8 +19,9 @@ type GrainActivation struct {
 }
 
 type SiloOptions struct {
-	Timeout time.Duration
-	Logger  ports.Logger
+	Timeout        time.Duration
+	Logger         ports.Logger
+	RetrierFactory ports.RetrierFactoryInterface
 }
 
 func (opts *SiloOptions) Validate() error {
@@ -30,6 +30,9 @@ func (opts *SiloOptions) Validate() error {
 	}
 	if opts.Logger == nil {
 		return errors.NewValidationErrorf("logger is required")
+	}
+	if opts.RetrierFactory == nil {
+		return errors.NewValidationErrorf("retrier factory is required")
 	}
 	return nil
 }
@@ -40,7 +43,7 @@ type Silo struct {
 	activations sync.Map // map[string]*GrainActivation
 	factories   sync.Map // map[string]ports.GrainFactory
 	timeout     time.Duration
-	retrier     *retry.Retrier
+	retrier     ports.RetrierInterface
 	logger      ports.Logger
 }
 
@@ -48,7 +51,7 @@ func NewSilo(opts *SiloOptions) (*Silo, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	strategy := retry.NewExponentialBackoffRetrierWithTimeout(opts.Timeout, opts.Logger)
+	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(opts.Timeout)
 	return &Silo{
 		timeout: opts.Timeout,
 		logger:  opts.Logger,

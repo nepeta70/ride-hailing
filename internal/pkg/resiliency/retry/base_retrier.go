@@ -67,10 +67,6 @@ func (r *baseRetrier) DoWithResult(ctx context.Context, op func() (any, error)) 
 
 		delay := r.strategy.NextDelay(attempt)
 
-		if r.observer != nil {
-			r.observer.ObserveRetry(attempt, lastErr, delay)
-		}
-
 		r.logger.Warn("operation failed on attempt", "attempt", attempt, "error", lastErr, "retry_in", delay)
 		if r.observer != nil {
 			r.observer.ObserveRetry(attempt, lastErr, delay)

@@ -25,6 +25,7 @@ const (
 )
 
 var kinds = []enums.AggregateType{rideKind, driverKind, userKind}
+var retryFactory = &mocks.NoOpRetrierFactory{}
 
 // Mock Grain
 type mockGrain struct {
@@ -101,16 +102,18 @@ func TestNewSilo(t *testing.T) {
 		{
 			name: "creates silo with valid options",
 			opts: &SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			},
 			wantNil: false,
 		},
 		{
 			name: "creates silo with minimal timeout",
 			opts: &SiloOptions{
-				Timeout: 1 * time.Millisecond,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        1 * time.Millisecond,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			},
 			wantNil: false,
 		},
@@ -160,8 +163,9 @@ func TestSilo_RegisterFactory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			silo.RegisterFactory(tt.kind, tt.factory)
@@ -224,8 +228,9 @@ func TestSilo_GetOrActivate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			var testGrain *mockGrain
@@ -311,8 +316,9 @@ func TestSilo_Tell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			var testGrain *mockGrain
@@ -408,8 +414,9 @@ func TestSilo_Ask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			var testGrain *mockGrain
@@ -481,8 +488,9 @@ func TestSilo_Deactivate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			var testGrain *mockGrain
@@ -572,8 +580,9 @@ func TestSilo_Reset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
-				Timeout: 5 * time.Second,
-				Logger:  &mocks.MockLogger{},
+				Timeout:        5 * time.Second,
+				Logger:         &mocks.MockLogger{},
+				RetrierFactory: retryFactory,
 			})
 
 			grains := make([]*mockGrain, tt.grainCount)
@@ -617,8 +626,9 @@ func TestSilo_Reset(t *testing.T) {
 func TestSilo_Concurrency(t *testing.T) {
 	t.Run("concurrent activations of same grain", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
-			Timeout: 5 * time.Second,
-			Logger:  &mocks.MockLogger{},
+			Timeout:        5 * time.Second,
+			Logger:         &mocks.MockLogger{},
+			RetrierFactory: retryFactory,
 		})
 
 		activationCount := 0
@@ -658,8 +668,9 @@ func TestSilo_Concurrency(t *testing.T) {
 
 	t.Run("concurrent tell operations", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
-			Timeout: 5 * time.Second,
-			Logger:  &mocks.MockLogger{},
+			Timeout:        5 * time.Second,
+			Logger:         &mocks.MockLogger{},
+			RetrierFactory: retryFactory,
 		})
 
 		receiveCount := 0
@@ -707,8 +718,9 @@ func TestSilo_Concurrency(t *testing.T) {
 func TestSilo_ContextTimeout(t *testing.T) {
 	t.Run("tell respects context timeout", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
-			Timeout: 1 * time.Millisecond,
-			Logger:  &mocks.MockLogger{},
+			Timeout:        1 * time.Millisecond,
+			Logger:         &mocks.MockLogger{},
+			RetrierFactory: retryFactory,
 		})
 
 		testGrain := &mockGrain{
@@ -740,8 +752,9 @@ func TestSilo_ContextTimeout(t *testing.T) {
 
 	t.Run("ask respects context timeout", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
-			Timeout: 1 * time.Millisecond,
-			Logger:  &mocks.MockLogger{},
+			Timeout:        1 * time.Millisecond,
+			Logger:         &mocks.MockLogger{},
+			RetrierFactory: retryFactory,
 		})
 
 		testGrain := &mockGrain{

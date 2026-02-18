@@ -31,7 +31,7 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	base := config.DefaultBaseConfig()
-	base.ServiceName = "Ride Service"
+	base.ServiceName = "ride"
 	return &Config{
 		BaseConfig: base,
 		KeysConfig: DefaultKeysConfig(),

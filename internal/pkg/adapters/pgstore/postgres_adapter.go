@@ -5,18 +5,20 @@ import (
 	"database/sql"
 
 	_ "github.com/lib/pq"
+
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 )
 
 type PostgresDB struct {
-	config *PostgresConfig
-	logger ports.Logger
+	config       *PostgresConfig
+	logger       ports.Logger
+	retryFactory *retry.RetrierFactory
 	*sql.DB
 }
 
-func NewPostgresDB(config *PostgresConfig, logger ports.Logger) (*PostgresDB, error) {
+func NewPostgresDB(config *PostgresConfig, retrierFactory *retry.RetrierFactory, logger ports.Logger) (*PostgresDB, error) {
 	dbConn, err := sql.Open("postgres", config.DSN())
 	if err != nil {
 		// If the driver name or DSN format is wrong, it's a permanent code/config bug
@@ -26,7 +28,7 @@ func NewPostgresDB(config *PostgresConfig, logger ports.Logger) (*PostgresDB, er
 	ctx, cancel := context.WithTimeout(context.Background(), config.PingTimeout)
 	defer cancel()
 
-	strategy := retry.NewExponentialBackoffRetrierWithTimeout(config.PingTimeout, logger)
+	strategy := retrierFactory.NewExponentialBackoffRetrier(config.PingTimeout)
 	err = strategy.Do(ctx, func() error {
 		return dbConn.PingContext(ctx)
 	})
@@ -36,9 +38,10 @@ func NewPostgresDB(config *PostgresConfig, logger ports.Logger) (*PostgresDB, er
 	}
 
 	db := &PostgresDB{
-		config: config,
-		logger: logger,
-		DB:     dbConn,
+		config:       config,
+		logger:       logger,
+		retryFactory: retrierFactory,
+		DB:           dbConn,
 	}
 	return db, nil
 }
@@ -74,7 +77,7 @@ func (db *PostgresDB) Close() error {
 
 // QueryContext wraps the standard sql.DB QueryContext with retries and timeouts
 func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	strategy := retry.NewExponentialBackoffRetrierWithTimeout(db.config.QueryTimeout, db.logger)
+	strategy := db.retryFactory.NewExponentialBackoffRetrier(db.config.QueryTimeout)
 
 	db.logger.Debug("Executing query with retry", "query", query)
 	var rows *sql.Rows
@@ -95,7 +98,7 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	var res sql.Result
 
-	strategy := retry.NewExponentialBackoffRetrierWithTimeout(db.config.QueryTimeout, db.logger)
+	strategy := db.retryFactory.NewExponentialBackoffRetrier(db.config.QueryTimeout)
 
 	err := strategy.Do(ctx, func() error {
 		var err error

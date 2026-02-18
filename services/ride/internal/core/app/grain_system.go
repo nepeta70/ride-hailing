@@ -6,6 +6,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -21,6 +22,7 @@ type GrainSystemOptions struct {
 	Logger         pkgPorts.Logger
 	Topic          contracts.Topic
 	GrainTimeout   time.Duration
+	RetrierFactory *retry.RetrierFactory
 }
 
 func (opts *GrainSystemOptions) Validate() error {
@@ -40,6 +42,9 @@ func (opts *GrainSystemOptions) Validate() error {
 	if opts.GrainTimeout <= 0 {
 		return errors.NewValidationErrorf("grain timeout must be greater than zero")
 	}
+	if opts.RetrierFactory == nil {
+		return errors.NewValidationErrorf("retrier factory is required")
+	}
 	return nil
 }
 
@@ -57,7 +62,11 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
-	si, err := silo.NewSilo(&silo.SiloOptions{Timeout: opts.GrainTimeout, Logger: opts.Logger})
+	si, err := silo.NewSilo(&silo.SiloOptions{
+		Timeout:        opts.GrainTimeout,
+		Logger:         opts.Logger,
+		RetrierFactory: opts.RetrierFactory,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +75,8 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 		Storage:  opts.Storage,
 		EventPub: opts.EventPublisher,
 		Logger:   opts.Logger,
-		Topic:    opts.Topic}
+		Topic:    opts.Topic,
+	}
 	if err := grainOpts.Validate(); err != nil {
 		return nil, err
 	}

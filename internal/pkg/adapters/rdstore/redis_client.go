@@ -5,7 +5,6 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,11 +13,11 @@ type RedisClient struct {
 	Rdb     *redis.Client
 	config  *RedisConfig
 	logger  ports.Logger
-	retrier *retry.Retrier
+	retrier ports.RetrierInterface
 }
 
 // NewClient returns our wrapped client
-func NewClient(cfg *RedisConfig, logger ports.Logger) (*RedisClient, error) {
+func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, logger ports.Logger) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,
@@ -36,7 +35,7 @@ func NewClient(cfg *RedisConfig, logger ports.Logger) (*RedisClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
-	retrier := retry.NewExponentialBackoffRetrierWithTimeout(cfg.DialTimeout, logger)
+	retrier := retrierFactory.NewExponentialBackoffRetrier(cfg.DialTimeout)
 	err := retrier.Do(ctx, func() error {
 		err := rdb.Ping(ctx).Err()
 		if err != nil {
