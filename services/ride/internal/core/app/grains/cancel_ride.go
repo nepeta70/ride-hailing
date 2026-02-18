@@ -2,7 +2,6 @@ package grains
 
 import (
 	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
@@ -29,15 +28,3 @@ func (c *CancelRideCommand) Validate() error {
 
 	return nil
 }
-
-type RideCanceledEvent struct {
-	RequestID uuid.UUID
-	RiderID   uuid.UUID
-	RideID    uuid.UUID
-}
-
-func (e *RideCanceledEvent) EventType() string {
-	return "RideCanceled"
-}
-
-var _ contracts.Event = (*RideCanceledEvent)(nil)

@@ -175,7 +175,7 @@ func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideComma
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
-	event := &RideRequestedEvent{
+	event := &contracts.RideRequestedEvent{
 		RequestID:       cmd.RequestID,
 		RiderID:         cmd.RiderID,
 		PickupLocation:  cmd.PickupLocation,
@@ -219,7 +219,7 @@ func (g *RideGrain) handleCancelRide(ctx context.Context, cmd *CancelRideCommand
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
-	event := &RideCanceledEvent{
+	event := &contracts.RideCanceledEvent{
 		RequestID: cmd.RequestID,
 		RiderID:   cmd.RiderID,
 		RideID:    cmd.RideID,
@@ -256,7 +256,7 @@ func (g *RideGrain) handleAcceptRide(ctx context.Context, cmd *AcceptRideCommand
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
-	event := &RideAcceptedEvent{
+	event := &contracts.RideAcceptedEvent{
 		RequestID: cmd.RequestID,
 		DriverID:  cmd.DriverID,
 		RideID:    cmd.RideID,
@@ -277,7 +277,7 @@ func (g *RideGrain) handleRejectRide(ctx context.Context, cmd *RejectRideCommand
 		return nil, errors.NewBusinessErrorf("Cannot reject a ride with state %s", g.state.Status)
 	}
 
-	event := &RideRejectedEvent{
+	event := &contracts.RideRejectedEvent{
 		RequestID: cmd.RequestID,
 		DriverID:  cmd.DriverID,
 		RideID:    cmd.RideID,
@@ -314,7 +314,7 @@ func (g *RideGrain) handleStartRide(ctx context.Context, cmd *StartRideCommand) 
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
-	event := &RideStartedEvent{
+	event := &contracts.RideStartedEvent{
 		RequestID: cmd.RequestID,
 		DriverID:  cmd.DriverID,
 		RideID:    cmd.RideID,
@@ -351,7 +351,7 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
 	}
 
-	event := &RideCompletedEvent{
+	event := &contracts.RideCompletedEvent{
 		RequestID: cmd.RequestID,
 		DriverID:  cmd.DriverID,
 		RideID:    cmd.RideID,
