@@ -39,14 +39,14 @@ func main() {
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.GetMetrics())
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
-	locationRepository := rdstore.NewRedisRepository(cfg, redisClient, logger)
+	locationRepository := rdstore.NewLocationRepository(cfg, redisClient, logger, tel.GetMetrics())
 	app := app.NewApplication(ctxmgr.NewContextManager(), logger, locationRepository)
 
 	handler := grpcAdapters.NewLocationHandler(app)

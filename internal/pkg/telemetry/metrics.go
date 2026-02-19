@@ -27,6 +27,9 @@ type Metrics struct {
 	// --- Retry Metrics ---
 	retryCounter        *prometheus.CounterVec   // Labels: attempt
 	retryDelayHistogram *prometheus.HistogramVec // Labels: attempt
+
+	// --- Dependency Metrics ---
+	dependencyFailures *prometheus.CounterVec // Labels: dependency, operation, error_type
 }
 
 func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *Metrics {
@@ -110,6 +113,13 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 			},
 			[]string{"service", "attempt"},
 		),
+
+		dependencyFailures: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subSystem,
+			Name:      "dependency_errors_total",
+			Help:      "Total number of failed calls to external dependencies (db, redis, kafka)",
+		}, []string{"dependency", "operation", "error_type"}),
 	}
 
 	return prometheusMetrics
@@ -153,6 +163,10 @@ func (m *Metrics) ObserveRetry(service string, attempt int, err error, delay tim
 	// This is a simple example that just logs the retry attempt. You can expand this as needed.
 	m.retryCounter.WithLabelValues(service, strconv.Itoa(attempt)).Inc()
 	m.retryDelayHistogram.WithLabelValues(service, strconv.Itoa(attempt)).Observe(delay.Seconds())
+}
+
+func (m *Metrics) DependencyFailure(dependency string, operation string, errorType string) {
+	m.dependencyFailures.WithLabelValues(dependency, operation, errorType).Inc()
 }
 
 var _ ports.Metrics = (*Metrics)(nil)

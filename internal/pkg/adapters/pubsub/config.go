@@ -8,31 +8,33 @@ import (
 )
 
 type KafkaConfig struct {
-	Brokers       []string      `json:"brokers" env:"KAFKA_BROKERS"`
-	AutoCreate    bool          `json:"auto_create_topics" env:"KAFKA_AUTO_CREATE_TOPICS"`
-	Topics        []string      `json:"topics" env:"KAFKA_TOPICS"`
-	BatchSize     int           `json:"batch_size" env:"KAFKA_BATCH_SIZE"`
-	BatchTimeout  int           `json:"batch_timeout_ms" env:"KAFKA_BATCH_TIMEOUT_MS"`
-	EnableLogging bool          `json:"enable_logging" env:"KAFKA_ENABLE_LOGGING"`
-	TopicPrefix   string        `json:"topic_prefix" env:"KAFKA_TOPIC_PREFIX"`
-	MinBytes      int           `json:"min_bytes" env:"KAFKA_MIN_BYTES"`
-	MaxBytes      int           `json:"max_bytes" env:"KAFKA_MAX_BYTES"`
-	MaxWaitMs     int           `json:"max_wait_ms" env:"KAFKA_MAX_WAIT_MS"`
-	MaxWait       time.Duration `json:"-"` // Calculated from MaxWaitMs
+	Brokers        []string `json:"brokers" env:"KAFKA_BROKERS"`
+	AutoCreate     bool     `json:"auto_create_topics" env:"KAFKA_AUTO_CREATE_TOPICS"`
+	Topics         []string `json:"topics" env:"KAFKA_TOPICS"`
+	BatchSize      int      `json:"batch_size" env:"KAFKA_BATCH_SIZE"`
+	BatchTimeoutMs int      `json:"batch_timeout_ms" env:"KAFKA_BATCH_TIMEOUT_MS"`
+	EnableLogging  bool     `json:"enable_logging" env:"KAFKA_ENABLE_LOGGING"`
+	TopicPrefix    string   `json:"topic_prefix" env:"KAFKA_TOPIC_PREFIX"`
+	MinBytes       int      `json:"min_bytes" env:"KAFKA_MIN_BYTES"`
+	MaxBytes       int      `json:"max_bytes" env:"KAFKA_MAX_BYTES"`
+	MaxWaitMs      int      `json:"max_wait_ms" env:"KAFKA_MAX_WAIT_MS"`
+
+	MaxWait      time.Duration `json:"-"` // Calculated from MaxWaitMs
+	BatchTimeout time.Duration `json:"-"` // Calculated from BatchTimeoutMs
 }
 
 func DefaultKafkaConfig() *KafkaConfig {
 	return &KafkaConfig{
-		Brokers:       []string{"localhost:9092"},
-		AutoCreate:    true,
-		Topics:        []string{"user", "location", "ride", "driver", "matching", "notification", "rider"},
-		BatchSize:     100,
-		BatchTimeout:  500,
-		EnableLogging: false,
-		TopicPrefix:   "",
-		MinBytes:      100,
-		MaxBytes:      10e6,
-		MaxWaitMs:     100,
+		Brokers:        []string{"localhost:9092"},
+		AutoCreate:     true,
+		Topics:         []string{"user", "location", "ride", "driver", "matching", "notification", "rider"},
+		BatchSize:      100,
+		BatchTimeoutMs: 500,
+		EnableLogging:  false,
+		TopicPrefix:    "",
+		MinBytes:       100,
+		MaxBytes:       10e6,
+		MaxWaitMs:      100,
 	}
 }
 
@@ -49,7 +51,7 @@ func (c *KafkaConfig) Validate() error {
 		return errors.NewValidationErrorf("batch size must be greater than zero")
 	}
 
-	if c.BatchTimeout < 0 {
+	if c.BatchTimeoutMs < 0 {
 		return errors.NewValidationErrorf("batch timeout must be non-negative")
 	}
 	return nil
@@ -65,6 +67,7 @@ func (c *KafkaConfig) GetPrefixedTopic(topic string) string {
 
 func (c *KafkaConfig) Init() error {
 	c.MaxWait = time.Duration(c.MaxWaitMs) * time.Millisecond
+	c.BatchTimeout = time.Duration(c.BatchTimeoutMs) * time.Millisecond
 	return nil
 }
 

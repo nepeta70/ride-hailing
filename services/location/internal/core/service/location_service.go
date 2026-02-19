@@ -27,7 +27,7 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	}
 
 	// 2. Map to Domain (The Geohash-only object you wanted)
-	loc := &domain.UserLocation{
+	loc := &domain.DriverLocation{
 		UserID:   req.UserID,
 		UserType: req.UserType,
 		Coordinates: domain.Coordinates{
@@ -43,7 +43,7 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	return s.repo.Save(ctx, loc)
 }
 
-func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
+func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -57,7 +57,7 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
-func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.UserLocation, error) {
+func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}

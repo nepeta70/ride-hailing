@@ -68,4 +68,8 @@ func (m *MockMetrics) ValidationFailure(method string, reason string) {
 	m.track("ValidationFailure", method, reason)
 }
 
+func (m *MockMetrics) DependencyFailure(dependency string, operation string, errorType string) {
+	m.track("DependencyFailure", dependency, operation, errorType)
+}
+
 var _ ports.Metrics = (*MockMetrics)(nil)

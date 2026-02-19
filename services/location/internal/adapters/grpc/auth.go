@@ -14,9 +14,9 @@ type LocationEndpointRoles struct {
 
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
 	var roleConfig = map[string][]enums.UserRole{
-		locationv1.LocationService_GetUserLocation_FullMethodName:     {enums.UserRoleRider},
-		locationv1.LocationService_SearchNearbyDrivers_FullMethodName: {enums.UserRoleDriver},
-		locationv1.LocationService_UpdateUserLocation_FullMethodName:  {enums.UserRoleRider, enums.UserRoleDriver},
+		locationv1.LocationService_DeleteDriverLocation_FullMethodName: {enums.UserRoleDriver},
+		locationv1.LocationService_SearchNearbyDrivers_FullMethodName:  {enums.UserRoleAdmin, enums.UserRoleRider},
+		locationv1.LocationService_UpdateDriverLocation_FullMethodName: {enums.UserRoleDriver},
 	}
 
 	return &LocationEndpointRoles{

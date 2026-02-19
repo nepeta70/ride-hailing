@@ -54,7 +54,7 @@ func (r *baseRetrier) DoWithResult(ctx context.Context, op func() (any, error)) 
 		result, lastErr = op()
 		if lastErr == nil {
 			if attempt > 1 {
-				r.logger.Info("operation succeeded after", "attempts", attempt)
+				r.logger.Debug("operation succeeded after", "attempts", attempt)
 			}
 			return result, nil
 		}

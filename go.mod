@@ -50,7 +50,6 @@ require (
 )
 
 require (
-	github.com/mmcloughlin/geohash v0.10.0
 	github.com/redis/go-redis/v9 v9.18.0
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect

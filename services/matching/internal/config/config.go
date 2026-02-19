@@ -1,18 +1,21 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
 type Config struct {
 	config.BaseConfig
+	Kafka *pubsub.KafkaConfig `json:"kafka"`
 }
 
 func DefaultConfig() *Config {
 	base := config.DefaultBaseConfig()
-	base.ServiceName = "Matching Service"
+	base.ServiceName = "matching"
 	return &Config{
 		BaseConfig: base,
+		Kafka:      pubsub.DefaultKafkaConfig(),
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	caterrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -29,7 +30,7 @@ func NewLocationHandler(app *app.Application) *LocationHandler {
 	return &LocationHandler{app: app}
 }
 
-func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv1.UserLocation) (*emptypb.Empty, error) {
+func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locationv1.DriverLocation) (*emptypb.Empty, error) {
 	info, err := h.getInfoFromMetadata(ctx)
 	if err != nil {
 		return nil, err
@@ -47,6 +48,7 @@ func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv
 		Heading:    req.GetHeading(),
 		Speed:      req.GetSpeed(),
 		CapturedAt: time.Unix(info.Trace.Timestamp, 0),
+		Status:     contracts.DriverStatus(req.GetStatus()),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -55,8 +57,8 @@ func (h *LocationHandler) UpdateUserLocation(ctx context.Context, req *locationv
 	return &emptypb.Empty{}, nil
 }
 
-// GetLocation handles the read-side (Query)
-func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.UserID) (*locationv1.UserLocation, error) {
+// GetDriverLocation handles the read-side (Query)
+func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1.UserID) (*locationv1.DriverLocation, error) {
 	// 2. Execute Query
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -68,7 +70,7 @@ func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.U
 	}
 
 	// 3. Map Result to Proto Response
-	return &locationv1.UserLocation{
+	return &locationv1.DriverLocation{
 		Latitude:  result.Coordinates.Latitude,
 		Longitude: result.Coordinates.Longitude,
 		Accuracy:  result.Accuracy,
@@ -77,8 +79,8 @@ func (h *LocationHandler) GetUserLocation(ctx context.Context, req *locationv1.U
 	}, nil
 }
 
-// DeleteUserLocation handles the deletion of a user's location
-func (h *LocationHandler) DeleteUserLocation(ctx context.Context, req *locationv1.UserID) (*emptypb.Empty, error) {
+// DeleteDriverLocation handles the deletion of a driver's location
+func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locationv1.UserID) (*emptypb.Empty, error) {
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid user ID format")
@@ -103,9 +105,9 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 		return nil, mapError(err)
 	}
 
-	driverLocations := make([]*locationv1.UserLocation, 0, len(results))
+	driverLocations := make([]*locationv1.DriverLocation, 0, len(results))
 	for _, loc := range results {
-		driverLocations = append(driverLocations, &locationv1.UserLocation{
+		driverLocations = append(driverLocations, &locationv1.DriverLocation{
 			Latitude:  loc.Coordinates.Latitude,
 			Longitude: loc.Coordinates.Longitude,
 			Accuracy:  loc.Accuracy,

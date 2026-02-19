@@ -8,13 +8,13 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/nepeta70/ride-hailing/gen/pb/location/v1";
 
 service LocationService {
-  rpc UpdateUserLocation(UserLocation) returns (google.protobuf.Empty);
-  rpc GetUserLocation(UserID) returns (UserLocation);
-  rpc DeleteUserLocation(UserID) returns (google.protobuf.Empty);
+  rpc UpdateDriverLocation(DriverLocation) returns (google.protobuf.Empty);
+  rpc GetDriverLocation(UserID) returns (DriverLocation);
+  rpc DeleteDriverLocation(UserID) returns (google.protobuf.Empty);
   rpc SearchNearbyDrivers(SearchNearbyDriversRequest) returns (SearchNearbyDriversResponse);
 }
 
-message UserLocation {
+message DriverLocation {
   // The latitude in degrees. Range: [-90.0, +90.0]
   double latitude = 1;
 
@@ -29,6 +29,8 @@ message UserLocation {
   float heading = 4;
 
   float speed = 5;
+
+  string status = 6;
 }
 
 message UserID {
@@ -48,5 +50,5 @@ message SearchNearbyDriversRequest {
 }
 
 message SearchNearbyDriversResponse {
-  repeated UserLocation driver_locations = 1;
+  repeated DriverLocation driver_locations = 1;
 }

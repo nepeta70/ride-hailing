@@ -45,14 +45,19 @@ func main() {
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.GetMetrics())
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
-	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, retrierFactory, logger)
+	pg, err := pgstore.NewPostgresDB(&pgstore.PostgresOpts{
+		Config:         &cfg.Postgres,
+		Logger:         logger,
+		RetrierFactory: retrierFactory,
+		Metrics:        tel.GetMetrics(),
+	})
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)
 		return
@@ -60,7 +65,17 @@ func main() {
 
 	topicProvider := service.NewTopicProvider()
 
-	eventPublisher := pubsub.NewEventPublisher(cfg.Kafka, topicProvider, logger)
+	eventPublisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
+		Config:         cfg.Kafka,
+		TopicProvider:  topicProvider,
+		Logger:         logger,
+		Metrics:        tel.GetMetrics(),
+		RetrierFactory: retrierFactory,
+	})
+	if err != nil {
+		logger.Error("Failed to create event publisher:", "error", err)
+		return
+	}
 	defer eventPublisher.Close()
 
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
@@ -126,7 +141,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, redisClient, pg)
+	grpcServer.MonitorHealth(ctx, redisClient, pg, eventPublisher)
 
 	grpcServer.Run(ctx)
 }

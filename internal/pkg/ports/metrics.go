@@ -10,6 +10,7 @@ type Metrics interface {
 	// --- Auth ---
 	AuthFailure(method string, reason string)
 	ValidationFailure(method string, reason string)
+	DependencyFailure(dependency string, operation string, errorType string)
 }
 
 type GRPCMetrics interface {

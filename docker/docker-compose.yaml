@@ -1,0 +1,104 @@
+services:
+  location:
+    build:
+      context: ..
+      dockerfile: services/location/docker/Dockerfile
+    ports:
+      - "50051:50051"
+    volumes:
+      - ../services/location/cmd/config.json:/home/appuser/config/config.json:ro
+    environment:
+      - REDIS_ADDRESS=${REDIS_ADDRESS}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SERVER_PORT=${LOCATION_SERVER_PORT}
+      - API_KEY=${LOCATION_API_KEY}
+      - PROMETHEUS_ADDRESS=${PROMETHEUS_ADDRESS}
+      - OPENTELEMETRY_ADDRESS=${OPENTELEMETRY_ADDRESS}
+      - TELEMETRY_INTERVAL_SECONDS=${TELEMETRY_INTERVAL_SECONDS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  ride:
+    build:
+      context: ..
+      dockerfile: services/ride/docker/Dockerfile
+    ports:
+      - "50052:50052"
+    volumes:
+      - ../services/ride/cmd/config.json:/home/appuser/config/config.json:ro
+    environment:
+      - REDIS_ADDRESS=${REDIS_ADDRESS}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - SERVER_PORT=${RIDE_SERVER_PORT}
+      - API_KEY=${RIDE_API_KEY}
+      - PROMETHEUS_ADDRESS=${PROMETHEUS_ADDRESS}
+      - OPENTELEMETRY_ADDRESS=${OPENTELEMETRY_ADDRESS}
+      - TELEMETRY_INTERVAL_SECONDS=${TELEMETRY_INTERVAL_SECONDS}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - KAFKA_ADVERTISE_EXTERNAL=${KAFKA_ADVERTISE_EXTERNAL}
+      - KAFKA_ADVERTISE_INTERNAL=${KAFKA_ADVERTISE_INTERNAL}
+      - KAFKA_AUTO_CREATE_TOPICS=${KAFKA_AUTO_CREATE_TOPICS}
+      - KAFKA_BATCH_SIZE=${KAFKA_BATCH_SIZE}
+      - KAFKA_ENABLE_LOGGING=${KAFKA_ENABLE_LOGGING}
+      - KAFKA_EXTERNAL_PORT=${KAFKA_EXTERNAL_PORT}
+      - KAFKA_INTERNAL_PORT=${KAFKA_INTERNAL_PORT}
+      - KAFKA_MEMORY=${KAFKA_MEMORY}
+      - KAFKA_NODE_ID=${KAFKA_NODE_ID}
+      - KAFKA_RESERVE_MEMORY=${KAFKA_RESERVE_MEMORY}
+      - KAFKA_SMP=${KAFKA_SMP}
+      - KAFKA_UI_BROKERS=${KAFKA_UI_BROKERS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy  
+
+  matching:
+    build:
+      context: ..
+      dockerfile: services/matching/docker/Dockerfile
+    ports:
+      - "50053:50053"
+    volumes:
+      - ../services/matching/cmd/config.json:/home/appuser/config/config.json:ro
+    environment:
+      - SERVER_PORT=${MATCHING_SERVER_PORT}
+      - API_KEY=${MATCHING_API_KEY}
+      - PROMETHEUS_ADDRESS=${PROMETHEUS_ADDRESS}
+      - OPENTELEMETRY_ADDRESS=${OPENTELEMETRY_ADDRESS}
+      - TELEMETRY_INTERVAL_SECONDS=${TELEMETRY_INTERVAL_SECONDS}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - KAFKA_ADVERTISE_EXTERNAL=${KAFKA_ADVERTISE_EXTERNAL}
+      - KAFKA_ADVERTISE_INTERNAL=${KAFKA_ADVERTISE_INTERNAL}
+      - KAFKA_AUTO_CREATE_TOPICS=${KAFKA_AUTO_CREATE_TOPICS}
+      - KAFKA_BATCH_SIZE=${KAFKA_BATCH_SIZE}
+      - KAFKA_ENABLE_LOGGING=${KAFKA_ENABLE_LOGGING}
+      - KAFKA_EXTERNAL_PORT=${KAFKA_EXTERNAL_PORT}
+      - KAFKA_INTERNAL_PORT=${KAFKA_INTERNAL_PORT}
+      - KAFKA_MEMORY=${KAFKA_MEMORY}
+      - KAFKA_NODE_ID=${KAFKA_NODE_ID}
+      - KAFKA_RESERVE_MEMORY=${KAFKA_RESERVE_MEMORY}
+      - KAFKA_SMP=${KAFKA_SMP}
+      - KAFKA_UI_BROKERS=${KAFKA_UI_BROKERS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+include:
+  - path: docker-compose.infra.yaml
+  - path: docker-compose.telemetry.yaml        

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
@@ -17,6 +18,7 @@ type UpdateRequest struct {
 	Heading     float32
 	Speed       float32
 	CapturedAt  time.Time
+	Status      contracts.DriverStatus
 }
 
 type SearchNearbyRequest struct {
@@ -47,6 +49,13 @@ func (r UpdateRequest) Validate() error {
 	if r.Heading < 0 || r.Heading > 360 {
 		return errors.NewBusinessError("heading must be between 0 and 360 degrees")
 	}
+
+	// Speed should be non-negative (m/s)
+	if r.Speed < 0 {
+		return errors.NewBusinessError("speed cannot be negative")
+	}
+
+	// Status should be one of the defined constants
 
 	return nil
 }

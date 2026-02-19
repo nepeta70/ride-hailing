@@ -9,10 +9,13 @@ import (
 
 	matchingv1 "github.com/nepeta70/ride-hailing/gen/proto/matching/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/matching/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
+	"github.com/nepeta70/ride-hailing/services/matching/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/core/service"
 )
 
@@ -27,9 +30,6 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	matchingService := service.NewMatchingService()
-	handler := grpcAdapters.NewMatchingHandler(matchingService)
-
 	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
 	if err != nil {
 		logger.Error("Failed to create telemetry provider:", "error", err)
@@ -37,12 +37,61 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	opts := &grpc_adapter.GRPGAdapterOptions{
-		Config:         &cfg.BaseConfig,
+	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+
+	topicProvider := service.NewTopicProvider()
+
+	publisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
+		Config:         cfg.Kafka,
+		TopicProvider:  topicProvider,
 		Logger:         logger,
-		ContextManager: ctxmgr.NewContextManager(),
-		//AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig), TODO: implemnt it
-		Telemetry: tel,
+		Metrics:        tel.GetMetrics(),
+		RetrierFactory: retrierFactory,
+	})
+	if err != nil {
+		logger.Error("Failed to create event publisher:", "error", err)
+		return
+	}
+	defer publisher.Close()
+
+	subscriber, err := pubsub.NewKafkaSubscriber(&pubsub.KafkaSubscriberOptions{
+		Config:         cfg.Kafka,
+		GroupID:        cfg.ServiceName,
+		Logger:         logger,
+		RetrierFactory: retrierFactory,
+		Metrics:        tel.GetMetrics(),
+	})
+	if err != nil {
+		logger.Error("Failed to create event subscriber:", "error", err)
+		return
+	}
+	defer subscriber.Close()
+
+	matchingService := service.NewMatchingService()
+	application, err := app.NewApplication(&app.AppOptions{
+		Logger:         logger,
+		Metrics:        tel.GetMetrics(),
+		Service:        matchingService,
+		Subscriber:     subscriber,
+		EventPublisher: publisher,
+	})
+	if err != nil {
+		logger.Error("Failed to create application:", "error", err)
+		return
+	}
+	err = application.Start(ctx)
+	if err != nil {
+		logger.Error("Failed to start application:", "error", err)
+		return
+	}
+	handler := grpcAdapters.NewMatchingHandler(application)
+
+	opts := &grpc_adapter.GRPGAdapterOptions{
+		Config:            &cfg.BaseConfig,
+		Logger:            logger,
+		ContextManager:    ctxmgr.NewContextManager(),
+		AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig),
+		Telemetry:         tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {
@@ -51,7 +100,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&matchingv1.MatchingService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx)
+	grpcServer.MonitorHealth(ctx, publisher)
 
 	grpcServer.Run(ctx)
 }

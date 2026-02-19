@@ -28,8 +28,8 @@ type CacheService interface {
 type MessageHandler func(ctx context.Context, msg []byte) error
 
 type EventPublisher interface {
+	HealthProvider
 	Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error
-	IsHealthy(ctx context.Context) bool
 	Close() error
 	TopicProvider() TopicProvider
 }

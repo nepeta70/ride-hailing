@@ -176,6 +176,7 @@ func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideComma
 	}
 
 	event := &contracts.RideRequestedEvent{
+		RideID:          g.identity.EntityID,
 		RequestID:       cmd.RequestID,
 		RiderID:         cmd.RiderID,
 		PickupLocation:  cmd.PickupLocation,

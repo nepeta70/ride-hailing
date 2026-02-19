@@ -23,7 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type UserLocation struct {
+type DriverLocation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The latitude in degrees. Range: [-90.0, +90.0]
 	Latitude float64 `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
@@ -36,24 +36,25 @@ type UserLocation struct {
 	// Useful for showing the car icon pointing the right way on a map.
 	Heading       float32 `protobuf:"fixed32,4,opt,name=heading,proto3" json:"heading,omitempty"`
 	Speed         float32 `protobuf:"fixed32,5,opt,name=speed,proto3" json:"speed,omitempty"`
+	Status        string  `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *UserLocation) Reset() {
-	*x = UserLocation{}
+func (x *DriverLocation) Reset() {
+	*x = DriverLocation{}
 	mi := &file_location_v1_location_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UserLocation) String() string {
+func (x *DriverLocation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UserLocation) ProtoMessage() {}
+func (*DriverLocation) ProtoMessage() {}
 
-func (x *UserLocation) ProtoReflect() protoreflect.Message {
+func (x *DriverLocation) ProtoReflect() protoreflect.Message {
 	mi := &file_location_v1_location_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -65,44 +66,51 @@ func (x *UserLocation) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UserLocation.ProtoReflect.Descriptor instead.
-func (*UserLocation) Descriptor() ([]byte, []int) {
+// Deprecated: Use DriverLocation.ProtoReflect.Descriptor instead.
+func (*DriverLocation) Descriptor() ([]byte, []int) {
 	return file_location_v1_location_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *UserLocation) GetLatitude() float64 {
+func (x *DriverLocation) GetLatitude() float64 {
 	if x != nil {
 		return x.Latitude
 	}
 	return 0
 }
 
-func (x *UserLocation) GetLongitude() float64 {
+func (x *DriverLocation) GetLongitude() float64 {
 	if x != nil {
 		return x.Longitude
 	}
 	return 0
 }
 
-func (x *UserLocation) GetAccuracy() float32 {
+func (x *DriverLocation) GetAccuracy() float32 {
 	if x != nil {
 		return x.Accuracy
 	}
 	return 0
 }
 
-func (x *UserLocation) GetHeading() float32 {
+func (x *DriverLocation) GetHeading() float32 {
 	if x != nil {
 		return x.Heading
 	}
 	return 0
 }
 
-func (x *UserLocation) GetSpeed() float32 {
+func (x *DriverLocation) GetSpeed() float32 {
 	if x != nil {
 		return x.Speed
 	}
 	return 0
+}
+
+func (x *DriverLocation) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type UserID struct {
@@ -215,7 +223,7 @@ func (x *SearchNearbyDriversRequest) GetRadiusKm() float32 {
 
 type SearchNearbyDriversResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	DriverLocations []*UserLocation        `protobuf:"bytes,1,rep,name=driver_locations,json=driverLocations,proto3" json:"driver_locations,omitempty"`
+	DriverLocations []*DriverLocation      `protobuf:"bytes,1,rep,name=driver_locations,json=driverLocations,proto3" json:"driver_locations,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -250,7 +258,7 @@ func (*SearchNearbyDriversResponse) Descriptor() ([]byte, []int) {
 	return file_location_v1_location_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SearchNearbyDriversResponse) GetDriverLocations() []*UserLocation {
+func (x *SearchNearbyDriversResponse) GetDriverLocations() []*DriverLocation {
 	if x != nil {
 		return x.DriverLocations
 	}
@@ -261,25 +269,26 @@ var File_location_v1_location_proto protoreflect.FileDescriptor
 
 const file_location_v1_location_proto_rawDesc = "" +
 	"\n" +
-	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n" +
-	"\fUserLocation\x12\x1a\n" +
+	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xae\x01\n" +
+	"\x0eDriverLocation\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1a\n" +
 	"\baccuracy\x18\x03 \x01(\x02R\baccuracy\x12\x18\n" +
 	"\aheading\x18\x04 \x01(\x02R\aheading\x12\x14\n" +
-	"\x05speed\x18\x05 \x01(\x02R\x05speed\"!\n" +
+	"\x05speed\x18\x05 \x01(\x02R\x05speed\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"!\n" +
 	"\x06UserID\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"s\n" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1b\n" +
-	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"c\n" +
-	"\x1bSearchNearbyDriversResponse\x12D\n" +
-	"\x10driver_locations\x18\x01 \x03(\v2\x19.location.v1.UserLocationR\x0fdriverLocations2\xca\x02\n" +
-	"\x0fLocationService\x12G\n" +
-	"\x12UpdateUserLocation\x12\x19.location.v1.UserLocation\x1a\x16.google.protobuf.Empty\x12A\n" +
-	"\x0fGetUserLocation\x12\x13.location.v1.UserID\x1a\x19.location.v1.UserLocation\x12A\n" +
-	"\x12DeleteUserLocation\x12\x13.location.v1.UserID\x1a\x16.google.protobuf.Empty\x12h\n" +
+	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"e\n" +
+	"\x1bSearchNearbyDriversResponse\x12F\n" +
+	"\x10driver_locations\x18\x01 \x03(\v2\x1b.location.v1.DriverLocationR\x0fdriverLocations2\xd4\x02\n" +
+	"\x0fLocationService\x12K\n" +
+	"\x14UpdateDriverLocation\x12\x1b.location.v1.DriverLocation\x1a\x16.google.protobuf.Empty\x12E\n" +
+	"\x11GetDriverLocation\x12\x13.location.v1.UserID\x1a\x1b.location.v1.DriverLocation\x12C\n" +
+	"\x14DeleteDriverLocation\x12\x13.location.v1.UserID\x1a\x16.google.protobuf.Empty\x12h\n" +
 	"\x13SearchNearbyDrivers\x12'.location.v1.SearchNearbyDriversRequest\x1a(.location.v1.SearchNearbyDriversResponseB\xb0\x01\n" +
 	"\x0fcom.location.v1B\rLocationProtoP\x01ZAgithub.com/nepeta70/ride-hailing/gen/proto/location/v1;locationv1\xa2\x02\x03LXX\xaa\x02\vLocation.V1\xca\x02\vLocation\\V1\xe2\x02\x17Location\\V1\\GPBMetadata\xea\x02\fLocation::V1b\x06proto3"
 
@@ -297,21 +306,21 @@ func file_location_v1_location_proto_rawDescGZIP() []byte {
 
 var file_location_v1_location_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_location_v1_location_proto_goTypes = []any{
-	(*UserLocation)(nil),                // 0: location.v1.UserLocation
+	(*DriverLocation)(nil),              // 0: location.v1.DriverLocation
 	(*UserID)(nil),                      // 1: location.v1.UserID
 	(*SearchNearbyDriversRequest)(nil),  // 2: location.v1.SearchNearbyDriversRequest
 	(*SearchNearbyDriversResponse)(nil), // 3: location.v1.SearchNearbyDriversResponse
 	(*emptypb.Empty)(nil),               // 4: google.protobuf.Empty
 }
 var file_location_v1_location_proto_depIdxs = []int32{
-	0, // 0: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.UserLocation
-	0, // 1: location.v1.LocationService.UpdateUserLocation:input_type -> location.v1.UserLocation
-	1, // 2: location.v1.LocationService.GetUserLocation:input_type -> location.v1.UserID
-	1, // 3: location.v1.LocationService.DeleteUserLocation:input_type -> location.v1.UserID
+	0, // 0: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.DriverLocation
+	0, // 1: location.v1.LocationService.UpdateDriverLocation:input_type -> location.v1.DriverLocation
+	1, // 2: location.v1.LocationService.GetDriverLocation:input_type -> location.v1.UserID
+	1, // 3: location.v1.LocationService.DeleteDriverLocation:input_type -> location.v1.UserID
 	2, // 4: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
-	4, // 5: location.v1.LocationService.UpdateUserLocation:output_type -> google.protobuf.Empty
-	0, // 6: location.v1.LocationService.GetUserLocation:output_type -> location.v1.UserLocation
-	4, // 7: location.v1.LocationService.DeleteUserLocation:output_type -> google.protobuf.Empty
+	4, // 5: location.v1.LocationService.UpdateDriverLocation:output_type -> google.protobuf.Empty
+	0, // 6: location.v1.LocationService.GetDriverLocation:output_type -> location.v1.DriverLocation
+	4, // 7: location.v1.LocationService.DeleteDriverLocation:output_type -> google.protobuf.Empty
 	3, // 8: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
 	5, // [5:9] is the sub-list for method output_type
 	1, // [1:5] is the sub-list for method input_type
