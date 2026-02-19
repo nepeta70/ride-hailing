@@ -3,6 +3,7 @@ package pubsub
 import (
 	"time"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
@@ -39,10 +40,9 @@ func (c *KafkaConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.NewValidationErrorf("at least one Kafka broker must be specified")
 	}
-	if c.AutoCreate {
-		if len(c.Topics) == 0 {
-			return errors.NewValidationErrorf("at least one Kafka topic must be specified")
-		}
+
+	if len(c.Topics) == 0 {
+		return errors.NewValidationErrorf("at least one Kafka topic must be specified")
 	}
 
 	if c.BatchSize <= 0 {
@@ -67,3 +67,6 @@ func (c *KafkaConfig) Init() error {
 	c.MaxWait = time.Duration(c.MaxWaitMs) * time.Millisecond
 	return nil
 }
+
+var _ config.Initializer = (*KafkaConfig)(nil)
+var _ config.Validator = (*KafkaConfig)(nil)

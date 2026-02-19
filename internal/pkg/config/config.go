@@ -65,8 +65,8 @@ func processConfig(cfg any) error {
 		v = v.Elem()
 	}
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i).Addr().Interface()
+	for _, field := range v.Fields() {
+		field := field.Addr().Interface()
 		if validator, ok := field.(Validator); ok {
 			if err := validator.Validate(); err != nil {
 				return err
@@ -74,8 +74,8 @@ func processConfig(cfg any) error {
 		}
 	}
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i).Addr().Interface()
+	for _, field := range v.Fields() {
+		field := field.Addr().Interface()
 		if initializer, ok := field.(Initializer); ok {
 			if err := initializer.Init(); err != nil {
 				return err
