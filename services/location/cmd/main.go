@@ -12,10 +12,11 @@ import (
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 	grpcAdapters "github.com/nepeta70/ride-hailing/services/location/internal/adapters/grpc"
 	rdstore "github.com/nepeta70/ride-hailing/services/location/internal/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
-	"github.com/nepeta70/ride-hailing/services/location/internal/core/service"
+	"github.com/nepeta70/ride-hailing/services/location/internal/core/app"
 )
 
 func main() {
@@ -29,7 +30,16 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
+	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
@@ -37,15 +47,9 @@ func main() {
 	defer redisClient.Close()
 
 	locationRepository := rdstore.NewRedisRepository(cfg, redisClient, logger)
-	locationService := service.NewLocationService(locationRepository)
-	handler := grpcAdapters.NewLocationHandler(locationService)
+	app := app.NewApplication(ctxmgr.NewContextManager(), logger, locationRepository)
 
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
-	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
-		return
-	}
-	defer tel.Shutdown(ctx)
+	handler := grpcAdapters.NewLocationHandler(app)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:            &cfg.BaseConfig,

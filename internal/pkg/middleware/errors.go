@@ -11,4 +11,5 @@ var (
 	errPermissionDenied  = status.Error(codes.PermissionDenied, "user does not have permission to access this endpoint")
 	errDeadlineExceeded  = status.Error(codes.DeadlineExceeded, "request timed out")
 	errResourceExhausted = status.Error(codes.ResourceExhausted, "too many requests")
+	errInvalidArgument   = status.Error(codes.InvalidArgument, "invalid argument")
 )

@@ -3,6 +3,7 @@ package inmemory
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/mmcloughlin/geohash"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
@@ -10,14 +11,14 @@ import (
 
 // InMemoryLocationRepo is an in-memory implementation of the LocationRepository interface.
 type InMemoryLocationRepo struct {
-	store map[string]*domain.UserLocation
-	index map[string][]string
+	store map[uuid.UUID]*domain.UserLocation
+	index map[string][]uuid.UUID
 }
 
 func NewInMemoryLocationRepo() *InMemoryLocationRepo {
 	return &InMemoryLocationRepo{
-		store: make(map[string]*domain.UserLocation),
-		index: make(map[string][]string),
+		store: make(map[uuid.UUID]*domain.UserLocation),
+		index: make(map[string][]uuid.UUID),
 	}
 }
 
@@ -30,7 +31,7 @@ func (r *InMemoryLocationRepo) Save(ctx context.Context, loc *domain.UserLocatio
 	return nil
 }
 
-func (r *InMemoryLocationRepo) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+func (r *InMemoryLocationRepo) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
 	loc, ok := r.store[userID]
 	if !ok {
 		return nil, domain.ErrLocationNotFound
@@ -38,7 +39,7 @@ func (r *InMemoryLocationRepo) Get(ctx context.Context, userID string) (*domain.
 	return loc, nil
 }
 
-func (r *InMemoryLocationRepo) RemoveUserLocation(ctx context.Context, userID string) error {
+func (r *InMemoryLocationRepo) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
 	delete(r.store, userID)
 	return nil
 }

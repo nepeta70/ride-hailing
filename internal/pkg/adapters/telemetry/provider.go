@@ -19,10 +19,9 @@ type TelemetryProvider struct {
 	metrics       *telem.Metrics // This is your existing business metrics struct
 }
 
-func NewTelemetryProvider(ctx context.Context, serviceName string, cfg *TelemetryConfig, logger ports.Logger) (*TelemetryProvider, error) {
+func NewTelemetryProvider(ctx context.Context, serviceName string, cfg *telem.TelemetryConfig, logger ports.Logger) (*TelemetryProvider, error) {
 	reg := prom.NewRegistry()
 
-	logger.Debug("Initializing telemetry provider", "service", serviceName, "prometheus_address", cfg.PrometheusAddress, "opentelemetry_address", cfg.OpentelemetryAddress, "interval_seconds", cfg.IntervalSeconds)
 	// 1. Setup the gRPC Exporter (pointing to otel-collector:4317)
 	exporter, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithEndpoint(cfg.OpentelemetryAddress),

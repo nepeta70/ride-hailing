@@ -8,7 +8,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +17,7 @@ type FilteredChainOpts struct {
 	ContextManager         *ctxmgr.ContextManager
 	EndpointRoles          ports.EndpointRoles
 	AdditionalInterceptors []grpc.UnaryServerInterceptor
-	Metrics                telemetry.MetricsInterface
+	Metrics                ports.Metrics
 }
 
 func (opts *FilteredChainOpts) Validate() error {

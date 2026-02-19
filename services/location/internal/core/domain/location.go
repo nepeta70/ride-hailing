@@ -3,6 +3,7 @@ package domain
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 )
 
@@ -12,7 +13,7 @@ type Coordinates struct {
 }
 
 type UserLocation struct {
-	UserID      string         `json:"user_id"`
+	UserID      uuid.UUID      `json:"user_id"`
 	UserType    enums.UserType `json:"user_type"`
 	Coordinates Coordinates    `json:"coordinates"`
 	Accuracy    float32        `json:"accuracy"`

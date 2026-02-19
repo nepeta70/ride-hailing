@@ -10,10 +10,12 @@ import (
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/grpc_adapter"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
+	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/googlemaps"
@@ -34,18 +36,32 @@ func main() {
 
 	logger := cfg.Logging.ConfigureLogger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	if err != nil {
+		logger.Error("Failed to create telemetry provider:", "error", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
+	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
-	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, logger)
+	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, retrierFactory, logger)
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)
 		return
 	}
+
+	topicProvider := service.NewTopicProvider()
+
+	eventPublisher := pubsub.NewEventPublisher(cfg.Kafka, topicProvider, logger)
+	defer eventPublisher.Close()
 
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
 		Config:   cfg,
@@ -73,8 +89,9 @@ func main() {
 		Topic:          contracts.TopicRide,
 		GrainTimeout:   cfg.Timeouts.RequestTimeout,
 		Storage:        storage.GrainStorage(),
-		EventPublisher: nil, // TODO: Initialize an actual event publisher here
+		EventPublisher: eventPublisher,
 		Logger:         logger,
+		RetrierFactory: retrierFactory,
 	})
 	if err != nil {
 		logger.Error("Failed to create grain system:", "error", err)
@@ -94,13 +111,6 @@ func main() {
 	}
 
 	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
-	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
-		return
-	}
-	defer tel.Shutdown(ctx)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:            &cfg.BaseConfig,

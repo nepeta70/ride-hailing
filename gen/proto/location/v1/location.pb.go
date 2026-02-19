@@ -10,7 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	_ "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -24,20 +24,18 @@ const (
 )
 
 type UserLocation struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// The latitude in degrees. Range: [-90.0, +90.0]
-	Latitude float64 `protobuf:"fixed64,2,opt,name=latitude,proto3" json:"latitude,omitempty"`
+	Latitude float64 `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
 	// The longitude in degrees. Range: [-180.0, +180.0]
-	Longitude float64 `protobuf:"fixed64,3,opt,name=longitude,proto3" json:"longitude,omitempty"`
+	Longitude float64 `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
 	// Optional: Horizontal accuracy of the location in meters.
 	// Crucial for filtering out "jumpy" GPS data in tunnels or cities.
-	Accuracy float32 `protobuf:"fixed32,4,opt,name=accuracy,proto3" json:"accuracy,omitempty"`
+	Accuracy float32 `protobuf:"fixed32,3,opt,name=accuracy,proto3" json:"accuracy,omitempty"`
 	// Optional: Direction of travel in degrees (0 - 360).
 	// Useful for showing the car icon pointing the right way on a map.
-	Heading       float32                `protobuf:"fixed32,5,opt,name=heading,proto3" json:"heading,omitempty"`
-	Speed         float32                `protobuf:"fixed32,6,opt,name=speed,proto3" json:"speed,omitempty"`
-	CapturedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`
+	Heading       float32 `protobuf:"fixed32,4,opt,name=heading,proto3" json:"heading,omitempty"`
+	Speed         float32 `protobuf:"fixed32,5,opt,name=speed,proto3" json:"speed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -70,13 +68,6 @@ func (x *UserLocation) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UserLocation.ProtoReflect.Descriptor instead.
 func (*UserLocation) Descriptor() ([]byte, []int) {
 	return file_location_v1_location_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *UserLocation) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
 }
 
 func (x *UserLocation) GetLatitude() float64 {
@@ -112,13 +103,6 @@ func (x *UserLocation) GetSpeed() float32 {
 		return x.Speed
 	}
 	return 0
-}
-
-func (x *UserLocation) GetCapturedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CapturedAt
-	}
-	return nil
 }
 
 type UserID struct {
@@ -277,16 +261,13 @@ var File_location_v1_location_proto protoreflect.FileDescriptor
 
 const file_location_v1_location_proto_rawDesc = "" +
 	"\n" +
-	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xea\x01\n" +
-	"\fUserLocation\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
-	"\blatitude\x18\x02 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x12\x1a\n" +
-	"\baccuracy\x18\x04 \x01(\x02R\baccuracy\x12\x18\n" +
-	"\aheading\x18\x05 \x01(\x02R\aheading\x12\x14\n" +
-	"\x05speed\x18\x06 \x01(\x02R\x05speed\x12;\n" +
-	"\vcaptured_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"capturedAt\"!\n" +
+	"\x1alocation/v1/location.proto\x12\vlocation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n" +
+	"\fUserLocation\x12\x1a\n" +
+	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
+	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1a\n" +
+	"\baccuracy\x18\x03 \x01(\x02R\baccuracy\x12\x18\n" +
+	"\aheading\x18\x04 \x01(\x02R\aheading\x12\x14\n" +
+	"\x05speed\x18\x05 \x01(\x02R\x05speed\"!\n" +
 	"\x06UserID\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"s\n" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
@@ -320,25 +301,23 @@ var file_location_v1_location_proto_goTypes = []any{
 	(*UserID)(nil),                      // 1: location.v1.UserID
 	(*SearchNearbyDriversRequest)(nil),  // 2: location.v1.SearchNearbyDriversRequest
 	(*SearchNearbyDriversResponse)(nil), // 3: location.v1.SearchNearbyDriversResponse
-	(*timestamppb.Timestamp)(nil),       // 4: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 5: google.protobuf.Empty
+	(*emptypb.Empty)(nil),               // 4: google.protobuf.Empty
 }
 var file_location_v1_location_proto_depIdxs = []int32{
-	4, // 0: location.v1.UserLocation.captured_at:type_name -> google.protobuf.Timestamp
-	0, // 1: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.UserLocation
-	0, // 2: location.v1.LocationService.UpdateUserLocation:input_type -> location.v1.UserLocation
-	1, // 3: location.v1.LocationService.GetUserLocation:input_type -> location.v1.UserID
-	1, // 4: location.v1.LocationService.DeleteUserLocation:input_type -> location.v1.UserID
-	2, // 5: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
-	5, // 6: location.v1.LocationService.UpdateUserLocation:output_type -> google.protobuf.Empty
-	0, // 7: location.v1.LocationService.GetUserLocation:output_type -> location.v1.UserLocation
-	5, // 8: location.v1.LocationService.DeleteUserLocation:output_type -> google.protobuf.Empty
-	3, // 9: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 0: location.v1.SearchNearbyDriversResponse.driver_locations:type_name -> location.v1.UserLocation
+	0, // 1: location.v1.LocationService.UpdateUserLocation:input_type -> location.v1.UserLocation
+	1, // 2: location.v1.LocationService.GetUserLocation:input_type -> location.v1.UserID
+	1, // 3: location.v1.LocationService.DeleteUserLocation:input_type -> location.v1.UserID
+	2, // 4: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
+	4, // 5: location.v1.LocationService.UpdateUserLocation:output_type -> google.protobuf.Empty
+	0, // 6: location.v1.LocationService.GetUserLocation:output_type -> location.v1.UserLocation
+	4, // 7: location.v1.LocationService.DeleteUserLocation:output_type -> google.protobuf.Empty
+	3, // 8: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_location_v1_location_proto_init() }

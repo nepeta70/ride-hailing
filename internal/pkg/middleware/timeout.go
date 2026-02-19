@@ -4,18 +4,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"google.golang.org/grpc"
 )
 
 // TimeoutInterceptor manages request deadlines and timeout telemetry.
 type TimeoutInterceptor struct {
 	timeout time.Duration
-	metrics telemetry.MetricsInterface
+	metrics ports.Metrics
 }
 
 // NewTimeoutInterceptor initializes the interceptor struct with dependencies.
-func NewTimeoutInterceptor(timeout time.Duration, m telemetry.MetricsInterface) *TimeoutInterceptor {
+func NewTimeoutInterceptor(timeout time.Duration, m ports.Metrics) *TimeoutInterceptor {
 	return &TimeoutInterceptor{
 		timeout: timeout,
 		metrics: m,

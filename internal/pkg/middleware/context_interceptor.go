@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
@@ -10,7 +12,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -19,7 +20,7 @@ type ContextInterceptorOptions struct {
 	ContextManager *ctxmgr.ContextManager
 	Config         *config.BaseConfig
 	Logger         ports.Logger
-	Metrics        telemetry.MetricsInterface
+	Metrics        ports.Metrics
 	EndpointRoles  ports.EndpointRoles
 }
 
@@ -47,7 +48,7 @@ type ContextInterceptor struct {
 	contextManager *ctxmgr.ContextManager
 	config         *config.BaseConfig
 	logger         ports.Logger
-	metrics        telemetry.MetricsInterface
+	metrics        ports.Metrics
 	endpointRoles  ports.EndpointRoles
 }
 
@@ -74,9 +75,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			return nil, errUnauthenticated
 		}
 
-		// Note: Keeping this for now as per your request,
-		// but remember logger variadics are a primary source of allocs.
-		i.logger.Info("Received metadata:", "metadata", md)
+		i.logger.Debug("Received metadata:", "metadata", md)
 
 		// 1. Security Check (Fail Fast)
 		apiKey := getMetadata(md, "x-api-key")
@@ -100,8 +99,8 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		requestID := getUUIDMetadata(md, "x-request-id")
 		if requestID == uuid.Nil {
-			i.metrics.AuthFailure(info.FullMethod, "missing_request_id")
-			return nil, errUnauthenticated
+			i.metrics.ValidationFailure(info.FullMethod, "missing_request_id")
+			return nil, errInvalidArgument
 		}
 
 		// Role validation
@@ -115,6 +114,11 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			}
 		}
 
+		timestamp, err := i.extractTimestamp(info.FullMethod, md)
+		if err != nil {
+			return nil, err
+		}
+
 		// 2. Assemble the RequestInfo (Pointer-based to minimize boxing cost)
 		rInfo := &ctxmgr.RequestInfo{
 			User: ctxmgr.UserSession{
@@ -124,7 +128,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
 				Origin:     getMetadata(md, "x-origin-service"),
-				Timestamp:  getMetadata(md, "x-timestamp"),
+				Timestamp:  timestamp,
 				RetryCount: getIntMetadata(md, "x-retry-count"),
 			},
 			Location: ctxmgr.LocationInfo{
@@ -141,4 +145,34 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		// 3. Inject and Continue
 		return handler(i.contextManager.Inject(ctx, rInfo), req)
 	}
+}
+
+func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (int64, error) {
+	sTimestamp := getMetadata(md, "x-timestamp")
+	if len(sTimestamp) == 0 {
+		i.metrics.ValidationFailure(method, "missing_timestamp")
+		return 0, errInvalidArgument
+	}
+	timestamp, err := strconv.ParseInt(sTimestamp, 10, 64)
+	if err != nil {
+		i.metrics.ValidationFailure(method, "invalid_timestamp")
+		return 0, errInvalidArgument
+	}
+
+	if timestamp == 0 {
+		i.metrics.ValidationFailure(method, "missing_timestamp")
+		return 0, errInvalidArgument
+	}
+
+	now := time.Now().Unix()
+	if timestamp > (now + int64(i.config.Timeouts.MaxClockDriftSeconds)) {
+		i.metrics.ValidationFailure(method, "timestamp_too_far_in_future")
+		return 0, errInvalidArgument
+	}
+
+	if timestamp < (now - int64(i.config.Timeouts.RequestTimeoutSeconds)) {
+		i.metrics.ValidationFailure(method, "timestamp_expired")
+		return 0, errDeadlineExceeded
+	}
+	return timestamp, nil
 }

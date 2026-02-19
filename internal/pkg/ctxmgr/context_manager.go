@@ -22,7 +22,7 @@ type UserSession struct {
 type TraceInfo struct {
 	RequestID  uuid.UUID
 	Origin     string
-	Timestamp  string
+	Timestamp  int64
 	RetryCount int
 }
 

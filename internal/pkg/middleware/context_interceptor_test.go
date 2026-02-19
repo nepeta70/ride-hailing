@@ -2,7 +2,9 @@ package middleware_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -51,9 +53,57 @@ func TestContextInterceptor(t *testing.T) {
 				"user-role":      "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
+				"x-timestamp":    strconv.FormatInt(time.Now().Unix(), 10),
 			}),
 			expectedCode: codes.OK,
 			expectedRole: enums.UserRole("rider"),
+		},
+		{
+			name: "Failure - Missing Timestamp",
+			md: metadata.New(map[string]string{
+				"x-api-key":      "test-secret",
+				"user-id":        validUserID,
+				"user-role":      "rider",
+				"x-request-id":   validReqID,
+				"x-country-code": "ES",
+			}),
+			expectedCode: codes.InvalidArgument,
+		},
+		{
+			name: "Failure - Invalid Timestamp (non-numeric)",
+			md: metadata.New(map[string]string{
+				"x-api-key":      "test-secret",
+				"user-id":        validUserID,
+				"user-role":      "rider",
+				"x-request-id":   validReqID,
+				"x-country-code": "ES",
+				"x-timestamp":    "notanumber",
+			}),
+			expectedCode: codes.InvalidArgument,
+		},
+		{
+			name: "Failure - Invalid Timestamp (too old)",
+			md: metadata.New(map[string]string{
+				"x-api-key":      "test-secret",
+				"user-id":        validUserID,
+				"user-role":      "rider",
+				"x-request-id":   validReqID,
+				"x-country-code": "ES",
+				"x-timestamp":    strconv.FormatInt(time.Now().Add(-24*time.Hour).Unix(), 10),
+			}),
+			expectedCode: codes.DeadlineExceeded,
+		},
+		{
+			name: "Failure - Invalid Timestamp (in the future)",
+			md: metadata.New(map[string]string{
+				"x-api-key":      "test-secret",
+				"user-id":        validUserID,
+				"user-role":      "rider",
+				"x-request-id":   validReqID,
+				"x-country-code": "ES",
+				"x-timestamp":    strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
+			}),
+			expectedCode: codes.InvalidArgument,
 		},
 		{
 			name: "Failure - Invalid API Key",
@@ -88,7 +138,7 @@ func TestContextInterceptor(t *testing.T) {
 				"user-id":   validUserID,
 				"user-role": "rider",
 			}),
-			expectedCode: codes.Unauthenticated,
+			expectedCode: codes.InvalidArgument,
 		},
 	}
 

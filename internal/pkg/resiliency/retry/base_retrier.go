@@ -10,10 +10,11 @@ import (
 )
 
 type baseRetrier struct {
-	strategy RetryStrategy
-	config   *RetryConfig
-	logger   ports.Logger
-	observer ports.RetryObserver
+	serviceName string
+	strategy    RetryStrategy
+	config      *RetryConfig
+	logger      ports.Logger
+	observer    ports.RetryObserver
 }
 
 // ShouldRetry determines if an error is retryable
@@ -67,13 +68,9 @@ func (r *baseRetrier) DoWithResult(ctx context.Context, op func() (any, error)) 
 
 		delay := r.strategy.NextDelay(attempt)
 
-		if r.observer != nil {
-			r.observer.ObserveRetry(attempt, lastErr, delay)
-		}
-
 		r.logger.Warn("operation failed on attempt", "attempt", attempt, "error", lastErr, "retry_in", delay)
 		if r.observer != nil {
-			r.observer.ObserveRetry(attempt, lastErr, delay)
+			r.observer.ObserveRetry(r.serviceName, attempt, lastErr, delay)
 		}
 
 		timer := time.NewTimer(delay)

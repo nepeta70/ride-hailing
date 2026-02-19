@@ -21,7 +21,7 @@
       "query_timeout_seconds": 5
   },
   "telemetry": {
-    "IntervalSeconds": 15,
+    "interval_seconds": 15,
     "prometheus_address": "prometheus:9090",
     "opentelemetry_address": "otel-collector:4317"
   }

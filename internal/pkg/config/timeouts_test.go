@@ -40,24 +40,36 @@ func TestTimeoutsConfig_Validate(t *testing.T) {
 		{
 			name: "invalid request timeout",
 			cfg: TimeoutsConfig{
-				RequestTimeoutSeconds:  0,
-				ShutdownDelayInSeconds: 1,
+				RequestTimeoutSeconds:      0,
+				ShutdownDelayInSeconds:     1,
+				HealthCheckIntervalSeconds: 5,
 			},
 			wantErr: true,
 		},
 		{
 			name: "negative shutdown delay",
 			cfg: TimeoutsConfig{
-				RequestTimeoutSeconds:  1,
-				ShutdownDelayInSeconds: -1,
+				RequestTimeoutSeconds:      1,
+				ShutdownDelayInSeconds:     -1,
+				HealthCheckIntervalSeconds: 5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero health check interval",
+			cfg: TimeoutsConfig{
+				RequestTimeoutSeconds:      1,
+				ShutdownDelayInSeconds:     1,
+				HealthCheckIntervalSeconds: 0,
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid timeouts",
 			cfg: TimeoutsConfig{
-				RequestTimeoutSeconds:  1,
-				ShutdownDelayInSeconds: 1,
+				RequestTimeoutSeconds:      1,
+				ShutdownDelayInSeconds:     1,
+				HealthCheckIntervalSeconds: 5,
 			},
 			wantErr: false,
 		},

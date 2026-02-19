@@ -3,8 +3,8 @@ package middleware
 import (
 	"context"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
@@ -12,12 +12,12 @@ import (
 // ResiliencyInterceptor handles rate limiting and circuit breaking.
 type ResiliencyInterceptor struct {
 	circuitBreaker *circuitbreaker.CircuitBreaker
-	metrics        telemetry.MetricsInterface
+	metrics        ports.Metrics
 	limiter        *rate.Limiter
 }
 
 // NewResiliencyInterceptor initializes the interceptor with resiliency dependencies.
-func NewResiliencyInterceptor(rateLimit float64, rateBurst int, m telemetry.MetricsInterface) (*ResiliencyInterceptor, error) {
+func NewResiliencyInterceptor(rateLimit float64, rateBurst int, m ports.Metrics) (*ResiliencyInterceptor, error) {
 	limiter := rate.NewLimiter(rate.Limit(rateLimit), rateBurst)
 	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig())
 	if err != nil {

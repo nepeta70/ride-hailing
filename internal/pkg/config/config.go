@@ -8,8 +8,8 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/telemetry"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
 )
 
 // BaseConfig contains the stuff every single service needs
@@ -65,8 +65,8 @@ func processConfig(cfg any) error {
 		v = v.Elem()
 	}
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i).Addr().Interface()
+	for _, field := range v.Fields() {
+		field := field.Addr().Interface()
 		if validator, ok := field.(Validator); ok {
 			if err := validator.Validate(); err != nil {
 				return err
@@ -74,8 +74,8 @@ func processConfig(cfg any) error {
 		}
 	}
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i).Addr().Interface()
+	for _, field := range v.Fields() {
+		field := field.Addr().Interface()
 		if initializer, ok := field.(Initializer); ok {
 			if err := initializer.Init(); err != nil {
 				return err

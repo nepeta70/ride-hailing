@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
@@ -42,14 +43,14 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	return s.repo.Save(ctx, loc)
 }
 
-func (s *LocationService) Get(ctx context.Context, userID string) (*domain.UserLocation, error) {
+func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
 	return s.repo.Get(ctx, userID)
 }
 
-func (s *LocationService) RemoveUserLocation(ctx context.Context, userID string) error {
+func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errors.ErrContextError
 	}

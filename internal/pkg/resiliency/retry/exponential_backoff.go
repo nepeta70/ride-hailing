@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/rand/v2"
 	"time"
-
-	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 // ExponentialBackoff implements exponential backoff with jitter
@@ -13,7 +11,7 @@ type ExponentialBackoff struct {
 	config *RetryConfig
 }
 
-func NewExponentialBackoff(cfg *RetryConfig) *ExponentialBackoff {
+func newExponentialBackoff(cfg *RetryConfig) *ExponentialBackoff {
 	return &ExponentialBackoff{config: cfg}
 }
 
@@ -37,17 +35,6 @@ func (e *ExponentialBackoff) NextDelay(attempt int) time.Duration {
 	}
 
 	return time.Duration(delay)
-}
-
-func NewExponentialBackoffRetrierWithTimeout(timeout time.Duration, logger ports.Logger) *Retrier {
-	cfg := NewRetryConfig(timeout)
-	opts := &RetryOptions{
-		Config:   cfg,
-		Strategy: NewExponentialBackoff(cfg),
-		Logger:   logger,
-	}
-
-	return NewRetrier(opts)
 }
 
 var _ RetryStrategy = (*ExponentialBackoff)(nil)

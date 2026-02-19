@@ -2,8 +2,9 @@ package mocks
 
 import (
 	"sync"
+	"time"
 
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 // MockMetrics is a thread-safe mock for MetricsInterface
@@ -59,4 +60,12 @@ func (m *MockMetrics) AuthFailure(method string, reason string) {
 	m.track("AuthFailure", method, reason)
 }
 
-var _ telemetry.MetricsInterface = (*MockMetrics)(nil)
+func (m *MockMetrics) ObserveRetry(service string, attempt int, err error, delay time.Duration) {
+	m.track("ObserveRetry", service, attempt, err, delay)
+}
+
+func (m *MockMetrics) ValidationFailure(method string, reason string) {
+	m.track("ValidationFailure", method, reason)
+}
+
+var _ ports.Metrics = (*MockMetrics)(nil)

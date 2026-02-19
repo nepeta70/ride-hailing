@@ -5,22 +5,22 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
-type CancelRideCommand struct {
+type CompleteRideCommand struct {
 	RequestID uuid.UUID
-	RiderID   uuid.UUID
+	DriverID  uuid.UUID
 	RideID    uuid.UUID
 }
 
-func (c *CancelRideCommand) CommandName() string {
-	return "CancelRide"
+func (c *CompleteRideCommand) CommandName() string {
+	return "CompleteRide"
 }
 
-func (c *CancelRideCommand) Validate() error {
+func (c *CompleteRideCommand) Validate() error {
 	if c.RequestID == uuid.Nil {
 		return errors.NewValidationErrorf("RequestID cannot be empty")
 	}
-	if c.RiderID == uuid.Nil {
-		return errors.NewValidationErrorf("RiderID cannot be empty")
+	if c.DriverID == uuid.Nil {
+		return errors.NewValidationErrorf("DriverID cannot be empty")
 	}
 	if c.RideID == uuid.Nil {
 		return errors.NewValidationErrorf("RideID cannot be empty")

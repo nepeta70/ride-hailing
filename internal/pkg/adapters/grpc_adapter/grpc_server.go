@@ -107,7 +107,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 }
 
 func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.HealthProvider) {
-	ticker := time.NewTicker(s.config.Server.HealthCheckInterval)
+	ticker := time.NewTicker(s.config.Timeouts.HealthCheckInterval)
 
 	go func() {
 		defer ticker.Stop()

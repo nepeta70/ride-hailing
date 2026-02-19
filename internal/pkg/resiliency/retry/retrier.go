@@ -3,6 +3,8 @@ package retry
 
 import (
 	"context"
+
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type Retrier struct {
@@ -25,3 +27,5 @@ func (r *Retrier) Do(ctx context.Context, op func() error) error {
 	})
 	return err
 }
+
+var _ ports.RetrierInterface = (*Retrier)(nil)
