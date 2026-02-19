@@ -64,4 +64,8 @@ func (m *MockMetrics) ObserveRetry(service string, attempt int, err error, delay
 	m.track("ObserveRetry", service, attempt, err, delay)
 }
 
+func (m *MockMetrics) ValidationFailure(method string, reason string) {
+	m.track("ValidationFailure", method, reason)
+}
+
 var _ ports.Metrics = (*MockMetrics)(nil)

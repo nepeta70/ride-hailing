@@ -62,7 +62,7 @@ func main() {
 
 	eventPublisher := pubsub.NewEventPublisher(cfg.Kafka, topicProvider, logger)
 	defer eventPublisher.Close()
-	
+
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
 		Config:   cfg,
 		RdClient: redisClient,

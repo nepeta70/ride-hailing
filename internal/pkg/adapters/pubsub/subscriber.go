@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 
@@ -28,11 +29,11 @@ func NewKafkaSubscriber(config *KafkaConfig, groupID string, retrier ports.Retri
 	}
 }
 
-func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic string, handler ports.MessageHandler) error {
+func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, handler ports.MessageHandler) error {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  s.config.Brokers,
 		GroupID:  s.groupID,
-		Topic:    topic,
+		Topic:    string(topic),
 		MinBytes: s.config.MinBytes,
 		MaxBytes: s.config.MaxBytes,
 		MaxWait:  s.config.MaxWait,

@@ -21,7 +21,8 @@ type Metrics struct {
 	rateLimitDrops       *prometheus.CounterVec // Labels: method
 
 	// --- Auth ---
-	authFailures *prometheus.CounterVec // Labels: method, reason
+	authFailures       *prometheus.CounterVec // Labels: method, reason
+	validationFailures *prometheus.CounterVec // Labels: method, reason
 
 	// --- Retry Metrics ---
 	retryCounter        *prometheus.CounterVec   // Labels: attempt
@@ -82,6 +83,13 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 			Help:      "Total number of failed authentication or authorization attempts",
 		}, []string{"method", "reason"}),
 
+		validationFailures: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subSystem,
+			Name:      "request_validation_failures_total",
+			Help:      "Total number of requests rejected due to invalid headers, timestamps, or missing IDs",
+		}, []string{"method", "reason"}),
+
 		retryCounter: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: namespace,
@@ -133,6 +141,10 @@ func (m *Metrics) RateLimitDrop(method string) {
 
 func (m *Metrics) AuthFailure(method string, reason string) {
 	m.authFailures.WithLabelValues(method, reason).Inc()
+}
+
+func (m *Metrics) ValidationFailure(method string, reason string) {
+	m.validationFailures.WithLabelValues(method, reason).Inc()
 }
 
 func (m *Metrics) ObserveRetry(service string, attempt int, err error, delay time.Duration) {
