@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	common "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	pkgErrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/app"
-	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/service"
 )
 
@@ -36,12 +36,12 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 		return nil, err
 	}
 
-	h.app.Logger.Debug("User updates location", "user-type", info.User.Role, "user-id", info.User.ID, "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
+	h.app.Logger.Debug("User updates location", "user-type", info.Sender.Role, "sender-id", info.Sender.ID, "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
 
 	updateRequest := &service.UpdateRequest{
-		UserID:   info.User.ID,
-		UserType: enums.UserType(info.User.Role),
-		Coordinates: domain.Coordinates{
+		UserID:   info.Sender.ID,
+		UserType: enums.UserType(info.Sender.Role),
+		Coordinates: common.Coordinates{
 			Latitude:  req.GetLatitude(),
 			Longitude: req.GetLongitude(),
 		},
@@ -101,7 +101,7 @@ func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locatio
 
 // SearchNearbyDrivers handles searching for nearby drivers
 func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *locationv1.SearchNearbyDriversRequest) (*locationv1.SearchNearbyDriversResponse, error) {
-	coords := &domain.Coordinates{
+	coords := &common.Coordinates{
 		Latitude:  req.GetLatitude(),
 		Longitude: req.GetLongitude(),
 	}

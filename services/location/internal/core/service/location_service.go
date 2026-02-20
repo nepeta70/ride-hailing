@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	common "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
@@ -67,7 +68,7 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 	loc := &domain.DriverLocation{
 		UserID:   req.UserID,
 		UserType: req.UserType,
-		Coordinates: domain.Coordinates{
+		Coordinates: common.Coordinates{
 			Latitude:  req.Coordinates.Latitude,
 			Longitude: req.Coordinates.Longitude,
 		},
@@ -95,7 +96,7 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
-func (s *LocationService) SearchNearby(ctx context.Context, coordinates *domain.Coordinates) ([]*domain.DriverLocation, error) {
+func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.Coordinates) ([]*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}

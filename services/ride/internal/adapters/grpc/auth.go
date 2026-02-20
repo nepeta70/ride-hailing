@@ -3,23 +3,23 @@ package grpc
 import (
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type RideEndpointRoles struct {
 	apiKey       string
-	requestRoles map[string][]enums.UserRole
+	requestRoles map[string][]enums.SenderType
 }
 
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
-	var roleConfig = map[string][]enums.UserRole{
-		ridev1.RideService_EstimateFare_FullMethodName:       {enums.UserRoleRider},
-		ridev1.RideService_RequestRide_FullMethodName:        {enums.UserRoleRider},
-		ridev1.RideService_CancelRide_FullMethodName:         {enums.UserRoleRider, enums.UserRoleAdmin},
-		ridev1.RideService_AcceptOrRejectRide_FullMethodName: {enums.UserRoleDriver},
-		ridev1.RideService_StartRide_FullMethodName:          {enums.UserRoleDriver},
-		ridev1.RideService_CompleteRide_FullMethodName:       {enums.UserRoleDriver},
+	var roleConfig = map[string][]enums.SenderType{
+		ridev1.RideService_EstimateFare_FullMethodName:       {enums.SenderTypeRider},
+		ridev1.RideService_RequestRide_FullMethodName:        {enums.SenderTypeRider},
+		ridev1.RideService_CancelRide_FullMethodName:         {enums.SenderTypeRider, enums.SenderTypeAdmin},
+		ridev1.RideService_AcceptOrRejectRide_FullMethodName: {enums.SenderTypeDriver},
+		ridev1.RideService_StartRide_FullMethodName:          {enums.SenderTypeDriver},
+		ridev1.RideService_CompleteRide_FullMethodName:       {enums.SenderTypeDriver},
 	}
 
 	return &RideEndpointRoles{
@@ -32,7 +32,7 @@ func (c *RideEndpointRoles) APIKey() string {
 	return c.apiKey
 }
 
-func (c *RideEndpointRoles) RequestRoles() map[string][]enums.UserRole {
+func (c *RideEndpointRoles) RequestRoles() map[string][]enums.SenderType {
 	return c.requestRoles
 }
 

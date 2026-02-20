@@ -7,7 +7,8 @@ import (
 
 type Config struct {
 	config.BaseConfig
-	Kafka *pubsub.KafkaConfig `json:"kafka"`
+	Kafka           *pubsub.KafkaConfig    `json:"kafka"`
+	LocationService *LocationServiceConfig `json:"location_service"`
 }
 
 func DefaultConfig() *Config {
@@ -16,6 +17,9 @@ func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig: base,
 		Kafka:      pubsub.DefaultKafkaConfig(),
+		LocationService: &LocationServiceConfig{
+			LocationServiceAddress: "localhost:50051",
+		},
 	}
 }
 
@@ -28,4 +32,9 @@ func Load(path string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+type LocationServiceConfig struct {
+	LocationServiceAddress string `json:"location_service_address" env:"LOCATION_SERVICE_ADDRESS"`
+	APIKey                 string `json:"api_key" env:"LOCATION_SERVICE_API_KEY"`
 }

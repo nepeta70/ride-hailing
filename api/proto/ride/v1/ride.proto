@@ -23,9 +23,14 @@ service RideService {
   rpc UpdateFareRate(FareRate) returns (FareRate);
 }
 
+message Coordinates {
+  double latitude = 1;
+  double longitude = 2;
+}
+
 message FareEstimateRequest {
-  string pickup_location = 1;
-  string dropoff_location = 2;
+  Coordinates pickup_location = 1;
+  Coordinates dropoff_location = 2;
 }
 
 message FareEstimate {
@@ -44,6 +49,8 @@ message FareEstimateResponse {
 message RideRequest {
   string fare_id = 1;
   string service_type = 2;
+  Coordinates pickup_location = 3;
+  Coordinates dropoff_location = 4;
 }
 
 message RideResponse {
@@ -83,3 +90,4 @@ message GetFareRatesRequest {
 message GetFareRatesResponse {
   repeated FareRate fare_rates = 1;
 }
+

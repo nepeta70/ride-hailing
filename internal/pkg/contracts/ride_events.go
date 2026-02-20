@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"github.com/google/uuid"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 )
 
 const (
@@ -65,11 +66,12 @@ type RideRequestedEvent struct {
 	RideID          uuid.UUID
 	RequestID       uuid.UUID
 	RiderID         uuid.UUID
-	PickupLocation  string
-	DropoffLocation string
-	ServiceType     string
-	Fare            float64
-	Currency        string
+	PickupLocation  *core.Coordinates
+	DropoffLocation *core.Coordinates
+
+	ServiceType string
+	Fare        float64
+	Currency    string
 }
 
 func (e *RideRequestedEvent) EventType() EventType {

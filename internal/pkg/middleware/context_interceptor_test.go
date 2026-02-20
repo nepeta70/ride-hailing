@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/stretchr/testify/assert"
@@ -43,27 +43,27 @@ func TestContextInterceptor(t *testing.T) {
 		name         string
 		md           metadata.MD
 		expectedCode codes.Code
-		expectedRole enums.UserRole
+		expectedRole enums.SenderType
 	}{
 		{
 			name: "Success - Full valid metadata",
 			md: metadata.New(map[string]string{
 				"x-api-key":      "test-secret",
-				"user-id":        validUserID,
-				"user-role":      "rider",
+				"sender-id":      validUserID,
+				"sender-type":    "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
 				"x-timestamp":    strconv.FormatInt(time.Now().Unix(), 10),
 			}),
 			expectedCode: codes.OK,
-			expectedRole: enums.UserRole("rider"),
+			expectedRole: enums.SenderType("rider"),
 		},
 		{
 			name: "Failure - Missing Timestamp",
 			md: metadata.New(map[string]string{
 				"x-api-key":      "test-secret",
-				"user-id":        validUserID,
-				"user-role":      "rider",
+				"sender-id":      validUserID,
+				"sender-type":    "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
 			}),
@@ -73,8 +73,8 @@ func TestContextInterceptor(t *testing.T) {
 			name: "Failure - Invalid Timestamp (non-numeric)",
 			md: metadata.New(map[string]string{
 				"x-api-key":      "test-secret",
-				"user-id":        validUserID,
-				"user-role":      "rider",
+				"sender-id":      validUserID,
+				"sender-type":    "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
 				"x-timestamp":    "notanumber",
@@ -85,8 +85,8 @@ func TestContextInterceptor(t *testing.T) {
 			name: "Failure - Invalid Timestamp (too old)",
 			md: metadata.New(map[string]string{
 				"x-api-key":      "test-secret",
-				"user-id":        validUserID,
-				"user-role":      "rider",
+				"sender-id":      validUserID,
+				"sender-type":    "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
 				"x-timestamp":    strconv.FormatInt(time.Now().Add(-24*time.Hour).Unix(), 10),
@@ -97,8 +97,8 @@ func TestContextInterceptor(t *testing.T) {
 			name: "Failure - Invalid Timestamp (in the future)",
 			md: metadata.New(map[string]string{
 				"x-api-key":      "test-secret",
-				"user-id":        validUserID,
-				"user-role":      "rider",
+				"sender-id":      validUserID,
+				"sender-type":    "rider",
 				"x-request-id":   validReqID,
 				"x-country-code": "ES",
 				"x-timestamp":    strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
@@ -116,7 +116,7 @@ func TestContextInterceptor(t *testing.T) {
 			name: "Failure - Missing User ID",
 			md: metadata.New(map[string]string{
 				"x-api-key":    "test-secret",
-				"user-role":    "rider",
+				"sender-type":  "rider",
 				"x-request-id": validReqID,
 			}),
 			expectedCode: codes.Unauthenticated,
@@ -125,8 +125,8 @@ func TestContextInterceptor(t *testing.T) {
 			name: "Failure - Invalid User Role",
 			md: metadata.New(map[string]string{
 				"x-api-key":    "test-secret",
-				"user-id":      validUserID,
-				"user-role":    "invalid-role",
+				"sender-id":    validUserID,
+				"sender-type":  "invalid-role",
 				"x-request-id": validReqID,
 			}),
 			expectedCode: codes.Unauthenticated,
@@ -134,9 +134,9 @@ func TestContextInterceptor(t *testing.T) {
 		{
 			name: "Failure - Missing Request ID",
 			md: metadata.New(map[string]string{
-				"x-api-key": "test-secret",
-				"user-id":   validUserID,
-				"user-role": "rider",
+				"x-api-key":   "test-secret",
+				"sender-id":   validUserID,
+				"sender-type": "rider",
 			}),
 			expectedCode: codes.InvalidArgument,
 		},
@@ -153,8 +153,8 @@ func TestContextInterceptor(t *testing.T) {
 				if tt.expectedCode == codes.OK {
 					rInfo, ok := cm.Extract(currentCtx)
 					assert.True(t, ok)
-					assert.Equal(t, tt.expectedRole, rInfo.User.Role)
-					assert.Equal(t, validUserID, rInfo.User.ID.String())
+					assert.Equal(t, tt.expectedRole, rInfo.Sender.Role)
+					assert.Equal(t, validUserID, rInfo.Sender.ID.String())
 				}
 				return "resp", nil
 			}

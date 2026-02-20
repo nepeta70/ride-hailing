@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
@@ -118,7 +119,7 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 	return nil
 }
 
-func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *domain.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
+func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index

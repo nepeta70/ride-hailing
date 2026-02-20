@@ -4,13 +4,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 )
 
 type Fares struct {
 	RequestID                uuid.UUID
 	ID                       uuid.UUID
-	PickupLocation           string
-	DropoffLocation          string
+	PickupLocation           *core.Coordinates
+	DropoffLocation          *core.Coordinates
 	EstimatedDistanceKm      float64
 	EstimatedDurationMinutes time.Duration
 	ETA                      time.Time

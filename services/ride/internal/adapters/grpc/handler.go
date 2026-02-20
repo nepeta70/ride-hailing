@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -38,11 +39,17 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 	}
 
 	query := &commands.EstimateFareCommand{
-		RequestID:       info.Trace.RequestID,
-		PickupLocation:  req.GetPickupLocation(),
-		DropoffLocation: req.GetDropoffLocation(),
-		CountryCode:     info.Location.CountryCode,
-		RiderID:         info.User.ID,
+		RequestID: info.Trace.RequestID,
+		PickupLocation: &core.Coordinates{
+			Latitude:  req.GetPickupLocation().GetLatitude(),
+			Longitude: req.GetPickupLocation().GetLongitude(),
+		},
+		DropoffLocation: &core.Coordinates{
+			Latitude:  req.GetDropoffLocation().GetLatitude(),
+			Longitude: req.GetDropoffLocation().GetLongitude(),
+		},
+		CountryCode: info.Location.CountryCode,
+		RiderID:     info.Sender.ID,
 	}
 	fare, err := h.application.Commands.EstimateFare.Handle(ctx, *query)
 	if err != nil {
@@ -84,7 +91,7 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 	cmd := commands.RequestRide{
 		FareID:      uuid.MustParse(req.GetFareId()),
 		ServiceType: req.GetServiceType(),
-		RiderID:     info.User.ID,
+		RiderID:     info.Sender.ID,
 		RequestID:   info.Trace.RequestID,
 	}
 	ride, err := h.application.Commands.RequestRide.Handle(ctx, cmd)
@@ -111,7 +118,7 @@ func (h *RideHandler) CancelRide(ctx context.Context, req *ridev1.CancelRideRequ
 
 	cmd := &grains.CancelRideCommand{
 		RequestID: info.Trace.RequestID,
-		RiderID:   info.User.ID,
+		RiderID:   info.Sender.ID,
 		RideID:    uuid.MustParse(req.GetRideId()),
 	}
 
@@ -143,13 +150,13 @@ func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.Accept
 	if req.GetAccept() {
 		cmd = &grains.AcceptRideCommand{
 			RequestID: info.Trace.RequestID,
-			DriverID:  info.User.ID,
+			DriverID:  info.Sender.ID,
 			RideID:    rideID,
 		}
 	} else {
 		cmd = &grains.RejectRideCommand{
 			RequestID: info.Trace.RequestID,
-			DriverID:  info.User.ID,
+			DriverID:  info.Sender.ID,
 			RideID:    rideID,
 		}
 	}
@@ -178,7 +185,7 @@ func (h *RideHandler) StartRide(ctx context.Context, req *ridev1.StartRideReques
 
 	cmd := &grains.StartRideCommand{
 		RideID:    uuid.MustParse(req.GetRideId()),
-		DriverID:  info.User.ID,
+		DriverID:  info.Sender.ID,
 		RequestID: info.Trace.RequestID,
 	}
 	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
@@ -204,7 +211,7 @@ func (h *RideHandler) CompleteRide(ctx context.Context, req *ridev1.CompleteRide
 
 	cmd := &grains.CompleteRideCommand{
 		RideID:    uuid.MustParse(req.GetRideId()),
-		DriverID:  info.User.ID,
+		DriverID:  info.Sender.ID,
 		RequestID: info.Trace.RequestID,
 	}
 	identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)

@@ -5,13 +5,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	common "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
 
 type DriverLocation struct {
 	UserID      uuid.UUID              `json:"user_id"`
 	UserType    enums.UserType         `json:"user_type"`
-	Coordinates Coordinates            `json:"coordinates"`
+	Coordinates common.Coordinates     `json:"coordinates"`
 	Accuracy    float32                `json:"accuracy"`
 	Heading     float32                `json:"heading"`
 	Speed       float32                `json:"speed"`

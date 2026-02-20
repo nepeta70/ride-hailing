@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	domain "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
-	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 )
 
 type UpdateRequest struct {

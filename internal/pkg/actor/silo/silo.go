@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )

@@ -4,24 +4,23 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
 
 type RequestInfo struct {
-	User     UserSession
+	Sender   Sender
 	Trace    TraceInfo
 	Location LocationInfo
 	Client   ClientInfo
 }
 
-type UserSession struct {
+type Sender struct {
 	ID   uuid.UUID
-	Role enums.UserRole // rider, driver, admin
+	Role enums.SenderType // rider, driver, admin
 }
 
 type TraceInfo struct {
 	RequestID  uuid.UUID
-	Origin     string
 	Timestamp  int64
 	RetryCount int
 }

@@ -67,7 +67,10 @@ func main() {
 	}
 	defer subscriber.Close()
 
-	matchingService := service.NewMatchingService()
+	locationClient := grpcAdapters.NewLocationClient(cfg.LocationService.LocationServiceAddress)
+	defer locationClient.Close()
+
+	matchingService := service.NewMatchingService(locationClient)
 	application, err := app.NewApplication(&app.AppOptions{
 		Logger:         logger,
 		Metrics:        tel.GetMetrics(),

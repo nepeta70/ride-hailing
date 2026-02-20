@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"google.golang.org/grpc"
@@ -84,14 +84,14 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			return nil, errUnauthenticated
 		}
 
-		userID := getUUIDMetadata(md, "user-id")
+		userID := getUUIDMetadata(md, "sender-id")
 		if userID == uuid.Nil {
 			i.metrics.AuthFailure(info.FullMethod, "missing_user_id")
 			return nil, errUnauthenticated
 		}
 
-		userRoleStr := getMetadata(md, "user-role")
-		role := enums.UserRole(userRoleStr)
+		userRoleStr := getMetadata(md, "sender-type")
+		role := enums.SenderType(userRoleStr)
 		if !role.IsValid() {
 			i.metrics.AuthFailure(info.FullMethod, "invalid_role")
 			return nil, errUnauthenticated
@@ -121,13 +121,12 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		// 2. Assemble the RequestInfo (Pointer-based to minimize boxing cost)
 		rInfo := &ctxmgr.RequestInfo{
-			User: ctxmgr.UserSession{
+			Sender: ctxmgr.Sender{
 				ID:   userID,
 				Role: role,
 			},
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
-				Origin:     getMetadata(md, "x-origin-service"),
 				Timestamp:  timestamp,
 				RetryCount: getIntMetadata(md, "x-retry-count"),
 			},
