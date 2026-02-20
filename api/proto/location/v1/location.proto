@@ -44,9 +44,6 @@ message SearchNearbyDriversRequest {
 
   // The longitude in degrees. Range: [-180.0, +180.0]
   double longitude = 2;
-
-  // Search radius in kilometers
-  float radius_km = 3;
 }
 
 message SearchNearbyDriversResponse {

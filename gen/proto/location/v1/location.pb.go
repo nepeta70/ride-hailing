@@ -163,9 +163,7 @@ type SearchNearbyDriversRequest struct {
 	// The latitude in degrees. Range: [-90.0, +90.0]
 	Latitude float64 `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
 	// The longitude in degrees. Range: [-180.0, +180.0]
-	Longitude float64 `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
-	// Search radius in kilometers
-	RadiusKm      float32 `protobuf:"fixed32,3,opt,name=radius_km,json=radiusKm,proto3" json:"radius_km,omitempty"`
+	Longitude     float64 `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,13 +208,6 @@ func (x *SearchNearbyDriversRequest) GetLatitude() float64 {
 func (x *SearchNearbyDriversRequest) GetLongitude() float64 {
 	if x != nil {
 		return x.Longitude
-	}
-	return 0
-}
-
-func (x *SearchNearbyDriversRequest) GetRadiusKm() float32 {
-	if x != nil {
-		return x.RadiusKm
 	}
 	return 0
 }
@@ -278,11 +269,10 @@ const file_location_v1_location_proto_rawDesc = "" +
 	"\x05speed\x18\x05 \x01(\x02R\x05speed\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\"!\n" +
 	"\x06UserID\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"s\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"V\n" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1b\n" +
-	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"e\n" +
+	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\"e\n" +
 	"\x1bSearchNearbyDriversResponse\x12F\n" +
 	"\x10driver_locations\x18\x01 \x03(\v2\x1b.location.v1.DriverLocationR\x0fdriverLocations2\xd4\x02\n" +
 	"\x0fLocationService\x12K\n" +

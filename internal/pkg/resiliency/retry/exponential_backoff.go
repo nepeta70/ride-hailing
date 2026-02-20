@@ -11,7 +11,7 @@ type ExponentialBackoff struct {
 	config *RetryConfig
 }
 
-func newExponentialBackoff(cfg *RetryConfig) *ExponentialBackoff {
+func NewExponentialBackoff(cfg *RetryConfig) *ExponentialBackoff {
 	return &ExponentialBackoff{config: cfg}
 }
 

@@ -99,7 +99,6 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 			Latitude:  req.Latitude,
 			Longitude: req.Longitude,
 		},
-		RadiusKm: req.RadiusKm,
 	})
 	if err != nil {
 		return nil, mapError(err)

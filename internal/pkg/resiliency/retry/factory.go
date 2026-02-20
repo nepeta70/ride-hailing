@@ -22,7 +22,7 @@ func (f *RetrierFactory) NewExponentialBackoffRetrier(serviceName string, timeou
 	cfg := NewRetryConfig(timeout)
 	opts := &RetryOptions{
 		Config:      cfg,
-		Strategy:    newExponentialBackoff(cfg),
+		Strategy:    NewExponentialBackoff(cfg),
 		Logger:      f.Logger,
 		ServiceName: serviceName,
 		Metrics:     f.Metrics,

@@ -57,8 +57,8 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), opts.Config.PingTimeout)
 	defer cancel()
 
-	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(postgresServiceName, opts.Config.PingTimeout)
-	err = strategy.Do(ctx, func() error {
+	retrier := opts.RetrierFactory.NewExponentialBackoffRetrier(postgresServiceName, opts.Config.PingTimeout)
+	err = retrier.Do(ctx, func() error {
 		return dbConn.PingContext(ctx)
 	})
 

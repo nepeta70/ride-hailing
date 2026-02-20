@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
 type Config struct {
@@ -12,9 +13,30 @@ type Config struct {
 }
 
 type LogicConfig struct {
-	GeohashPrecision   int `json:"geohash_precision" env:"GEOHASH_PRECISION"`
 	LocationTTLSeconds int `json:"location_ttl_seconds" env:"LOCATION_TTL"`
 	TopKNearby         int `json:"top_k_nearby" env:"TOP_K_NEARBY"`
+	// Note: The min and max radius could be moved to the database and configured by region
+	MinRadiusSearchKm float32 `json:"min_radius_search_km" env:"MIN_RADIUS_SEARCH_KM"`
+	MaxRadiusSearchKm float32 `json:"max_radius_search_km" env:"MAX_RADIUS_SEARCH_KM"`
+}
+
+func (c *Config) Validate() error {
+	if c.Logic.LocationTTLSeconds <= 0 {
+		return errors.NewValidationErrorf("location_ttl_seconds must be greater than 0")
+	}
+	if c.Logic.TopKNearby <= 0 {
+		return errors.NewValidationErrorf("top_k_nearby must be greater than 0")
+	}
+	if c.Logic.MinRadiusSearchKm <= 0 {
+		return errors.NewValidationErrorf("min_radius_search_km must be greater than 0")
+	}
+	if c.Logic.MaxRadiusSearchKm <= 0 {
+		return errors.NewValidationErrorf("max_radius_search_km must be greater than 0")
+	}
+	if c.Logic.MinRadiusSearchKm > c.Logic.MaxRadiusSearchKm {
+		return errors.NewValidationErrorf("min_radius_search_km cannot be greater than max_radius_search_km")
+	}
+	return nil
 }
 
 func DefaultConfig() *Config {
@@ -23,10 +45,10 @@ func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig: base,
 		Logic: LogicConfig{
-			GeohashPrecision:   7,
 			LocationTTLSeconds: 300,
-			TopKNearby:         5,
-		},
+			TopKNearby:         10,
+			MinRadiusSearchKm:  0.5,
+			MaxRadiusSearchKm:  5.0},
 		Redis: rdstore.DefaultRedisConfig(),
 	}
 }

@@ -8,11 +8,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
 )
 
-type Coordinates struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-}
-
 type DriverLocation struct {
 	UserID      uuid.UUID              `json:"user_id"`
 	UserType    enums.UserType         `json:"user_type"`

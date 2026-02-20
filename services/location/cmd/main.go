@@ -47,7 +47,18 @@ func main() {
 	defer redisClient.Close()
 
 	locationRepository := rdstore.NewLocationRepository(cfg, redisClient, logger, tel.GetMetrics())
-	app := app.NewApplication(ctxmgr.NewContextManager(), logger, locationRepository)
+	app, err := app.NewApplication(&app.ApplicationOpts{
+		Config:         cfg,
+		ContextManager: ctxmgr.NewContextManager(),
+		Logger:         logger,
+		Metrics:        tel.GetMetrics(),
+		LocationRepo:   locationRepository,
+		RetryFactory:   retrierFactory,
+	})
+	if err != nil {
+		logger.Error("Failed to create application:", "error", err)
+		return
+	}
 
 	handler := grpcAdapters.NewLocationHandler(app)
 

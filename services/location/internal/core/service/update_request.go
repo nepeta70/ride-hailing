@@ -21,23 +21,10 @@ type UpdateRequest struct {
 	Status      contracts.DriverStatus
 }
 
-type SearchNearbyRequest struct {
-	UserID      uuid.UUID
-	UserType    enums.UserType
-	Coordinates domain.Coordinates
-	RadiusKm    float32
-}
-
 // Validate ensures the GPS data is physically valid
 func (r UpdateRequest) Validate() error {
-	// Latitude range: [-90, 90]
-	if r.Coordinates.Latitude < -90 || r.Coordinates.Latitude > 90 {
-		return errors.NewBusinessErrorf("invalid latitude: %f", r.Coordinates.Latitude)
-	}
-
-	// Longitude range: [-180, 180]
-	if r.Coordinates.Longitude < -180 || r.Coordinates.Longitude > 180 {
-		return errors.NewBusinessErrorf("invalid longitude: %f", r.Coordinates.Longitude)
+	if err := r.Coordinates.Validate(); err != nil {
+		return errors.NewValidationErrorf("invalid coordinates: %w", err)
 	}
 
 	// Accuracy should be positive (meters)
@@ -54,8 +41,6 @@ func (r UpdateRequest) Validate() error {
 	if r.Speed < 0 {
 		return errors.NewBusinessError("speed cannot be negative")
 	}
-
-	// Status should be one of the defined constants
 
 	return nil
 }
