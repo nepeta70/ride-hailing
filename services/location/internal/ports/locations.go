@@ -11,5 +11,5 @@ type LocationRepository interface {
 	Save(ctx context.Context, loc *domain.DriverLocation) error
 	Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error)
 	RemoveUserLocation(ctx context.Context, userID uuid.UUID) error
-	SearchNearby(ctx context.Context, coordinates domain.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error)
+	SearchNearby(ctx context.Context, coordinates *domain.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error)
 }

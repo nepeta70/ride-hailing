@@ -20,3 +20,7 @@ func (s DriverStatus) IsValid() bool {
 func (s DriverStatus) Equals(other string) bool {
 	return string(s) == other
 }
+
+func (s DriverStatus) String() string {
+	return string(s)
+}

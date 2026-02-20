@@ -95,7 +95,7 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
-func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.DriverLocation, error) {
+func (s *LocationService) SearchNearby(ctx context.Context, coordinates *domain.Coordinates) ([]*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -105,7 +105,7 @@ func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyReq
 	var drivers []*domain.DriverLocation
 	var err error
 	for attempt := 1; radius <= s.config.Logic.MaxRadiusSearchKm; attempt++ {
-		drivers, err = s.repo.SearchNearby(ctx, req.Coordinates, radius)
+		drivers, err = s.repo.SearchNearby(ctx, coordinates, radius)
 		if err == nil {
 			if len(drivers) > 0 {
 				return drivers, nil

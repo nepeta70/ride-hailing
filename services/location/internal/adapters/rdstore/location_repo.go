@@ -118,7 +118,7 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 	return nil
 }
 
-func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates domain.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
+func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *domain.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index
@@ -144,7 +144,7 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates domai
 	pipe := r.client.Pipeline()
 	cmds := make(map[string]*redis.SliceCmd)
 	for _, driverID := range geoResults {
-		cmds[driverID] = pipe.HMGet(ctx, driverID, "status", "data")
+		cmds[driverID] = pipe.HMGet(ctx, driverLocationKeyPrefix+driverID, "status", "data")
 	}
 
 	_, err = pipe.Exec(ctx)

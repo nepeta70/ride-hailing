@@ -14,7 +14,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
-	caterrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgErrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/service"
@@ -37,7 +37,8 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 	}
 
 	h.app.Logger.Debug("User updates location", "user-type", info.User.Role, "user-id", info.User.ID, "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
-	err = h.app.LocationService.Update(ctx, &service.UpdateRequest{
+
+	updateRequest := &service.UpdateRequest{
 		UserID:   info.User.ID,
 		UserType: enums.UserType(info.User.Role),
 		Coordinates: domain.Coordinates{
@@ -49,7 +50,12 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 		Speed:      req.GetSpeed(),
 		CapturedAt: time.Unix(info.Trace.Timestamp, 0),
 		Status:     contracts.DriverStatus(req.GetStatus()),
-	})
+	}
+	err = updateRequest.Validate()
+	if err != nil {
+		return nil, mapError(err)
+	}
+	err = h.app.LocationService.Update(ctx, updateRequest)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -62,7 +68,7 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 	// 2. Execute Query
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user ID format")
+		return nil, mapError(pkgErrors.NewValidationErrorf("invalid user ID format"))
 	}
 	result, err := h.app.LocationService.Get(ctx, userID)
 	if err != nil {
@@ -76,6 +82,7 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 		Accuracy:  result.Accuracy,
 		Heading:   result.Heading,
 		Speed:     result.Speed,
+		Status:    result.Status.String(),
 	}, nil
 }
 
@@ -83,7 +90,7 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locationv1.UserID) (*emptypb.Empty, error) {
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user ID format")
+		return nil, mapError(pkgErrors.NewValidationErrorf("invalid user ID format"))
 	}
 	err = h.app.LocationService.RemoveUserLocation(ctx, userID)
 	if err != nil {
@@ -94,29 +101,37 @@ func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locatio
 
 // SearchNearbyDrivers handles searching for nearby drivers
 func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *locationv1.SearchNearbyDriversRequest) (*locationv1.SearchNearbyDriversResponse, error) {
-	results, err := h.app.LocationService.SearchNearby(ctx, &service.SearchNearbyRequest{
-		Coordinates: domain.Coordinates{
-			Latitude:  req.Latitude,
-			Longitude: req.Longitude,
-		},
-	})
+	coords := &domain.Coordinates{
+		Latitude:  req.GetLatitude(),
+		Longitude: req.GetLongitude(),
+	}
+	err := coords.Validate()
+	if err != nil {
+		return nil, mapError(pkgErrors.NewValidationErrorf("invalid coordinates: %w", err))
+	}
+
+	results, err := h.app.LocationService.SearchNearby(ctx, coords)
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	driverLocations := make([]*locationv1.DriverLocation, 0, len(results))
+	driverLocations := make([]*locationv1.SearchNearbyDriversResponse_Driver, 0, len(results))
 	for _, loc := range results {
-		driverLocations = append(driverLocations, &locationv1.DriverLocation{
-			Latitude:  loc.Coordinates.Latitude,
-			Longitude: loc.Coordinates.Longitude,
-			Accuracy:  loc.Accuracy,
-			Heading:   loc.Heading,
-			Speed:     loc.Speed,
+		driverLocations = append(driverLocations, &locationv1.SearchNearbyDriversResponse_Driver{
+			UserId: loc.UserID.String(),
+			Location: &locationv1.DriverLocation{
+				Latitude:  loc.Coordinates.Latitude,
+				Longitude: loc.Coordinates.Longitude,
+				Accuracy:  loc.Accuracy,
+				Heading:   loc.Heading,
+				Speed:     loc.Speed,
+				Status:    loc.Status.String(),
+			},
 		})
 	}
 
 	return &locationv1.SearchNearbyDriversResponse{
-		DriverLocations: driverLocations,
+		Drivers: driverLocations,
 	}, nil
 }
 
@@ -126,23 +141,23 @@ func (h *LocationHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.Requ
 	if !ok {
 		e := "no metadata found in context"
 		h.app.Logger.Error(e)
-		return nil, caterrors.NewPermanentError(e)
+		return nil, pkgErrors.NewPermanentError(e)
 	}
 	return info, nil
 }
 
 // mapError translates your internal CategorizedErrors to gRPC status codes
 func mapError(err error) error {
-	if caterrors.IsNotFound(err) {
+	if pkgErrors.IsNotFound(err) {
 		return status.Error(codes.NotFound, err.Error())
 	}
-	if errors.Is(err, caterrors.ErrContextError) {
+	if errors.Is(err, pkgErrors.ErrContextError) {
 		return status.Error(codes.Canceled, "request cancelled or deadline exceeded")
 	}
-	if caterrors.IsBusiness(err) {
+	if pkgErrors.IsBusiness(err) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
-	if caterrors.IsTransient(err) {
+	if pkgErrors.IsTransient(err) {
 		return status.Error(codes.Unavailable, "temporary service failure, retry allowed")
 	}
 	return status.Error(codes.Internal, "an internal error occurred")

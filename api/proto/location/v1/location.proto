@@ -47,5 +47,9 @@ message SearchNearbyDriversRequest {
 }
 
 message SearchNearbyDriversResponse {
-  repeated DriverLocation driver_locations = 1;
+  message Driver {
+    string user_id = 1;
+    DriverLocation location = 2;
+  }
+  repeated Driver drivers = 1;
 }
