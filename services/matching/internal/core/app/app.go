@@ -69,17 +69,29 @@ func (a *Application) Start(ctx context.Context) error {
 }
 
 func (a *Application) handleRideEvent(ctx context.Context, msg []byte) error {
-	var message contracts.EventMessage
-	if err := json.Unmarshal(msg, &message); err != nil {
+	var header struct {
+		EventType contracts.EventType `json:"eventType"`
+	}
+	if err := json.Unmarshal(msg, &header); err != nil {
 		a.logger.Error("CRITICAL: Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
 
-	switch message.EventType {
+	switch header.EventType {
 	case contracts.EventTypeRideRequested:
-		if rideEvent, ok := message.Payload.(*contracts.RideRequestedEvent); ok {
-			a.logger.Debug("Received RideRequestedEvent, adding to waitlist", "ride_id", rideEvent.RideID)
-			// TODO: match with driver
+		var envelope struct {
+			Payload contracts.RideRequestedEvent `json:"message"`
+		}
+		if err := json.Unmarshal(msg, &envelope); err != nil {
+			a.logger.Error("Failed to unmarshal RideRequestedEvent", "error", err)
+			return errors.NewErrJSONUnmarshal(err)
+		}
+		rideEvent := &envelope.Payload
+		a.logger.Debug("Received RideRequestedEvent, adding to waitlist", "ride_id", rideEvent.RideID)
+		_, err := a.service.MatchRiderToDriver(ctx, rideEvent)
+		if err != nil {
+			a.logger.Error("Error matching rider to driver", "error", err)
+			return err
 		}
 
 	default:

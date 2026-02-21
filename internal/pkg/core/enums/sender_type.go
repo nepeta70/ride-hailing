@@ -11,6 +11,10 @@ func (u SenderType) IsValid() bool {
 	}
 }
 
+func (u SenderType) String() string {
+	return string(u)
+}
+
 const (
 	SenderTypeDriver    SenderType = "driver"
 	SenderTypeRider     SenderType = "rider"

@@ -19,6 +19,8 @@ func DefaultConfig() *Config {
 		Kafka:      pubsub.DefaultKafkaConfig(),
 		LocationService: &LocationServiceConfig{
 			LocationServiceAddress: "localhost:50051",
+			APIKey:                 "locationsupersecretapikey",
+			SenderID:               "b4c12247-9a8f-4926-8508-3619ff6e7af7",
 		},
 	}
 }
@@ -32,9 +34,4 @@ func Load(path string) (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-type LocationServiceConfig struct {
-	LocationServiceAddress string `json:"location_service_address" env:"LOCATION_SERVICE_ADDRESS"`
-	APIKey                 string `json:"api_key" env:"LOCATION_SERVICE_API_KEY"`
 }

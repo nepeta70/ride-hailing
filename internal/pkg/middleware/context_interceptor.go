@@ -124,6 +124,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			Sender: ctxmgr.Sender{
 				ID:   userID,
 				Role: role,
+				Name: getMetadata(md, "sender-name"),
 			},
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,

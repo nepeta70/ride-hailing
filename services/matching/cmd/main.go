@@ -70,7 +70,18 @@ func main() {
 	locationClient := grpcAdapters.NewLocationClient(cfg.LocationService.LocationServiceAddress)
 	defer locationClient.Close()
 
-	matchingService := service.NewMatchingService(locationClient)
+	matchingService, err := service.NewMatchingService(&service.MatchingServiceOpts{
+		Config:    cfg,
+		Client:    locationClient,
+		Publisher: publisher,
+		Logger:    logger,
+		Metrics:   tel.GetMetrics(),
+	})
+	if err != nil {
+		logger.Error("Failed to create matching service:", "error", err)
+		return
+	}
+
 	application, err := app.NewApplication(&app.AppOptions{
 		Logger:         logger,
 		Metrics:        tel.GetMetrics(),

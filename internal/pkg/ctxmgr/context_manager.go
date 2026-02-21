@@ -17,6 +17,7 @@ type RequestInfo struct {
 type Sender struct {
 	ID   uuid.UUID
 	Role enums.SenderType // rider, driver, admin
+	Name string // sender name: to verify the service that is sending the request
 }
 
 type TraceInfo struct {

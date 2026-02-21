@@ -94,6 +94,9 @@ services:
       - KAFKA_SMP=${KAFKA_SMP}
       - KAFKA_UI_BROKERS=${KAFKA_UI_BROKERS}
       - LOG_LEVEL=${LOG_LEVEL}
+      - LOCATION_SERVICE_ADDRESS=location:${LOCATION_SERVER_PORT}
+      - LOCATION_SERVICE_API_KEY=${LOCATION_API_KEY}
+      - SENDER_ID=${MATCHING_SENDER_ID}
     restart: always
     depends_on:
       kafka:
