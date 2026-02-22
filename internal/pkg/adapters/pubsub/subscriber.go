@@ -85,7 +85,7 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 		s.logger.Debug("Subscriber started", "topic", topic)
 		for {
 			s.logger.Debug("waiting for message", "topic", topic)
-			m, err := reader.ReadMessage(ctx)
+			message, err := reader.ReadMessage(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
 					s.logger.Debug("subscriber context cancelled", "topic", topic)
@@ -95,12 +95,16 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 				continue
 			}
 
-			s.logger.Debug("received kafka message", "topic", topic, "partition", m.Partition, "offset", m.Offset, "size", len(m.Value))
+			s.logger.Debug("received kafka message", "topic", topic, "partition", message.Partition, "offset", message.Offset, "size", len(message.Value))
 
 			// Process message with retry logic
 			retrier := s.retrierFactory.NewExponentialBackoffRetrier(s.ServiceName(), s.config.BatchTimeout)
 			err = retrier.Do(ctx, func() error {
-				return handler(ctx, m.Value)
+				headers := make(map[string][]byte)
+				for _, h := range message.Headers {
+					headers[h.Key] = h.Value
+				}
+				return handler(ctx, headers, message.Value)
 			})
 
 			if err != nil {
@@ -108,17 +112,17 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 				if errors.IsTransient(err) {
 					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "transient_error")
 					s.logger.Error("handler failed after retries (transient) - message lost",
-						"error", err, "topic", topic, "partition", m.Partition, "offset", m.Offset)
+						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 					// TODO: Send to DLQ for manual processing
 				} else if errors.IsPermanent(err) || errors.IsBusiness(err) {
 					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "permanent_error")
 					s.logger.Warn("handler failed with permanent/business error - skipping message",
-						"error", err, "topic", topic, "partition", m.Partition, "offset", m.Offset)
+						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 					// Don't retry, just log and continue
 				} else {
 					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "unknown_error")
 					s.logger.Error("handler failed with unknown error",
-						"error", err, "topic", topic, "partition", m.Partition, "offset", m.Offset)
+						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 				}
 			}
 		}

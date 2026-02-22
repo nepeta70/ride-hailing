@@ -78,7 +78,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		i.logger.Debug("Received metadata:", "metadata", md)
 
 		// 1. Security Check (Fail Fast)
-		apiKey := getMetadata(md, "x-api-key")
+		apiKey := getMetadata(md, "api-key")
 		if apiKey != i.config.APIKey {
 			i.metrics.AuthFailure(info.FullMethod, "invalid_api_key")
 			return nil, errUnauthenticated
@@ -97,7 +97,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			return nil, errUnauthenticated
 		}
 
-		requestID := getUUIDMetadata(md, "x-request-id")
+		requestID := getUUIDMetadata(md, "request-id")
 		if requestID == uuid.Nil {
 			i.metrics.ValidationFailure(info.FullMethod, "missing_request_id")
 			return nil, errInvalidArgument
@@ -129,16 +129,16 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
 				Timestamp:  timestamp,
-				RetryCount: getIntMetadata(md, "x-retry-count"),
+				RetryCount: getIntMetadata(md, "retry-count"),
 			},
 			Location: ctxmgr.LocationInfo{
-				CountryCode: getMetadata(md, "x-country-code"),
+				CountryCode: getMetadata(md, "country-code"),
 			},
 			Client: ctxmgr.ClientInfo{
-				AppVersion: getMetadata(md, "x-app-version"),
-				OS:         getMetadata(md, "x-os"),
-				Network:    getMetadata(md, "x-network"),
-				DeviceID:   getMetadata(md, "x-device-id"),
+				AppVersion: getMetadata(md, "app-version"),
+				OS:         getMetadata(md, "os"),
+				Network:    getMetadata(md, "network"),
+				DeviceID:   getMetadata(md, "device-id"),
 			},
 		}
 
@@ -148,7 +148,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 }
 
 func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (int64, error) {
-	sTimestamp := getMetadata(md, "x-timestamp")
+	sTimestamp := getMetadata(md, "timestamp")
 	if len(sTimestamp) == 0 {
 		i.metrics.ValidationFailure(method, "missing_timestamp")
 		return 0, errInvalidArgument

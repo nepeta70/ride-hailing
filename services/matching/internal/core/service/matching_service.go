@@ -2,25 +2,23 @@ package service
 
 import (
 	"context"
-	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
-	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/ports"
-	"google.golang.org/grpc/metadata"
 )
 
 type MatchingServiceOpts struct {
-	Config    *config.Config
-	Client    ports.GetCandidates
-	Publisher pkgPorts.EventPublisher
-	Logger    pkgPorts.Logger
-	Metrics   pkgPorts.Metrics
+	Config         *config.Config
+	Client         ports.GetCandidates
+	Publisher      pkgPorts.EventPublisher
+	ContextManager *ctxmgr.ContextManager
+	Logger         pkgPorts.Logger
+	Metrics        pkgPorts.Metrics
 }
 
 func (o *MatchingServiceOpts) Validate() error {
@@ -39,15 +37,19 @@ func (o *MatchingServiceOpts) Validate() error {
 	if o.Metrics == nil {
 		return errors.NewValidationErrorf("metrics is required")
 	}
+	if o.ContextManager == nil {
+		return errors.NewValidationErrorf("context manager is required")
+	}
 	return nil
 }
 
 type MatchingService struct {
-	config    *config.Config
-	client    ports.GetCandidates
-	publisher pkgPorts.EventPublisher
-	logger    pkgPorts.Logger
-	metrics   pkgPorts.Metrics
+	config         *config.Config
+	client         ports.GetCandidates
+	publisher      pkgPorts.EventPublisher
+	logger         pkgPorts.Logger
+	metrics        pkgPorts.Metrics
+	contextManager *ctxmgr.ContextManager
 }
 
 func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
@@ -55,23 +57,32 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 		return nil, err
 	}
 	return &MatchingService{
-		config:    opts.Config,
-		client:    opts.Client,
-		publisher: opts.Publisher,
-		logger:    opts.Logger,
-		metrics:   opts.Metrics,
+		config:         opts.Config,
+		client:         opts.Client,
+		publisher:      opts.Publisher,
+		logger:         opts.Logger,
+		metrics:        opts.Metrics,
+		contextManager: opts.ContextManager,
 	}, nil
 }
 
 func (s *MatchingService) MatchRiderToDriver(ctx context.Context, request *contracts.RideRequestedEvent) (uuid.UUID, error) {
-	md := metadata.Pairs(
-		"sender-id", s.config.LocationService.SenderID,
-		"sender-type", enums.SenderTypeService.String(),
-		"sender-name", enums.ServiceNameMatching.String(),
-		"api-key", s.config.LocationService.APIKey,
-		"x-timestamp", strconv.FormatInt(time.Now().Unix(), 10),
-	)
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	info, ok := s.contextManager.Extract(ctx)
+	if !ok {
+		return uuid.Nil, errors.NewPermanentErrorf("missing request info in context")
+	}
+
+	// md := metadata.Pairs(
+	// 	"sender-id", s.config.LocationService.SenderID,
+	// 	"sender-type", enums.SenderTypeService.String(),
+	// 	"sender-name", enums.ServiceNameMatching.String(),
+	// 	"api-key", s.config.LocationService.APIKey,
+	// 	"timestamp", strconv.FormatInt(time.Now().Unix(), 10),
+	// 	"request-id", request.RequestID.String(),
+	// 	"app-version", "1.0.0", // TODO: get this from build info
+	// 	"country-code", info.Location.CountryCode,
+	// )
+	// ctx = metadata.NewOutgoingContext(ctx, md)
 	s.logger.Debug("MatchingService: Getting candidates for ride request", "ride_id", request.RideID, "pickup_location", request.PickupLocation)
 	candidates, err := s.client.GetCandidates(ctx, request.PickupLocation)
 	if err != nil {
@@ -81,7 +92,7 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, request *contr
 	}
 
 	if len(candidates) == 0 {
-		s.logger.Warn("No drivers available for ride.")
+		s.logger.Warn("No drivers available for ride.", "ride_id", request.RideID)
 		return uuid.Nil, nil // No candidates found, return nil UUID and no error
 	}
 
@@ -93,12 +104,8 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, request *contr
 	}
 	// TODO: handle candidates not found
 	// For the moment, just pick the first candidate. Implement better matching logic here.
-	message := &contracts.EventMessage{
-		ID:        uuid.New().String(),
-		EventType: event.EventType(),
-		Timestamp: time.Now(),
-		Payload:   event,
-	}
+	message := contracts.NewEventMessage(event)
+	message.AddHeaders(info.ToByteMap())
 
 	err = s.publisher.Publish(ctx, contracts.TopicMatching, message)
 	s.logger.Debug("Published RideMatchedEvent", "ride_id", request.RideID, "driver_id", driverID)

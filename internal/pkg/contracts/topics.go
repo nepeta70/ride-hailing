@@ -11,3 +11,7 @@ const (
 	TopicNotification Topic = "notification"
 	TopicRider        Topic = "rider"
 )
+
+func (t Topic) String() string {
+	return string(t)
+}

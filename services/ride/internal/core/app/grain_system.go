@@ -5,6 +5,7 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/silo"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/retry"
 
@@ -23,6 +24,7 @@ type GrainSystemOptions struct {
 	Topic          contracts.Topic
 	GrainTimeout   time.Duration
 	RetrierFactory *retry.RetrierFactory
+	ContextManager *ctxmgr.ContextManager
 }
 
 func (opts *GrainSystemOptions) Validate() error {
@@ -45,6 +47,9 @@ func (opts *GrainSystemOptions) Validate() error {
 	if opts.RetrierFactory == nil {
 		return errors.NewValidationErrorf("retrier factory is required")
 	}
+	if opts.ContextManager == nil {
+		return errors.NewValidationErrorf("context manager is required")
+	}
 	return nil
 }
 
@@ -56,6 +61,7 @@ type GrainSystem struct {
 	logger               pkgPorts.Logger
 	topic                contracts.Topic
 	grainTimeout         time.Duration
+	contextManager       *ctxmgr.ContextManager
 }
 
 func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
@@ -72,10 +78,11 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 	}
 
 	grainOpts := &grains.RideGrainOptions{
-		Storage:  opts.Storage,
-		EventPub: opts.EventPublisher,
-		Logger:   opts.Logger,
-		Topic:    opts.Topic,
+		Storage:        opts.Storage,
+		EventPub:       opts.EventPublisher,
+		Logger:         opts.Logger,
+		Topic:          opts.Topic,
+		ContextManager: opts.ContextManager,
 	}
 	if err := grainOpts.Validate(); err != nil {
 		return nil, err
@@ -92,6 +99,7 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 		grainPersistence:     opts.Storage,
 		grainIdentityFactory: &service.GrainIdentityFactory{},
 		grainTimeout:         opts.GrainTimeout,
+		contextManager:       opts.ContextManager,
 	}, nil
 }
 

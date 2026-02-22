@@ -28,14 +28,14 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
 	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
+
+	logger := tel.GetLogger()
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
 

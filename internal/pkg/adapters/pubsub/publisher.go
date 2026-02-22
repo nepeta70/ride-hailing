@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/segmentio/kafka-go"
@@ -17,6 +18,7 @@ type KafkaPublisherOptions struct {
 	Logger         ports.Logger
 	Metrics        ports.Metrics
 	RetrierFactory ports.RetrierFactoryInterface
+	ContextManager *ctxmgr.ContextManager
 }
 
 func (o *KafkaPublisherOptions) Validate() error {
@@ -35,6 +37,9 @@ func (o *KafkaPublisherOptions) Validate() error {
 	if o.RetrierFactory == nil {
 		return errors.NewValidationErrorf("RetrierFactory is required")
 	}
+	if o.ContextManager == nil {
+		return errors.NewValidationErrorf("ContextManager is required")
+	}
 	return nil
 }
 
@@ -45,6 +50,7 @@ type KafkaPublisher struct {
 	logger         ports.Logger
 	metrics        ports.Metrics
 	retrierFactory ports.RetrierFactoryInterface
+	contextManager *ctxmgr.ContextManager
 }
 
 func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error) {
@@ -58,6 +64,7 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 		logger:         opts.Logger,
 		metrics:        opts.Metrics,
 		retrierFactory: opts.RetrierFactory,
+		contextManager: opts.ContextManager,
 		writer: &kafka.Writer{
 			Addr:         kafka.TCP(opts.Config.Brokers...),
 			Balancer:     &kafka.LeastBytes{},
@@ -88,11 +95,13 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 	if err != nil {
 		return errors.NewErrJSONMarshal(err)
 	}
+	k.logger.Debug("publishing message", "message", message.Payload)
+	k.logger.Debug("message headers", "headers", message.Headers)
 	err = k.writer.WriteMessages(ctx, kafka.Message{
-		Topic:   string(topic),
+		Topic:   topic.String(),
 		Value:   data,
-		Headers: []kafka.Header{{Key: "eventType", Value: []byte(message.EventType)}},
-		Time:    message.Timestamp,
+		Headers: k.makeHeader(message),
+		Time:    time.Now().UTC(),
 	})
 	if err != nil {
 		k.metrics.DependencyFailure(k.ServiceName(), "publish", "error")
@@ -193,6 +202,17 @@ func (k *KafkaPublisher) verify(required []string) bool {
 		}
 	}
 	return true
+}
+
+func (k *KafkaPublisher) makeHeader(message *contracts.EventMessage) []kafka.Header {
+
+	headers := make([]kafka.Header, 0, len(message.Headers)) // preallocate with expected size
+
+	for k, v := range message.Headers {
+		headers = append(headers, kafka.Header{Key: k, Value: v})
+	}
+
+	return headers
 }
 
 var _ ports.EventPublisher = (*KafkaPublisher)(nil)

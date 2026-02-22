@@ -40,6 +40,18 @@ func (c *LoggingConfig) ConfigureLogger() ports.Logger {
 	return logger
 }
 
+func (c *LoggingConfig) GetConsoleLogger() slog.Handler {
+	opts := &slog.HandlerOptions{
+		Level: c.slogLevel(),
+	}
+
+	if c.Format == "json" {
+		return slog.NewJSONHandler(os.Stdout, opts)
+	} else {
+		return slog.NewTextHandler(os.Stdout, opts)
+	}
+}
+
 func (c *LoggingConfig) slogLevel() slog.Level {
 	switch strings.ToUpper(c.Level) {
 	case "DEBUG":

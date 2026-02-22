@@ -34,14 +34,14 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
 	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
+
+	logger := tel.GetLogger()
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
 
@@ -63,14 +63,15 @@ func main() {
 		return
 	}
 
+	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
-
 	eventPublisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
 		Config:         cfg.Kafka,
 		TopicProvider:  topicProvider,
 		Logger:         logger,
 		Metrics:        tel.GetMetrics(),
 		RetrierFactory: retrierFactory,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create event publisher:", "error", err)
@@ -107,6 +108,7 @@ func main() {
 		EventPublisher: eventPublisher,
 		Logger:         logger,
 		RetrierFactory: retrierFactory,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create grain system:", "error", err)

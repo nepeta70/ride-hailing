@@ -46,11 +46,11 @@ func BenchmarkInterceptorChain_Overhead(b *testing.B) {
 	}
 
 	md := metadata.New(map[string]string{
-		"x-api-key":        "test-secret-key",
+		"api-key":        "test-secret-key",
 		"sender-id":        uuid.New().String(),
 		"sender-type":      "driver",
-		"x-request-id":     uuid.New().String(),
-		"x-origin-service": "bench-tool",
+		"request-id":     uuid.New().String(),
+		"origin-service": "bench-tool",
 	})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 

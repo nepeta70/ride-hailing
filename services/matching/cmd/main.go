@@ -28,17 +28,18 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
 	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
 
+	logger := tel.GetLogger()
+
 	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
 
+	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
 
 	publisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
@@ -47,6 +48,7 @@ func main() {
 		Logger:         logger,
 		Metrics:        tel.GetMetrics(),
 		RetrierFactory: retrierFactory,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create event publisher:", "error", err)
@@ -71,11 +73,12 @@ func main() {
 	defer locationClient.Close()
 
 	matchingService, err := service.NewMatchingService(&service.MatchingServiceOpts{
-		Config:    cfg,
-		Client:    locationClient,
-		Publisher: publisher,
-		Logger:    logger,
-		Metrics:   tel.GetMetrics(),
+		Config:         cfg,
+		Client:         locationClient,
+		Publisher:      publisher,
+		Logger:         logger,
+		Metrics:        tel.GetMetrics(),
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create matching service:", "error", err)
@@ -88,6 +91,7 @@ func main() {
 		Service:        matchingService,
 		Subscriber:     subscriber,
 		EventPublisher: publisher,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create application:", "error", err)

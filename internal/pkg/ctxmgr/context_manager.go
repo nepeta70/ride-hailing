@@ -2,40 +2,7 @@ package ctxmgr
 
 import (
 	"context"
-
-	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
-
-type RequestInfo struct {
-	Sender   Sender
-	Trace    TraceInfo
-	Location LocationInfo
-	Client   ClientInfo
-}
-
-type Sender struct {
-	ID   uuid.UUID
-	Role enums.SenderType // rider, driver, admin
-	Name string // sender name: to verify the service that is sending the request
-}
-
-type TraceInfo struct {
-	RequestID  uuid.UUID
-	Timestamp  int64
-	RetryCount int
-}
-
-type LocationInfo struct {
-	CountryCode string
-}
-
-type ClientInfo struct {
-	AppVersion string // Added: For compatibility checks
-	OS         string // Added: iOS/Android/Web
-	Network    string // Added: 5G/WiFi
-	DeviceID   string
-}
 
 type contextKey struct{}
 type ContextManager struct{}

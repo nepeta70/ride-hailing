@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -19,10 +18,11 @@ import (
 )
 
 type RideGrainOptions struct {
-	Storage  ports.GrainStorage
-	EventPub pkgPorts.EventPublisher
-	Logger   pkgPorts.Logger
-	Topic    contracts.Topic
+	Storage        ports.GrainStorage
+	EventPub       pkgPorts.EventPublisher
+	Logger         pkgPorts.Logger
+	Topic          contracts.Topic
+	ContextManager *ctxmgr.ContextManager
 }
 
 func (opts *RideGrainOptions) Validate() error {
@@ -38,6 +38,9 @@ func (opts *RideGrainOptions) Validate() error {
 	if opts.Topic == "" {
 		return errors.NewValidationErrorf("topic is required")
 	}
+	if opts.ContextManager == nil {
+		return errors.NewValidationErrorf("context manager is required")
+	}
 	return nil
 }
 
@@ -47,24 +50,26 @@ var terminalStates = []domain.RideStatus{
 }
 
 type RideGrain struct {
-	identity *grain.GrainIdentity
-	core     *domain.RideCore
-	state    *domain.RideState
-	version  int
-	storage  ports.GrainStorage
-	eventPub pkgPorts.EventPublisher
-	logger   pkgPorts.Logger
-	topic    contracts.Topic
+	identity       *grain.GrainIdentity
+	core           *domain.RideCore
+	state          *domain.RideState
+	version        int
+	storage        ports.GrainStorage
+	eventPub       pkgPorts.EventPublisher
+	logger         pkgPorts.Logger
+	topic          contracts.Topic
+	contextManager *ctxmgr.ContextManager
 }
 
 var _ pkgPorts.Grain = (*RideGrain)(nil)
 
 func NewRideGrain(options *RideGrainOptions) *RideGrain {
 	return &RideGrain{
-		storage:  options.Storage,
-		eventPub: options.EventPub,
-		logger:   options.Logger,
-		topic:    options.Topic,
+		storage:        options.Storage,
+		eventPub:       options.EventPub,
+		logger:         options.Logger,
+		topic:          options.Topic,
+		contextManager: options.ContextManager,
 		state: &domain.RideState{
 			Status: domain.RideStatusNew,
 		},
@@ -365,12 +370,14 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 }
 
 func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) error {
-	message := &contracts.EventMessage{
-		ID:        uuid.New().String(),
-		EventType: event.EventType(),
-		Timestamp: time.Now(),
-		Payload:   event,
+	info, ok := g.contextManager.Extract(ctx)
+	if !ok {
+		g.logger.Warn("Failed to extract request info from context, publishing event without trace information",
+			"event_type", event.EventType(),
+			"ride_id", g.identity.EntityID)
 	}
+	message := contracts.NewEventMessage(event)
+	message.AddHeaders(info.ToByteMap())
 	err := g.eventPub.Publish(ctx, contracts.TopicRide, message)
 	if err != nil {
 		g.logger.Error("Failed to publish event",

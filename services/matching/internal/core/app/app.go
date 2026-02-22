@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/core/service"
@@ -16,6 +17,7 @@ type AppOptions struct {
 	Service        *service.MatchingService
 	Subscriber     ports.EventSubscriber
 	EventPublisher ports.EventPublisher
+	ContextManager *ctxmgr.ContextManager
 }
 
 func (o *AppOptions) Validate() error {
@@ -34,15 +36,19 @@ func (o *AppOptions) Validate() error {
 	if o.EventPublisher == nil {
 		return errors.NewValidationErrorf("EventPublisher is required")
 	}
+	if o.ContextManager == nil {
+		return errors.NewValidationErrorf("ContextManager is required")
+	}
 	return nil
 }
 
 type Application struct {
-	logger     ports.Logger
-	metrics    ports.Metrics
-	service    *service.MatchingService
-	subscriber ports.EventSubscriber
-	publisher  ports.EventPublisher
+	logger         ports.Logger
+	metrics        ports.Metrics
+	service        *service.MatchingService
+	subscriber     ports.EventSubscriber
+	publisher      ports.EventPublisher
+	contextManager *ctxmgr.ContextManager
 }
 
 func NewApplication(options *AppOptions) (*Application, error) {
@@ -51,11 +57,12 @@ func NewApplication(options *AppOptions) (*Application, error) {
 	}
 
 	return &Application{
-		logger:     options.Logger,
-		metrics:    options.Metrics,
-		service:    options.Service,
-		subscriber: options.Subscriber,
-		publisher:  options.EventPublisher,
+		logger:         options.Logger,
+		metrics:        options.Metrics,
+		service:        options.Service,
+		subscriber:     options.Subscriber,
+		publisher:      options.EventPublisher,
+		contextManager: options.ContextManager,
 	}, nil
 }
 
@@ -68,25 +75,28 @@ func (a *Application) Start(ctx context.Context) error {
 	return nil
 }
 
-func (a *Application) handleRideEvent(ctx context.Context, msg []byte) error {
-	var header struct {
-		EventType contracts.EventType `json:"eventType"`
-	}
-	if err := json.Unmarshal(msg, &header); err != nil {
-		a.logger.Error("CRITICAL: Poison message received", "error", err)
+func (a *Application) handleRideEvent(ctx context.Context, headers map[string][]byte, msg []byte) error {
+	var event contracts.EventMessage
+	if err := json.Unmarshal(msg, &event); err != nil {
+		a.logger.Error("Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
 
-	switch header.EventType {
+	info, ok := ctxmgr.NewRequestInfoFromByteMap(headers)
+	if !ok {
+		a.logger.Error("Failed to create RequestInfo from headers")
+		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
+	}
+	a.contextManager.Inject(ctx, info)
+	switch event.EventType {
 	case contracts.EventTypeRideRequested:
-		var envelope struct {
-			Payload contracts.RideRequestedEvent `json:"message"`
-		}
-		if err := json.Unmarshal(msg, &envelope); err != nil {
-			a.logger.Error("Failed to unmarshal RideRequestedEvent", "error", err)
+		var payload contracts.RideRequestedEvent
+		payloadBytes, _ := json.Marshal(event.Payload)
+		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
 			return errors.NewErrJSONUnmarshal(err)
 		}
-		rideEvent := &envelope.Payload
+		rideEvent := &payload
+
 		a.logger.Debug("Received RideRequestedEvent, adding to waitlist", "ride_id", rideEvent.RideID)
 		_, err := a.service.MatchRiderToDriver(ctx, rideEvent)
 		if err != nil {
