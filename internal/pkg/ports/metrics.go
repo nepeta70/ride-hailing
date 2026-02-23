@@ -25,9 +25,9 @@ type CircuitBreakerMetrics interface {
 }
 
 type TelemetryProvider interface {
-	GetMetrics() Metrics
-	GetLogger() Logger
-	GetTracer() trace.Tracer
-	GetPropagator() propagation.TextMapPropagator
+	Metrics() Metrics
+	Logger() Logger
+	Tracer() trace.Tracer
+	Propagator() propagation.TextMapPropagator
 	Shutdown(ctx context.Context) error
 }

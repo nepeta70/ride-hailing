@@ -35,9 +35,9 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	logger := tel.GetLogger()
+	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
 
 	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
@@ -75,7 +75,7 @@ func main() {
 		Client:         locationClient,
 		Publisher:      publisher,
 		Logger:         logger,
-		Metrics:        tel.GetMetrics(),
+		Metrics:        tel.Metrics(),
 		ContextManager: contextManager,
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func main() {
 
 	application, err := app.NewApplication(&app.AppOptions{
 		Logger:         logger,
-		Metrics:        tel.GetMetrics(),
+		Metrics:        tel.Metrics(),
 		Service:        matchingService,
 		Subscriber:     subscriber,
 		EventPublisher: publisher,

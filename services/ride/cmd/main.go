@@ -41,11 +41,11 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	logger := tel.GetLogger()
+	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.GetMetrics())
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
@@ -56,7 +56,7 @@ func main() {
 		Config:         &cfg.Postgres,
 		Logger:         logger,
 		RetrierFactory: retrierFactory,
-		Metrics:        tel.GetMetrics(),
+		Metrics:        tel.Metrics(),
 	})
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)

@@ -73,11 +73,10 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 
 	filteredChainOpts := &middleware.FilteredChainOpts{
 		Config:                 opts.Config,
-		Logger:                 opts.Logger,
+		Telemetry:              opts.Telemetry,
 		ContextManager:         opts.ContextManager,
 		EndpointRoles:          opts.AuthConfiguration,
 		AdditionalInterceptors: opts.AdditionalInterceptors,
-		Metrics:                opts.Telemetry.GetMetrics(),
 	}
 	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
 	if err != nil {
@@ -92,7 +91,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		grpc.StatsHandler(otelgrpc.NewServerHandler(
 			otelgrpc.WithTracerProvider(opts.Telemetry.TracerProvider()),
 			otelgrpc.WithMeterProvider(opts.Telemetry.MeterProvider()),
-			otelgrpc.WithPropagators(opts.Telemetry.GetPropagator()),
+			otelgrpc.WithPropagators(opts.Telemetry.Propagator()),
 		)),
 		grpc.ChainUnaryInterceptor(filteredChain.FilteredChain()),
 	)

@@ -10,15 +10,11 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
-	"github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
-	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 func BenchmarkInterceptorChain_Overhead(b *testing.B) {
-	reg := prometheus.NewRegistry()
-
 	cfg := &config.BaseConfig{
 		Server:   config.ServerConfig{WriteTimeout: 5 * time.Second},
 		Security: config.SecurityConfig{RateLimit: 1000000, RateBurst: 1000000}, // High limit to avoid throttling
@@ -28,10 +24,9 @@ func BenchmarkInterceptorChain_Overhead(b *testing.B) {
 	// Setup
 	opts := &FilteredChainOpts{
 		Config:         cfg,
-		Logger:         &mocks.MockLogger{}, // Assuming this is a no-op logger for testing
 		ContextManager: ctxmgr.NewContextManager(),
-		EndpointRoles:  &mocks.EndpointRequests{},                                     // No roles required for test
-		Metrics:        telemetry.NewMetrics("test_namespace", "test_subsystem", reg), // Use real metrics
+		EndpointRoles:  &mocks.EndpointRequests{},
+		Telemetry:      mocks.NewMockTelemetryProvider(),
 	}
 
 	chain, _ := NewInterceptorChain(opts)
@@ -47,8 +42,8 @@ func BenchmarkInterceptorChain_Overhead(b *testing.B) {
 
 	md := metadata.New(map[string]string{
 		"api-key":        "test-secret-key",
-		"sender-id":        uuid.New().String(),
-		"sender-type":      "driver",
+		"sender-id":      uuid.New().String(),
+		"sender-type":    "driver",
 		"request-id":     uuid.New().String(),
 		"origin-service": "bench-tool",
 	})

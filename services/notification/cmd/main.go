@@ -32,7 +32,7 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	logger := tel.GetLogger()
+	logger := tel.Logger()
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:         &cfg.BaseConfig,

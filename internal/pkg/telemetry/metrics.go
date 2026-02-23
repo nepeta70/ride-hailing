@@ -32,7 +32,6 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 	factory := promauto.With(reg)
 
 	prometheusMetrics := &Metrics{
-
 		circuitBreakerState: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subSystem,

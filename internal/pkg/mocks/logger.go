@@ -12,6 +12,12 @@ type MockLogger struct {
 	Entries []string
 }
 
+func NewMockLogger() *MockLogger {
+	return &MockLogger{
+		Entries: []string{},
+	}
+}
+
 func (m *MockLogger) Debug(msg string, args ...any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

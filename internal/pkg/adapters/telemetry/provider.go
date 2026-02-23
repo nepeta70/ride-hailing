@@ -89,19 +89,19 @@ func (p *TelemetryProvider) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p *TelemetryProvider) GetMetrics() ports.Metrics {
+func (p *TelemetryProvider) Metrics() ports.Metrics {
 	return p.metrics
 }
 
-func (p *TelemetryProvider) GetLogger() ports.Logger {
+func (p *TelemetryProvider) Logger() ports.Logger {
 	return p.logger
 }
 
-func (p *TelemetryProvider) GetTracer() tracer.Tracer {
+func (p *TelemetryProvider) Tracer() tracer.Tracer {
 	return p.tracer
 }
 
-func (p *TelemetryProvider) GetPropagator() propagation.TextMapPropagator {
+func (p *TelemetryProvider) Propagator() propagation.TextMapPropagator {
 	return p.propagator
 }
 

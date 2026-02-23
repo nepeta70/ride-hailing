@@ -24,15 +24,14 @@ func TestContextInterceptor(t *testing.T) {
 	// Setup dependencies
 	cfg := &config.BaseConfig{APIKey: "test-secret"}
 	cm := ctxmgr.NewContextManager()
-	logger := &mocks.MockLogger{}
-	metrics := mocks.NewMockMetrics()
+	telemetryProvider := mocks.NewMockTelemetryProvider()
+
 	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
 	endpointRoles := &mocks.EndpointRequests{}
 	contextInterceptor, _ := NewContextInterceptor(&ContextInterceptorOptions{
 		ContextManager: cm,
 		Config:         cfg,
-		Logger:         logger,
-		Metrics:        metrics,
+		Telemetry:      telemetryProvider,
 		EndpointRoles:  endpointRoles,
 	})
 

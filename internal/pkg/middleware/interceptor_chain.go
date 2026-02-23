@@ -13,28 +13,24 @@ import (
 
 type FilteredChainOpts struct {
 	Config                 *config.BaseConfig
-	Logger                 ports.Logger
 	ContextManager         *ctxmgr.ContextManager
 	EndpointRoles          ports.EndpointRoles
 	AdditionalInterceptors []grpc.UnaryServerInterceptor
-	Metrics                ports.Metrics
+	Telemetry              ports.TelemetryProvider
 }
 
 func (opts *FilteredChainOpts) Validate() error {
 	if opts.Config == nil {
 		return errors.NewValidationErrorf("config is required")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
 	}
 	if opts.ContextManager == nil {
 		return errors.NewValidationErrorf("context manager is required")
 	}
 	if opts.EndpointRoles == nil {
 		return errors.NewValidationErrorf("auth configuration is required")
-	}
-	if opts.Metrics == nil {
-		return errors.NewValidationErrorf("metrics is required")
 	}
 	return nil
 }
@@ -50,19 +46,18 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 
-	recoveryInterceptor := NewRecoveryInterceptor(opts.Logger)
+	recoveryInterceptor := NewRecoveryInterceptor(opts.Telemetry.Logger())
 	contextInterceptor, err := NewContextInterceptor(&ContextInterceptorOptions{
 		ContextManager: opts.ContextManager,
 		Config:         opts.Config,
-		Logger:         opts.Logger,
-		Metrics:        opts.Metrics,
+		Telemetry:      opts.Telemetry,
 		EndpointRoles:  opts.EndpointRoles,
 	})
 	if err != nil {
 		return nil, err
 	}
-	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Metrics)
-	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Metrics)
+	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Telemetry.Metrics())
+	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Telemetry.Metrics())
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +89,7 @@ func (ic *InterceptorChain) FilteredChain() grpc.UnaryServerInterceptor {
 		if strings.HasPrefix(info.FullMethod, "/grpc.health.v1.Health/") {
 			res, err := handler(ctx, req)
 			if err != nil {
-				ic.opts.Logger.Error("Health check failed", "error", err)
+				ic.opts.Telemetry.Logger().Error("Health check failed", "error", err)
 			}
 			return res, err
 		}

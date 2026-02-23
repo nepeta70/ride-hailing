@@ -32,7 +32,7 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	logger := tel.GetLogger()
+	logger := tel.Logger()
 
 	driverService := service.NewDriverService()
 	handler := grpcAdapters.NewDriverHandler(driverService)

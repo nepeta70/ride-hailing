@@ -34,7 +34,7 @@ func main() {
 	}
 	defer tel.Shutdown(ctx)
 
-	logger := tel.GetLogger()
+	logger := tel.Logger()
 
 	repo := inmemory.NewInMemoryUserRepository()
 	application := app.NewApplication(cfg, logger, repo, repo)
