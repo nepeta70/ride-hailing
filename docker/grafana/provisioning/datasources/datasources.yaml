@@ -11,6 +11,10 @@ datasources:
       httpMethod: POST
       exemplarsRepo:
         datasourceUid: tempo # Link metrics to traces via exemplars
+    tracesToProfiles:
+        datasourceUid: pyroscope
+        tags: ['service.name'] # Matches Pyroscope's ApplicationName
+        profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
 
   # 2. Tempo (Traces)
   - name: Tempo
@@ -37,3 +41,11 @@ datasources:
           matcherRegex: "trace_id=(\\w+)"
           name: TraceID
           url: "$${__value.raw}"
+
+  # 4. Pyroscope (Profiles)
+  - name: Pyroscope
+    type: phlare # Grafana uses the 'phlare' plugin for Pyroscope
+    uid: pyroscope
+    url: http://pyroscope:4040
+    jsonData:
+      minStep: 10s
