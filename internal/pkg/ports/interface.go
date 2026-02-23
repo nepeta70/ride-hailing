@@ -13,6 +13,8 @@ type Logger interface {
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
+	InfoContext(ctx context.Context, msg string, args ...any)
+	ErrorContext(ctx context.Context, msg string, args ...any)
 }
 
 type HealthProvider interface {
@@ -25,7 +27,7 @@ type CacheService interface {
 	GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error
 }
 
-type MessageHandler func(ctx context.Context, headers map[string][]byte, msg []byte) error
+type MessageHandler func(ctx context.Context, headers map[string]string, msg []byte) error
 
 type EventPublisher interface {
 	HealthProvider

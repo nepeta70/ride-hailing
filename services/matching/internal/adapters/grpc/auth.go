@@ -14,7 +14,7 @@ type MatchingEndpointRoles struct {
 
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
 	var roleConfig = map[string][]enums.SenderType{
-		matchingv1.MatchingService_FindMatchingDrivers_FullMethodName: {enums.SenderTypeService, enums.SenderTypeAdmin},
+		matchingv1.MatchingService_FindMatchingDrivers_FullMethodName: {enums.SenderTypeService, enums.SenderTypeAdmin, enums.SenderTypeRider},
 	}
 
 	return &MatchingEndpointRoles{

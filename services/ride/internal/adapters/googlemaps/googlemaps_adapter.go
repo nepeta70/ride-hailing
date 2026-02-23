@@ -78,7 +78,7 @@ func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destinati
 	})
 
 	if err != nil {
-		g.logger.Warn("Google Maps API error: %v. Using fallback distance calculator.", "error", err)
+		g.logger.Warn("Google Maps API error:. Using fallback distance calculator.", "error", err)
 		return g.fallbackService.GetDirections(ctx, origin, destination)
 	}
 	if len(routes) == 0 || len(routes[0].Legs) == 0 {

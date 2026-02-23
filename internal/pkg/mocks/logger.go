@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"sync"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -33,6 +34,14 @@ func (m *MockLogger) Error(msg string, args ...any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Entries = append(m.Entries, "ERROR:"+msg)
+}
+
+func (m *MockLogger) InfoContext(ctx context.Context, msg string, args ...any) {
+	m.Info(msg, args...)
+}
+
+func (m *MockLogger) ErrorContext(ctx context.Context, msg string, args ...any) {
+	m.Error(msg, args...)
 }
 
 var _ ports.Logger = (*MockLogger)(nil)
