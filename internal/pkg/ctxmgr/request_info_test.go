@@ -17,7 +17,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 	tests := []struct {
 		name string
 		info *RequestInfo
-		want map[string][]byte
+		want map[string]string
 	}{
 		{
 			name: "Valid RequestInfo with all fields",
@@ -42,18 +42,18 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 					DeviceID:   "device-123",
 				},
 			},
-			want: map[string][]byte{
-				"sender-id":    []byte(senderID.String()),
-				"sender-role":  []byte("driver"),
-				"sender-name":  []byte("John Doe"),
-				"request-id":   []byte(requestID.String()),
-				"timestamp":    []byte("1234567890"),
-				"retry-count":  []byte("3"),
-				"country-code": []byte("US"),
-				"app-version":  []byte("1.2.3"),
-				"os":           []byte("iOS"),
-				"network":      []byte("wifi"),
-				"device-id":    []byte("device-123"),
+			want: map[string]string{
+				"sender-id":    senderID.String(),
+				"sender-role":  "driver",
+				"sender-name":  "John Doe",
+				"request-id":   requestID.String(),
+				"timestamp":    "1234567890",
+				"retry-count":  "3",
+				"country-code": "US",
+				"app-version":  "1.2.3",
+				"os":           "iOS",
+				"network":      "wifi",
+				"device-id":    "device-123",
 			},
 		},
 		{
@@ -79,18 +79,18 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 					DeviceID:   "",
 				},
 			},
-			want: map[string][]byte{
-				"sender-id":    []byte(uuid.Nil.String()),
-				"sender-role":  []byte("anonymous"),
-				"sender-name":  []byte(""),
-				"request-id":   []byte(uuid.Nil.String()),
-				"timestamp":    []byte("0"),
-				"retry-count":  []byte("0"),
-				"country-code": []byte(""),
-				"app-version":  []byte(""),
-				"os":           []byte(""),
-				"network":      []byte(""),
-				"device-id":    []byte(""),
+			want: map[string]string{
+				"sender-id":    uuid.Nil.String(),
+				"sender-role":  "anonymous",
+				"sender-name":  "",
+				"request-id":   uuid.Nil.String(),
+				"timestamp":    "0",
+				"retry-count":  "0",
+				"country-code": "",
+				"app-version":  "",
+				"os":           "",
+				"network":      "",
+				"device-id":    "",
 			},
 		},
 		{
@@ -116,18 +116,18 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 					DeviceID:   "device-456",
 				},
 			},
-			want: map[string][]byte{
-				"sender-id":    []byte(senderID.String()),
-				"sender-role":  []byte("rider"),
-				"sender-name":  []byte("Jane Smith"),
-				"request-id":   []byte(requestID.String()),
-				"timestamp":    []byte("9876543210"),
-				"retry-count":  []byte("1"),
-				"country-code": []byte("CA"),
-				"app-version":  []byte("2.0.0"),
-				"os":           []byte("Android"),
-				"network":      []byte("5G"),
-				"device-id":    []byte("device-456"),
+			want: map[string]string{
+				"sender-id":    senderID.String(),
+				"sender-role":  "rider",
+				"sender-name":  "Jane Smith",
+				"request-id":   requestID.String(),
+				"timestamp":    "9876543210",
+				"retry-count":  "1",
+				"country-code": "CA",
+				"app-version":  "2.0.0",
+				"os":           "Android",
+				"network":      "5G",
+				"device-id":    "device-456",
 			},
 		},
 	}
@@ -152,24 +152,24 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		headers    map[string][]byte
+		headers    map[string]string
 		wantOk     bool
 		assertFunc func(*testing.T, *RequestInfo)
 	}{
 		{
 			name: "Valid headers with all fields",
-			headers: map[string][]byte{
-				"sender-id":    []byte(senderID.String()),
-				"sender-role":  []byte("driver"),
-				"sender-name":  []byte("John Doe"),
-				"request-id":   []byte(requestID.String()),
-				"timestamp":    []byte("1234567890"),
-				"retry-count":  []byte("3"),
-				"country-code": []byte("US"),
-				"app-version":  []byte("1.2.3"),
-				"os":           []byte("iOS"),
-				"network":      []byte("wifi"),
-				"device-id":    []byte("device-123"),
+			headers: map[string]string{
+				"sender-id":    senderID.String(),
+				"sender-role":  "driver",
+				"sender-name":  "John Doe",
+				"request-id":   requestID.String(),
+				"timestamp":    "1234567890",
+				"retry-count":  "3",
+				"country-code": "US",
+				"app-version":  "1.2.3",
+				"os":           "iOS",
+				"network":      "wifi",
+				"device-id":    "device-123",
 			},
 			wantOk: true,
 			assertFunc: func(t *testing.T, r *RequestInfo) {
@@ -180,7 +180,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 		},
 		{
 			name:    "Empty headers map",
-			headers: map[string][]byte{},
+			headers: map[string]string{},
 			wantOk:  true,
 			assertFunc: func(t *testing.T, r *RequestInfo) {
 				assert.NotNil(t, r)
@@ -195,10 +195,10 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 		},
 		{
 			name: "Partial headers",
-			headers: map[string][]byte{
-				"sender-id":   []byte(senderID.String()),
-				"sender-role": []byte("rider"),
-				"sender-name": []byte("Jane Smith"),
+			headers: map[string]string{
+				"sender-id":   senderID.String(),
+				"sender-role": "rider",
+				"sender-name": "Jane Smith",
 			},
 			wantOk: true,
 			assertFunc: func(t *testing.T, r *RequestInfo) {
@@ -218,7 +218,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := NewRequestInfoFromByteMap(tt.headers)
+			got, ok := NewInfoFromMap(tt.headers)
 			assert.Equal(t, tt.wantOk, ok)
 			assert.NotNil(t, got)
 

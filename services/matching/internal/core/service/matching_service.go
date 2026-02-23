@@ -10,6 +10,7 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/ports"
+	"google.golang.org/grpc/metadata"
 )
 
 type MatchingServiceOpts struct {
@@ -66,23 +67,15 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 	}, nil
 }
 
-func (s *MatchingService) MatchRiderToDriver(ctx context.Context, request *contracts.RideRequestedEvent) (uuid.UUID, error) {
-	info, ok := s.contextManager.Extract(ctx)
-	if !ok {
-		return uuid.Nil, errors.NewPermanentErrorf("missing request info in context")
-	}
+func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[string]string, request *contracts.RideRequestedEvent) (uuid.UUID, error) {
+	// info, ok := s.contextManager.Extract(ctx)
+	// if !ok {
+	// 	return uuid.Nil, errors.NewPermanentErrorf("missing request info in context")
+	// }
 
-	// md := metadata.Pairs(
-	// 	"sender-id", s.config.LocationService.SenderID,
-	// 	"sender-type", enums.SenderTypeService.String(),
-	// 	"sender-name", enums.ServiceNameMatching.String(),
-	// 	"api-key", s.config.LocationService.APIKey,
-	// 	"timestamp", strconv.FormatInt(time.Now().Unix(), 10),
-	// 	"request-id", request.RequestID.String(),
-	// 	"app-version", "1.0.0", // TODO: get this from build info
-	// 	"country-code", info.Location.CountryCode,
-	// )
-	// ctx = metadata.NewOutgoingContext(ctx, md)
+	md := metadata.New(headers)
+	md.Append("api-key", s.config.LocationService.APIKey)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 	s.logger.Debug("MatchingService: Getting candidates for ride request", "ride_id", request.RideID, "pickup_location", request.PickupLocation)
 	candidates, err := s.client.GetCandidates(ctx, request.PickupLocation)
 	if err != nil {
@@ -105,8 +98,7 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, request *contr
 	// TODO: handle candidates not found
 	// For the moment, just pick the first candidate. Implement better matching logic here.
 	message := contracts.NewEventMessage(event)
-	message.AddHeaders(info.ToByteMap())
-
+	message.AddHeaders(headers)
 	err = s.publisher.Publish(ctx, contracts.TopicMatching, message)
 	s.logger.Debug("Published RideMatchedEvent", "ride_id", request.RideID, "driver_id", driverID)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 type TelemetryConfig struct {
 	PrometheusAddress    string        `json:"prometheus_address" env:"PROMETHEUS_ADDRESS"`
 	OpentelemetryAddress string        `json:"opentelemetry_address" env:"OPENTELEMETRY_ADDRESS"`
+	PyroscopeAddress     string        `json:"pyroscope_address" env:"PYROSCOPE_ADDRESS"`
 	IntervalSeconds      int           `json:"interval_seconds" env:"TELEMETRY_INTERVAL_SECONDS"`
 	Interval             time.Duration `json:"-"`
 }
@@ -17,6 +18,7 @@ func DefaultTelemetryConfig() TelemetryConfig {
 	return TelemetryConfig{
 		PrometheusAddress:    "localhost:9090",
 		OpentelemetryAddress: "localhost:4317",
+		PyroscopeAddress:     "localhost:4040",
 		IntervalSeconds:      15,
 	}
 }
@@ -27,6 +29,9 @@ func (tc *TelemetryConfig) Validate() error {
 	}
 	if tc.OpentelemetryAddress == "" {
 		return errors.NewValidationErrorf("OpenTelemetry address is required")
+	}
+	if tc.PyroscopeAddress == "" {
+		return errors.NewValidationErrorf("Pyroscope address is required")
 	}
 	if tc.IntervalSeconds <= 0 {
 		return errors.NewValidationErrorf("Telemetry interval must be greater than 0")

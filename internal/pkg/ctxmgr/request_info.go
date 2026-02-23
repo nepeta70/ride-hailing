@@ -16,26 +16,26 @@ type RequestInfo struct {
 }
 
 // ToByteMap exports all fields to a flat map for Kafka headers or gRPC metadata.
-func (r *RequestInfo) ToByteMap() map[string][]byte {
-	return map[string][]byte{
-		"sender-id":    []byte(r.Sender.ID.String()),
-		"sender-role":  []byte(r.Sender.Role.String()),
-		"sender-name":  []byte(r.Sender.Name),
-		"request-id":   []byte(r.Trace.RequestID.String()),
-		"timestamp":    []byte(strconv.FormatInt(r.Trace.Timestamp, 10)),
-		"retry-count":  []byte(strconv.Itoa(r.Trace.RetryCount)),
-		"country-code": []byte(r.Location.CountryCode),
-		"app-version":  []byte(r.Client.AppVersion),
-		"os":           []byte(r.Client.OS),
-		"network":      []byte(r.Client.Network),
-		"device-id":    []byte(r.Client.DeviceID),
+func (r *RequestInfo) ToByteMap() map[string]string {
+	return map[string]string{
+		"sender-id":    r.Sender.ID.String(),
+		"sender-role":  r.Sender.Role.String(),
+		"sender-name":  r.Sender.Name,
+		"request-id":   r.Trace.RequestID.String(),
+		"timestamp":    strconv.FormatInt(r.Trace.Timestamp, 10),
+		"retry-count":  strconv.Itoa(r.Trace.RetryCount),
+		"country-code": r.Location.CountryCode,
+		"app-version":  r.Client.AppVersion,
+		"os":           r.Client.OS,
+		"network":      r.Client.Network,
+		"device-id":    r.Client.DeviceID,
 	}
 }
 
-func NewRequestInfoFromByteMap(headers map[string][]byte) (*RequestInfo, bool) {
+func NewInfoFromMap(headers map[string]string) (*RequestInfo, bool) {
 	tmp := make(map[string]any)
 	for k, v := range headers {
-		tmp[k] = string(v)
+		tmp[k] = v
 	}
 
 	rInfo := &RequestInfo{}

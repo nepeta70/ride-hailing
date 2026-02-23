@@ -3,20 +3,19 @@ package pubsub
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-
 	"github.com/segmentio/kafka-go"
 )
 
 type KafkaSubscriberOptions struct {
 	Config         *KafkaConfig
 	GroupID        string
-	Logger         ports.Logger
 	RetrierFactory ports.RetrierFactoryInterface
-	Metrics        ports.Metrics
+	Telemetry      ports.TelemetryProvider
 }
 
 func (o *KafkaSubscriberOptions) Validate() error {
@@ -26,14 +25,11 @@ func (o *KafkaSubscriberOptions) Validate() error {
 	if o.GroupID == "" {
 		return errors.NewValidationErrorf("GroupID is required")
 	}
-	if o.Logger == nil {
-		return errors.NewValidationErrorf("Logger is required")
-	}
 	if o.RetrierFactory == nil {
 		return errors.NewValidationErrorf("RetrierFactory is required")
 	}
-	if o.Metrics == nil {
-		return errors.NewValidationErrorf("Metrics is required")
+	if o.Telemetry == nil {
+		return errors.NewValidationErrorf("Telemetry is required")
 	}
 	return nil
 }
@@ -41,11 +37,10 @@ func (o *KafkaSubscriberOptions) Validate() error {
 type KafkaSubscriber struct {
 	config         *KafkaConfig
 	groupID        string
-	logger         ports.Logger
 	readers        []*kafka.Reader
 	mu             sync.Mutex // Protects the readers slice
 	retrierFactory ports.RetrierFactoryInterface
-	metrics        ports.Metrics
+	telemetry      ports.TelemetryProvider
 }
 
 func NewKafkaSubscriber(opts *KafkaSubscriberOptions) (*KafkaSubscriber, error) {
@@ -55,26 +50,28 @@ func NewKafkaSubscriber(opts *KafkaSubscriberOptions) (*KafkaSubscriber, error) 
 	return &KafkaSubscriber{
 		config:         opts.Config,
 		groupID:        opts.GroupID,
-		logger:         opts.Logger,
 		retrierFactory: opts.RetrierFactory,
-		metrics:        opts.Metrics,
+		telemetry:      opts.Telemetry,
 	}, nil
 }
 
 func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, handler ports.MessageHandler) error {
 	var kfLogger kafka.Logger
 	if s.config.EnableLogging {
-		kfLogger = &kafkaLogger{logger: s.logger}
+		kfLogger = &kafkaLogger{logger: s.telemetry.GetLogger()}
 	}
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     s.config.Brokers,
-		GroupID:     s.groupID,
-		Topic:       string(topic),
-		MinBytes:    s.config.MinBytes,
-		MaxBytes:    s.config.MaxBytes,
-		MaxWait:     s.config.MaxWait,
-		Logger:      kfLogger,
-		ErrorLogger: &kafkaErrorLogger{logger: s.logger},
+		Brokers:           s.config.Brokers,
+		GroupID:           s.groupID,
+		Topic:             topic.String(),
+		MinBytes:          s.config.MinBytes,
+		MaxBytes:          s.config.MaxBytes,
+		MaxWait:           s.config.MaxWait,
+		Logger:            kfLogger,
+		ErrorLogger:       &kafkaErrorLogger{logger: s.telemetry.GetLogger()},
+		SessionTimeout:    30 * time.Second,
+		RebalanceTimeout:  30 * time.Second,
+		HeartbeatInterval: 3 * time.Second,
 	})
 
 	s.mu.Lock()
@@ -82,27 +79,27 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 	s.mu.Unlock()
 
 	go func() {
-		s.logger.Debug("Subscriber started", "topic", topic)
+		s.telemetry.GetLogger().Debug("Subscriber started", "topic", topic)
 		for {
-			s.logger.Debug("waiting for message", "topic", topic)
+			s.telemetry.GetLogger().Debug("waiting for message", "topic", topic)
 			message, err := reader.ReadMessage(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
-					s.logger.Debug("subscriber context cancelled", "topic", topic)
+					s.telemetry.GetLogger().Debug("subscriber context cancelled", "topic", topic)
 					return
 				}
-				s.logger.Error("failed to read message", "error", err, "topic", topic)
+				s.telemetry.GetLogger().Error("failed to read message", "error", err, "topic", topic)
 				continue
 			}
 
-			s.logger.Debug("received kafka message", "topic", topic, "partition", message.Partition, "offset", message.Offset, "size", len(message.Value))
+			s.telemetry.GetLogger().Debug("received kafka message", "topic", topic, "partition", message.Partition, "offset", message.Offset, "size", len(message.Value))
 
 			// Process message with retry logic
 			retrier := s.retrierFactory.NewExponentialBackoffRetrier(s.ServiceName(), s.config.BatchTimeout)
 			err = retrier.Do(ctx, func() error {
-				headers := make(map[string][]byte)
+				headers := make(map[string]string)
 				for _, h := range message.Headers {
-					headers[h.Key] = h.Value
+					headers[h.Key] = string(h.Value)
 				}
 				return handler(ctx, headers, message.Value)
 			})
@@ -110,18 +107,18 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 			if err != nil {
 				// After retries exhausted, check error category
 				if errors.IsTransient(err) {
-					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "transient_error")
-					s.logger.Error("handler failed after retries (transient) - message lost",
+					s.telemetry.GetMetrics().DependencyFailure(s.ServiceName(), "message_handler", "transient_error")
+					s.telemetry.GetLogger().Error("handler failed after retries (transient) - message lost",
 						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 					// TODO: Send to DLQ for manual processing
 				} else if errors.IsPermanent(err) || errors.IsBusiness(err) {
-					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "permanent_error")
-					s.logger.Warn("handler failed with permanent/business error - skipping message",
+					s.telemetry.GetMetrics().DependencyFailure(s.ServiceName(), "message_handler", "permanent_error")
+					s.telemetry.GetLogger().Warn("handler failed with permanent/business error - skipping message",
 						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 					// Don't retry, just log and continue
 				} else {
-					s.metrics.DependencyFailure(s.ServiceName(), "message_handler", "unknown_error")
-					s.logger.Error("handler failed with unknown error",
+					s.telemetry.GetMetrics().DependencyFailure(s.ServiceName(), "message_handler", "unknown_error")
+					s.telemetry.GetLogger().Error("handler failed with unknown error",
 						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
 				}
 			}
@@ -137,8 +134,8 @@ func (s *KafkaSubscriber) Close() error {
 
 	for _, r := range s.readers {
 		if err := r.Close(); err != nil {
-			s.logger.Error("failed to close kafka reader", "error", err)
-			s.metrics.DependencyFailure(s.ServiceName(), "close_reader", "error")
+			s.telemetry.GetLogger().Error("failed to close kafka reader", "error", err)
+			s.telemetry.GetMetrics().DependencyFailure(s.ServiceName(), "close_reader", "error")
 		}
 	}
 	return nil
@@ -150,8 +147,8 @@ func (s *KafkaSubscriber) HealthCheck(ctx context.Context) error {
 	for _, r := range s.readers {
 		_, err := r.FetchMessage(ctx)
 		if err != nil {
-			s.logger.Error("health check failed for kafka reader", "error", err)
-			s.metrics.DependencyFailure(s.ServiceName(), "health_check", "error")
+			s.telemetry.GetLogger().Error("health check failed for kafka reader", "error", err)
+			s.telemetry.GetMetrics().DependencyFailure(s.ServiceName(), "health_check", "error")
 			return errors.NewTransientErrorf("Health check failed for Kafka subscriber: %w", err)
 		}
 	}

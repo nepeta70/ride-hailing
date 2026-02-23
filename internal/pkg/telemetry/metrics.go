@@ -10,10 +10,6 @@ import (
 )
 
 type Metrics struct {
-	// --- RPC Metrics ---
-	grpcRequestCount *prometheus.CounterVec   // Labels: method, status_code
-	grpcLatency      *prometheus.HistogramVec // Labels: method
-
 	// --- Resiliency & Stability ---
 	circuitBreakerState  *prometheus.GaugeVec   // Labels: method
 	circuitBreakerErrors *prometheus.CounterVec // Labels: method, error_type
@@ -36,20 +32,6 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 	factory := promauto.With(reg)
 
 	prometheusMetrics := &Metrics{
-		grpcRequestCount: factory.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: subSystem,
-			Name:      "grpc_requests_total",
-			Help:      "Total number of gRPC requests.",
-		}, []string{"method", "status_code"}),
-
-		grpcLatency: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subSystem,
-			Name:      "grpc_latency_seconds",
-			Help:      "Latency of gRPC requests.",
-			Buckets:   prometheus.DefBuckets,
-		}, []string{"method"}),
 
 		circuitBreakerState: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -123,14 +105,6 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 	}
 
 	return prometheusMetrics
-}
-
-func (m *Metrics) GRPCRequestCount(method string, statusCode string) {
-	m.grpcRequestCount.WithLabelValues(method, statusCode).Inc()
-}
-
-func (m *Metrics) GRPCLatency(method string, durationSeconds float64) {
-	m.grpcLatency.WithLabelValues(method).Observe(durationSeconds)
 }
 
 func (m *Metrics) CircuitBreakerState(method string, state int) {

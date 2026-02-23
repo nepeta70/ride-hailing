@@ -3,11 +3,10 @@ receivers:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
-  # NEW: Scrapes the Docker logs you see in your console
   filelog:
     include: [ "/var/lib/docker/containers/*/*-json.log" ]
     operators:
-      - type: json_parser # Parses the JSON logs your Go app is already making
+      - type: json_parser
         timestamp:
           parse_from: attributes.time
           layout: '%Y-%m-%dT%H:%M:%S.%LZ'      
@@ -15,16 +14,44 @@ receivers:
 exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
+    resource_to_telemetry_conversion:
+      enabled: true
   otlphttp/loki:
-    endpoint: "http://loki:3100/otlp" # Note the /otlp suffix
+    endpoint: "http://loki:3100/otlp"
     tls:
       insecure: true  
+  otlphttp/tempo:
+    endpoint: "http://tempo:4318"
+    tls: { insecure: true }
+  otlphttp/pyroscope:
+    endpoint: "http://pyroscope:4040/otlp"
+    tls: { insecure: true }
 
+processors:
+  resource:
+    attributes:
+      - key: service.name
+        action: upsert
+        from_attribute: service.name
+  attributes:
+    actions:
+      - key: job
+        from_attribute: service.name
+        action: upsert
+        
 service:
   pipelines:
     metrics:
       receivers: [otlp]
+      processors: [resource]
       exporters: [prometheus]
     logs:
       receivers: [otlp, filelog]
+      processors: [resource, attributes]
       exporters: [otlphttp/loki]      
+    traces:
+      receivers: [otlp]
+      exporters: [otlphttp/tempo]
+    profiles:
+      receivers: [otlp]
+      exporters: [otlphttp/pyroscope]    

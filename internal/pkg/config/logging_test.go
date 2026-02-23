@@ -11,7 +11,6 @@ func TestDefaultLoggingConfig(t *testing.T) {
 	cfg := DefaultLoggingConfig()
 
 	assert.Equal(t, "INFO", cfg.Level)
-	assert.Equal(t, "json", cfg.Format)
 }
 
 func TestConfigureLogger_DoesNotPanic(t *testing.T) {
@@ -25,14 +24,13 @@ func TestConfigureLogger_DoesNotPanic(t *testing.T) {
 
 			t.Run(level+"/"+format, func(t *testing.T) {
 				cfg := LoggingConfig{
-					Level:  level,
-					Format: format,
+					Level: level,
 				}
 
 				assert.NotPanics(t, func() {
-					logger := cfg.ConfigureLogger()
+					logger := cfg.GetConsoleLogger()
 					assert.NotNil(t, logger)
-				}, "ConfigureLogger panicked for level=%q, format=%q", level, format)
+				}, "GetConsoleLogger panicked for level=%q", level)
 			})
 		}
 	}

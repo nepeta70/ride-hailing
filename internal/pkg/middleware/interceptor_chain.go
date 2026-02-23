@@ -50,7 +50,7 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 
-	serverInterceptor := NewServerInterceptor(opts.Logger, opts.Metrics)
+	recoveryInterceptor := NewRecoveryInterceptor(opts.Logger)
 	contextInterceptor, err := NewContextInterceptor(&ContextInterceptorOptions{
 		ContextManager: opts.ContextManager,
 		Config:         opts.Config,
@@ -67,7 +67,7 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 	interceptors := []grpc.UnaryServerInterceptor{
-		serverInterceptor.Unary(),
+		recoveryInterceptor.Unary(),
 		contextInterceptor.Unary(),
 		timeoutInterceptor.Unary(),
 		resiliencyInterceptor.Unary(),

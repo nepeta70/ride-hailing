@@ -15,25 +15,25 @@ type Event interface {
 type EventMessage struct {
 	EventType EventType         `json:"event-type"`
 	Payload   any               `json:"message"`
-	Headers   map[string][]byte `json:"-"`
+	Headers   map[string]string `json:"-"`
 }
 
 func NewEventMessage(event Event) *EventMessage {
 	return &EventMessage{
 		EventType: event.EventType(),
 		Payload:   event,
-		Headers:   map[string][]byte{"event-type": []byte(event.EventType())},
+		Headers:   map[string]string{"event-type": event.EventType().String()},
 	}
 }
 
 func (e *EventMessage) AddHeader(key string, value string) {
 	if e.Headers == nil {
-		e.Headers = make(map[string][]byte)
+		e.Headers = make(map[string]string)
 	}
-	e.Headers[key] = []byte(value)
+	e.Headers[key] = value
 }
 
-func (e *EventMessage) AddHeaders(headers map[string][]byte) {
+func (e *EventMessage) AddHeaders(headers map[string]string) {
 	if e.Headers == nil {
 		e.Headers = headers
 	} else {

@@ -3,6 +3,7 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
@@ -10,13 +11,14 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type KafkaPublisherOptions struct {
 	Config         *KafkaConfig
 	TopicProvider  ports.TopicProvider
-	Logger         ports.Logger
-	Metrics        ports.Metrics
+	Telemetry      ports.TelemetryProvider
 	RetrierFactory ports.RetrierFactoryInterface
 	ContextManager *ctxmgr.ContextManager
 }
@@ -28,11 +30,8 @@ func (o *KafkaPublisherOptions) Validate() error {
 	if o.TopicProvider == nil {
 		return errors.NewValidationErrorf("TopicProvider is required")
 	}
-	if o.Logger == nil {
-		return errors.NewValidationErrorf("Logger is required")
-	}
-	if o.Metrics == nil {
-		return errors.NewValidationErrorf("Metrics is required")
+	if o.Telemetry == nil {
+		return errors.NewValidationErrorf("TelemetryProvider is required")
 	}
 	if o.RetrierFactory == nil {
 		return errors.NewValidationErrorf("RetrierFactory is required")
@@ -47,8 +46,7 @@ type KafkaPublisher struct {
 	topicProvider  ports.TopicProvider
 	writer         *kafka.Writer
 	brokers        []string
-	logger         ports.Logger
-	metrics        ports.Metrics
+	telemetry      ports.TelemetryProvider
 	retrierFactory ports.RetrierFactoryInterface
 	contextManager *ctxmgr.ContextManager
 }
@@ -61,8 +59,7 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 	kp := &KafkaPublisher{
 		brokers:        opts.Config.Brokers,
 		topicProvider:  opts.TopicProvider,
-		logger:         opts.Logger,
-		metrics:        opts.Metrics,
+		telemetry:      opts.Telemetry,
 		retrierFactory: opts.RetrierFactory,
 		contextManager: opts.ContextManager,
 		writer: &kafka.Writer{
@@ -72,12 +69,12 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 			RequiredAcks: kafka.RequireOne,
 			BatchSize:    opts.Config.BatchSize,
 			BatchTimeout: time.Duration(opts.Config.BatchTimeoutMs) * time.Millisecond,
-			ErrorLogger:  &kafkaErrorLogger{logger: opts.Logger},
+			ErrorLogger:  &kafkaErrorLogger{logger: opts.Telemetry.GetLogger()},
 		},
 	}
 
 	if opts.Config.EnableLogging {
-		kp.writer.Logger = &kafkaLogger{logger: opts.Logger}
+		kp.writer.Logger = &kafkaLogger{logger: opts.Telemetry.GetLogger()}
 	}
 
 	if opts.Config.AutoCreate {
@@ -91,12 +88,22 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 }
 
 func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error {
+	tracer := k.telemetry.GetTracer()
+	ctx, span := tracer.Start(ctx, topic.String()+" publish",
+		trace.WithSpanKind(trace.SpanKindProducer)) // Fixed: use trace package
+	defer span.End()
+
 	data, err := json.Marshal(message)
 	if err != nil {
 		return errors.NewErrJSONMarshal(err)
 	}
-	k.logger.Debug("publishing message", "message", message.Payload)
-	k.logger.Debug("message headers", "headers", message.Headers)
+
+	carrier := propagation.MapCarrier{}
+	maps.Copy(carrier, message.Headers)
+	k.telemetry.GetPropagator().Inject(ctx, carrier)
+
+	// k.telemetry.GetLogger().Debug("publishing message", "message", message.Payload)
+	// k.telemetry.GetLogger().Debug("message headers", "headers", message.Headers)
 	err = k.writer.WriteMessages(ctx, kafka.Message{
 		Topic:   topic.String(),
 		Value:   data,
@@ -104,7 +111,7 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 		Time:    time.Now().UTC(),
 	})
 	if err != nil {
-		k.metrics.DependencyFailure(k.ServiceName(), "publish", "error")
+		k.telemetry.GetMetrics().DependencyFailure(k.ServiceName(), "publish", "error")
 		return errors.NewTransientErrorf("failed to publish message: %v", err)
 	}
 	return nil
@@ -113,14 +120,14 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 func (k *KafkaPublisher) HealthCheck(ctx context.Context) error {
 	conn, err := k.dial(ctx)
 	if err != nil {
-		k.metrics.DependencyFailure(k.ServiceName(), "dial", "error")
+		k.telemetry.GetMetrics().DependencyFailure(k.ServiceName(), "dial", "error")
 		return errors.NewTransientErrorf("Kafka connection failed: %v", err)
 	}
 	defer conn.Close()
 
 	_, err = conn.ReadPartitions()
 	if err != nil {
-		k.metrics.DependencyFailure(k.ServiceName(), "read_partitions", "error")
+		k.telemetry.GetMetrics().DependencyFailure(k.ServiceName(), "read_partitions", "error")
 		return errors.NewTransientErrorf("Kafka health check failed: %v", err)
 	}
 	return nil
@@ -129,7 +136,7 @@ func (k *KafkaPublisher) HealthCheck(ctx context.Context) error {
 func (k *KafkaPublisher) EnsureTopics(topics ...string) error {
 	conn, err := k.dial(context.Background())
 	if err != nil {
-		k.metrics.DependencyFailure(k.ServiceName(), "dial", "error")
+		k.telemetry.GetMetrics().DependencyFailure(k.ServiceName(), "dial", "error")
 		return errors.NewTransientErrorf("Kafka connection failed: %v", err)
 	}
 	defer conn.Close()
@@ -158,16 +165,16 @@ func (k *KafkaPublisher) initializeTopics(required []string) error {
 	retrier := k.retrierFactory.NewExponentialBackoffRetrier(k.ServiceName(), 30*time.Second)
 	err := retrier.Do(context.Background(), func() error {
 		if err := k.EnsureTopics(required...); err != nil {
-			k.logger.Error("Failed to create Kafka topics, will retry", "topics", required, "error", err)
+			k.telemetry.GetLogger().Error("Failed to create Kafka topics, will retry", "topics", required, "error", err)
 		} else if k.verify(required) {
-			k.logger.Info("Kafka Ready: All topics verified", "topics", required)
+			k.telemetry.GetLogger().Info("Kafka Ready: All topics verified", "topics", required)
 			return nil
 		}
 		return errors.NewTransientErrorf("Failed to ensure Kafka topics")
 	})
 	if err != nil {
-		k.logger.Error("Failed to ensure Kafka topics after retries", "topics", required, "error", err)
-		k.metrics.DependencyFailure(k.ServiceName(), "initialize_topics", "error")
+		k.telemetry.GetLogger().Error("Failed to ensure Kafka topics after retries", "topics", required, "error", err)
+		k.telemetry.GetMetrics().DependencyFailure(k.ServiceName(), "initialize_topics", "error")
 		return errors.NewPermanentErrorf("Failed to initialize Kafka topics: %v", err)
 	}
 
@@ -205,11 +212,9 @@ func (k *KafkaPublisher) verify(required []string) bool {
 }
 
 func (k *KafkaPublisher) makeHeader(message *contracts.EventMessage) []kafka.Header {
-
-	headers := make([]kafka.Header, 0, len(message.Headers)) // preallocate with expected size
-
+	headers := make([]kafka.Header, 0, len(message.Headers))
 	for k, v := range message.Headers {
-		headers = append(headers, kafka.Header{Key: k, Value: v})
+		headers = append(headers, kafka.Header{Key: k, Value: []byte(v)})
 	}
 
 	return headers

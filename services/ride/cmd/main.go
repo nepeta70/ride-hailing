@@ -68,8 +68,7 @@ func main() {
 	eventPublisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
 		Config:         cfg.Kafka,
 		TopicProvider:  topicProvider,
-		Logger:         logger,
-		Metrics:        tel.GetMetrics(),
+		Telemetry:      tel,
 		RetrierFactory: retrierFactory,
 		ContextManager: contextManager,
 	})

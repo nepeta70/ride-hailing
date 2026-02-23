@@ -31,15 +31,6 @@ func (m *MockMetrics) track(name string, args ...any) {
 }
 
 // --- Interface Implementation ---
-
-func (m *MockMetrics) GRPCRequestCount(method string, statusCode string) {
-	m.track("GRPCRequestCount", method, statusCode)
-}
-
-func (m *MockMetrics) GRPCLatency(method string, durationSeconds float64) {
-	m.track("GRPCLatency", method, durationSeconds)
-}
-
 func (m *MockMetrics) CircuitBreakerState(serviceName string, state int) {
 	m.track("CircuitBreakerState", serviceName, state)
 }

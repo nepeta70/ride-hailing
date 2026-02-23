@@ -45,8 +45,7 @@ func main() {
 	publisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
 		Config:         cfg.Kafka,
 		TopicProvider:  topicProvider,
-		Logger:         logger,
-		Metrics:        tel.GetMetrics(),
+		Telemetry:      tel,
 		RetrierFactory: retrierFactory,
 		ContextManager: contextManager,
 	})
@@ -59,9 +58,8 @@ func main() {
 	subscriber, err := pubsub.NewKafkaSubscriber(&pubsub.KafkaSubscriberOptions{
 		Config:         cfg.Kafka,
 		GroupID:        cfg.ServiceName,
-		Logger:         logger,
 		RetrierFactory: retrierFactory,
-		Metrics:        tel.GetMetrics(),
+		Telemetry:      tel,
 	})
 	if err != nil {
 		logger.Error("Failed to create event subscriber:", "error", err)

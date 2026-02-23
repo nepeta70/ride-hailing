@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/grafana/pyroscope-go"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	telem "github.com/nepeta70/ride-hailing/internal/pkg/telemetry"
@@ -13,41 +14,66 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
+	tracer "go.opentelemetry.io/otel/trace"
 )
 
 type TelemetryProvider struct {
 	meterProvider  *sdkmetric.MeterProvider
 	loggerProvider *sdklog.LoggerProvider
-	metrics        *telem.Metrics // This is your existing business metrics struct
+	tracerProvider *trace.TracerProvider
+	metrics        *telem.Metrics
+	tracer         tracer.Tracer
+	propagator     propagation.TextMapPropagator
 	logger         ports.Logger
 }
 
 func NewTelemetryProvider(ctx context.Context, config *config.BaseConfig) (*TelemetryProvider, error) {
-	res := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceName(config.ServiceName),
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName(config.ServiceName),
+		),
 	)
-
-	logger, lProvider, err := SetupLogger(ctx, config, res)
 	if err != nil {
 		return nil, err
 	}
 
-	metrics, mProvider, err := SetupMetrics(ctx, config, res, logger)
+	logger, lProvider, err := setupLogger(ctx, config, res)
 	if err != nil {
 		return nil, err
+	}
+
+	metrics, mProvider, err := setupMetrics(ctx, config, res, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	propagator, tracerProvider, err := setupTracing(ctx, config, res)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setupProfiling(config)
+	if err != nil {
+		logger.Error("Failed to setup profiling:", "error", err)
 	}
 
 	return &TelemetryProvider{
 		meterProvider:  mProvider,
 		loggerProvider: lProvider,
+		tracerProvider: tracerProvider,
 		metrics:        metrics,
-		logger:         logger,
-	}, nil
+		propagator:     propagator,
+		tracer:         tracerProvider.Tracer(config.ServiceName),
+		logger:         logger}, nil
 }
 
 func (p *TelemetryProvider) Shutdown(ctx context.Context) error {
@@ -57,10 +83,13 @@ func (p *TelemetryProvider) Shutdown(ctx context.Context) error {
 	if err := p.loggerProvider.Shutdown(ctx); err != nil {
 		p.logger.Error("Error shutting down LoggerProvider", "error", err)
 	}
+	if err := p.tracerProvider.Shutdown(ctx); err != nil {
+		p.logger.Error("Error shutting down TracerProvider", "error", err)
+	}
 	return nil
 }
 
-func (p *TelemetryProvider) GetMetrics() *telem.Metrics {
+func (p *TelemetryProvider) GetMetrics() ports.Metrics {
 	return p.metrics
 }
 
@@ -68,7 +97,27 @@ func (p *TelemetryProvider) GetLogger() ports.Logger {
 	return p.logger
 }
 
-func SetupLogger(ctx context.Context, config *config.BaseConfig, res *resource.Resource) (ports.Logger, *sdklog.LoggerProvider, error) {
+func (p *TelemetryProvider) GetTracer() tracer.Tracer {
+	return p.tracer
+}
+
+func (p *TelemetryProvider) GetPropagator() propagation.TextMapPropagator {
+	return p.propagator
+}
+
+func (p *TelemetryProvider) TracerProvider() *trace.TracerProvider {
+	return p.tracerProvider
+}
+
+func (p *TelemetryProvider) MeterProvider() *sdkmetric.MeterProvider {
+	return p.meterProvider
+}
+
+func (p *TelemetryProvider) LoggerProvider() *sdklog.LoggerProvider {
+	return p.loggerProvider
+}
+
+func setupLogger(ctx context.Context, config *config.BaseConfig, res *resource.Resource) (ports.Logger, *sdklog.LoggerProvider, error) {
 	logExporter, err := otlploggrpc.New(ctx,
 		otlploggrpc.WithEndpoint(config.Telemetry.OpentelemetryAddress),
 		otlploggrpc.WithInsecure(),
@@ -82,7 +131,6 @@ func SetupLogger(ctx context.Context, config *config.BaseConfig, res *resource.R
 		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
 	)
 
-	// Register as global so bridges (Zap/Slog) can find it
 	otelHandler := otelslog.NewHandler(config.ServiceName,
 		otelslog.WithLoggerProvider(lProvider),
 	)
@@ -97,9 +145,9 @@ func SetupLogger(ctx context.Context, config *config.BaseConfig, res *resource.R
 	return logger, lProvider, nil
 }
 
-func SetupMetrics(ctx context.Context, config *config.BaseConfig, res *resource.Resource, logger ports.Logger) (*telem.Metrics, *sdkmetric.MeterProvider, error) {
+func setupMetrics(ctx context.Context, config *config.BaseConfig, res *resource.Resource, logger ports.Logger) (*telem.Metrics, *sdkmetric.MeterProvider, error) {
 	reg := prom.NewRegistry()
-	// 1. Setup the gRPC Exporter (pointing to otel-collector:4317)
+	// 1. Setup the gRPC Exporter
 	exporter, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithEndpoint(config.Telemetry.OpentelemetryAddress),
 		otlpmetricgrpc.WithInsecure(),
@@ -131,3 +179,48 @@ func SetupMetrics(ctx context.Context, config *config.BaseConfig, res *resource.
 	appMetrics := telem.NewMetrics("ride_hailing", config.ServiceName, reg)
 	return appMetrics, mProvider, nil
 }
+
+func setupTracing(ctx context.Context, config *config.BaseConfig, res *resource.Resource) (propagation.TextMapPropagator, *trace.TracerProvider, error) {
+	// Setup the OTLP gRPC exporter for traces
+	traceExporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(config.Telemetry.OpentelemetryAddress),
+		otlptracegrpc.WithInsecure(),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(traceExporter),
+		trace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+
+	propagator := propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
+	otel.SetTextMapPropagator(propagator)
+	return propagator, tp, nil
+}
+
+func setupProfiling(config *config.BaseConfig) error {
+	pyroscope.Start(pyroscope.Config{
+		ApplicationName: config.ServiceName,
+		ServerAddress:   config.Telemetry.PyroscopeAddress,
+		ProfileTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+		},
+	})
+	return nil
+}
+
+var _ ports.TelemetryProvider = (*TelemetryProvider)(nil)

@@ -1,0 +1,39 @@
+apiVersion: 1
+
+datasources:
+  # 1. Prometheus (Metrics)
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: http://prometheus:9090
+    isDefault: true # Makes this the default DB for new panels
+    jsonData:
+      httpMethod: POST
+      exemplarsRepo:
+        datasourceUid: tempo # Link metrics to traces via exemplars
+
+  # 2. Tempo (Traces)
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo:3200
+    jsonData:
+      # This adds a "Logs for this span" button inside your Trace view
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['service.name', 'request.id']
+        filterByTraceID: true
+        filterBySpanID: true
+
+  # 3. Loki (Logs)
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki:3100
+    jsonData:
+      # This adds the "TraceID" button to your Log lines
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"

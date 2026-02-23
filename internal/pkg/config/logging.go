@@ -4,40 +4,17 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-
-	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type LoggingConfig struct {
-	Format string `json:"log_format" env:"LOG_FORMAT"`
-	Level  string `json:"log_level" env:"LOG_LEVEL"`
+	Level string `json:"log_level" env:"LOG_LEVEL"`
 }
 
 // DefaultLoggingConfig returns the default LoggingConfig.
 func DefaultLoggingConfig() LoggingConfig {
 	return LoggingConfig{
-		Level:  "INFO",
-		Format: "json",
+		Level: "INFO",
 	}
-}
-
-// ConfigureLogger initializes the global slog instance based on config
-func (c *LoggingConfig) ConfigureLogger() ports.Logger {
-	opts := &slog.HandlerOptions{
-		Level: c.slogLevel(),
-	}
-
-	var handler slog.Handler
-	if c.Format == "json" {
-		handler = slog.NewJSONHandler(os.Stdout, opts)
-	} else {
-		handler = slog.NewTextHandler(os.Stdout, opts)
-	}
-
-	logger := slog.New(handler)
-	slog.SetDefault(logger)
-
-	return logger
 }
 
 func (c *LoggingConfig) GetConsoleLogger() slog.Handler {
@@ -45,11 +22,7 @@ func (c *LoggingConfig) GetConsoleLogger() slog.Handler {
 		Level: c.slogLevel(),
 	}
 
-	if c.Format == "json" {
-		return slog.NewJSONHandler(os.Stdout, opts)
-	} else {
-		return slog.NewTextHandler(os.Stdout, opts)
-	}
+	return slog.NewJSONHandler(os.Stdout, opts)
 }
 
 func (c *LoggingConfig) slogLevel() slog.Level {
