@@ -24,7 +24,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			info: &RequestInfo{
 				Sender: Sender{
 					ID:   senderID,
-					Role: enums.SenderTypeDriver,
+					Type: enums.SenderTypeDriver,
 					Name: "John Doe",
 				},
 				Trace: TraceInfo{
@@ -44,7 +44,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			},
 			want: map[string]string{
 				"sender-id":    senderID.String(),
-				"sender-role":  "driver",
+				"sender-type":  "driver",
 				"sender-name":  "John Doe",
 				"request-id":   requestID.String(),
 				"timestamp":    "1234567890",
@@ -61,7 +61,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			info: &RequestInfo{
 				Sender: Sender{
 					ID:   uuid.Nil,
-					Role: enums.SenderTypeAnonymous,
+					Type: enums.SenderTypeAnonymous,
 					Name: "",
 				},
 				Trace: TraceInfo{
@@ -81,7 +81,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			},
 			want: map[string]string{
 				"sender-id":    uuid.Nil.String(),
-				"sender-role":  "anonymous",
+				"sender-type":  "anonymous",
 				"sender-name":  "",
 				"request-id":   uuid.Nil.String(),
 				"timestamp":    "0",
@@ -98,7 +98,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			info: &RequestInfo{
 				Sender: Sender{
 					ID:   senderID,
-					Role: enums.SenderTypeRider,
+					Type: enums.SenderTypeRider,
 					Name: "Jane Smith",
 				},
 				Trace: TraceInfo{
@@ -118,7 +118,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 			},
 			want: map[string]string{
 				"sender-id":    senderID.String(),
-				"sender-role":  "rider",
+				"sender-type":  "rider",
 				"sender-name":  "Jane Smith",
 				"request-id":   requestID.String(),
 				"timestamp":    "9876543210",
@@ -160,7 +160,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 			name: "Valid headers with all fields",
 			headers: map[string]string{
 				"sender-id":    senderID.String(),
-				"sender-role":  "driver",
+				"sender-type":  "driver",
 				"sender-name":  "John Doe",
 				"request-id":   requestID.String(),
 				"timestamp":    "1234567890",
@@ -185,7 +185,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 			assertFunc: func(t *testing.T, r *RequestInfo) {
 				assert.NotNil(t, r)
 				assert.Equal(t, uuid.Nil, r.Sender.ID)
-				assert.Equal(t, enums.SenderType(""), r.Sender.Role)
+				assert.Equal(t, enums.SenderType(""), r.Sender.Type)
 				assert.Equal(t, "", r.Sender.Name)
 				assert.Equal(t, uuid.Nil, r.Trace.RequestID)
 				assert.Equal(t, int64(0), r.Trace.Timestamp)
@@ -197,7 +197,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 			name: "Partial headers",
 			headers: map[string]string{
 				"sender-id":   senderID.String(),
-				"sender-role": "rider",
+				"sender-type": "rider",
 				"sender-name": "Jane Smith",
 			},
 			wantOk: true,

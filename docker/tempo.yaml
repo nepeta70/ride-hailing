@@ -9,10 +9,17 @@ distributor:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-  # Fixes "empty ring" for the distributor
   ring:
     kvstore:
       store: inmemory
+
+querier:
+  frontend_worker:
+    frontend_address: tempo:9095
+
+query_frontend:
+  search: {}
+  trace_by_id: {}
 
 ingester:
   lifecycler:

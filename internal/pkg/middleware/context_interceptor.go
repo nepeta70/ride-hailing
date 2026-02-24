@@ -74,6 +74,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "missing_metadata")
+			i.telemetry.Logger().Warn("Missing metadata in request", "method", info.FullMethod)
 			span.SetStatus(codes.Error, "missing_metadata")
 			return nil, errUnauthenticated
 		}
@@ -84,6 +85,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		apiKey := getMetadata(md, "api-key")
 		if apiKey != i.config.APIKey {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_api_key")
+			i.telemetry.Logger().Warn("Invalid API Key", "method", info.FullMethod)
 			span.SetAttributes(
 				attribute.String("auth.reason", "invalid_api_key"),
 				attribute.String("auth.received_key", apiKey),
@@ -94,6 +96,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		senderID := getUUIDMetadata(md, "sender-id")
 		if senderID == uuid.Nil {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "missing_user_id")
+			i.telemetry.Logger().Warn("Missing sender ID", "method", info.FullMethod)
 			span.SetStatus(codes.Error, "missing_user_id")
 			return nil, errUnauthenticated
 		}
@@ -102,6 +105,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		role := enums.SenderType(senderType)
 		if !role.IsValid() {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_role")
+			i.telemetry.Logger().Warn("Invalid sender type", "method", info.FullMethod, "sender_type", senderType)
 			span.SetStatus(codes.Error, "invalid_role")
 			return nil, errUnauthenticated
 		}
@@ -109,6 +113,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		requestID := getUUIDMetadata(md, "request-id")
 		if requestID == uuid.Nil {
 			i.telemetry.Metrics().ValidationFailure(info.FullMethod, "missing_request_id")
+			i.telemetry.Logger().Warn("Missing request ID", "method", info.FullMethod)
 			span.SetStatus(codes.Error, "missing_request_id")
 			return nil, errInvalidArgument
 		}
@@ -144,7 +149,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		rInfo := &ctxmgr.RequestInfo{
 			Sender: ctxmgr.Sender{
 				ID:   senderID,
-				Role: role,
+				Type: role,
 				Name: getMetadata(md, "sender-name"),
 			},
 			Trace: ctxmgr.TraceInfo{

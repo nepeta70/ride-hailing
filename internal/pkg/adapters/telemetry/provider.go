@@ -211,6 +211,7 @@ func setupProfiling(config *config.BaseConfig) error {
 		ProfileTypes: []pyroscope.ProfileType{
 			pyroscope.ProfileCPU,
 			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
 			pyroscope.ProfileGoroutines,
 			pyroscope.ProfileMutexCount,
 			pyroscope.ProfileMutexDuration,

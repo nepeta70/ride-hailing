@@ -20,7 +20,7 @@ func TestContextManager_Extract(t *testing.T) {
 	validRequestInfo := &RequestInfo{
 		Sender: Sender{
 			ID:   senderID,
-			Role: enums.SenderTypeDriver,
+			Type: enums.SenderTypeDriver,
 			Name: "test-driver",
 		},
 		Trace: TraceInfo{
@@ -72,7 +72,7 @@ func TestContextManager_Extract(t *testing.T) {
 			if tt.wantOk && tt.wantInfo != nil {
 				assert.NotNil(t, info)
 				assert.Equal(t, tt.wantInfo.Sender.ID, info.Sender.ID)
-				assert.Equal(t, tt.wantInfo.Sender.Role, info.Sender.Role)
+				assert.Equal(t, tt.wantInfo.Sender.Type, info.Sender.Type)
 				assert.Equal(t, tt.wantInfo.Sender.Name, info.Sender.Name)
 				assert.Equal(t, tt.wantInfo.Trace.RequestID, info.Trace.RequestID)
 				assert.Equal(t, tt.wantInfo.Trace.Timestamp, info.Trace.Timestamp)
@@ -98,7 +98,7 @@ func TestContextManager_Inject(t *testing.T) {
 	validRequestInfo := &RequestInfo{
 		Sender: Sender{
 			ID:   senderID,
-			Role: enums.SenderTypeRider,
+			Type: enums.SenderTypeRider,
 			Name: "test-rider",
 		},
 		Trace: TraceInfo{
@@ -148,7 +148,7 @@ func TestContextManager_Inject(t *testing.T) {
 			} else {
 				assert.NotNil(t, val)
 				assert.Equal(t, tt.info.Sender.ID, val.Sender.ID)
-				assert.Equal(t, tt.info.Sender.Role, val.Sender.Role)
+				assert.Equal(t, tt.info.Sender.Type, val.Sender.Type)
 				assert.Equal(t, tt.info.Sender.Name, val.Sender.Name)
 				assert.Equal(t, tt.info.Trace.RequestID, val.Trace.RequestID)
 				assert.Equal(t, tt.info.Trace.Timestamp, val.Trace.Timestamp)

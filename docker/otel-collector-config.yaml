@@ -14,8 +14,10 @@ receivers:
 exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
+    enable_open_metrics: true
     resource_to_telemetry_conversion:
       enabled: true
+      
   otlphttp/loki:
     endpoint: "http://loki:3100/otlp"
     tls:
@@ -51,7 +53,9 @@ service:
       exporters: [otlphttp/loki]      
     traces:
       receivers: [otlp]
+      processors: [resource]
       exporters: [otlphttp/tempo]
     profiles:
       receivers: [otlp]
+      processors: [resource]
       exporters: [otlphttp/pyroscope]    

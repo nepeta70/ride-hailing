@@ -152,7 +152,7 @@ func TestContextInterceptor(t *testing.T) {
 				if tt.expectedCode == codes.OK {
 					rInfo, ok := cm.Extract(currentCtx)
 					assert.True(t, ok)
-					assert.Equal(t, tt.expectedRole, rInfo.Sender.Role)
+					assert.Equal(t, tt.expectedRole, rInfo.Sender.Type)
 					assert.Equal(t, validUserID, rInfo.Sender.ID.String())
 				}
 				return "resp", nil

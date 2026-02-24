@@ -15,7 +15,7 @@ type LocationEndpointRoles struct {
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
 	var roleConfig = map[string][]enums.SenderType{
 		locationv1.LocationService_DeleteDriverLocation_FullMethodName: {enums.SenderTypeDriver},
-		locationv1.LocationService_SearchNearbyDrivers_FullMethodName:  {enums.SenderTypeAdmin, enums.SenderTypeService},
+		locationv1.LocationService_SearchNearbyDrivers_FullMethodName:  {enums.SenderTypeAdmin, enums.SenderTypeService, enums.SenderTypeRider},
 		locationv1.LocationService_UpdateDriverLocation_FullMethodName: {enums.SenderTypeDriver},
 	}
 

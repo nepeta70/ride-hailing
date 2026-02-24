@@ -19,7 +19,7 @@ type RequestInfo struct {
 func (r *RequestInfo) ToByteMap() map[string]string {
 	return map[string]string{
 		"sender-id":    r.Sender.ID.String(),
-		"sender-role":  r.Sender.Role.String(),
+		"sender-type":  r.Sender.Type.String(),
 		"sender-name":  r.Sender.Name,
 		"request-id":   r.Trace.RequestID.String(),
 		"timestamp":    strconv.FormatInt(r.Trace.Timestamp, 10),
@@ -47,7 +47,7 @@ func NewInfoFromMap(headers map[string]string) (*RequestInfo, bool) {
 
 type Sender struct {
 	ID   uuid.UUID        `json:"sender-id"`
-	Role enums.SenderType `json:"sender-role"`
+	Type enums.SenderType `json:"sender-type"`
 	Name string           `json:"sender-name"`
 }
 

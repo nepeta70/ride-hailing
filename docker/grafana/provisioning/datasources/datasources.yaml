@@ -11,10 +11,6 @@ datasources:
       httpMethod: POST
       exemplarsRepo:
         datasourceUid: tempo # Link metrics to traces via exemplars
-    tracesToProfiles:
-        datasourceUid: pyroscope
-        tags: ['service.name'] # Matches Pyroscope's ApplicationName
-        profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
 
   # 2. Tempo (Traces)
   - name: Tempo
@@ -22,12 +18,21 @@ datasources:
     uid: tempo
     url: http://tempo:3200
     jsonData:
-      # This adds a "Logs for this span" button inside your Trace view
       tracesToLogs:
         datasourceUid: loki
         tags: ['service.name', 'request.id']
         filterByTraceID: true
         filterBySpanID: true
+      tracesToProfiles:
+        datasourceUid: pyroscope
+        tags: ['service.name'] # Matches Pyroscope's ApplicationName
+        profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags: ['service.name']
+        metricName: 'request_duration_seconds'
+        metricValue: 'duration_seconds'
+        exemplarTraceIDEnabled: true  
 
   # 3. Loki (Logs)
   - name: Loki
