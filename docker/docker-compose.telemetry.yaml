@@ -33,6 +33,7 @@ services:
       - tempo-data:/var/tempo
     ports:
       - "3200:3200"   # Tempo UI/API
+      - "9095:9095"
       # Note: Port 4317/4318 are exposed internally for the collector
 
   loki:
