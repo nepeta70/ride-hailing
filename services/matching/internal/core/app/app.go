@@ -97,7 +97,7 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 		rideEvent := &payload
 
-		a.logger.Debug("Received RideRequestedEvent, adding to waitlist", "ride_id", rideEvent.RideID.String())
+		a.logger.Debug("Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
 		_, err := a.service.MatchRiderToDriver(ctx, headers, rideEvent)
 		if err != nil {
 			a.logger.Error("Error matching rider to driver", "error", err)

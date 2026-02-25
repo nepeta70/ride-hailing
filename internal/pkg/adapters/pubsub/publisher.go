@@ -102,8 +102,8 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 	maps.Copy(carrier, message.Headers)
 	k.telemetry.Propagator().Inject(ctx, carrier)
 
-	// k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
-	// k.telemetry.Logger().Debug("message headers", "headers", message.Headers)
+	k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
+	k.telemetry.Logger().Debug("message headers", "headers", message.Headers)
 	err = k.writer.WriteMessages(ctx, kafka.Message{
 		Topic:   topic.String(),
 		Value:   data,

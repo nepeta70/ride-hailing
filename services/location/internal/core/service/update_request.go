@@ -10,19 +10,20 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
-type UpdateRequest struct {
-	UserID      uuid.UUID
-	UserType    enums.UserType
-	Coordinates domain.Coordinates
-	Accuracy    float32
-	Heading     float32
-	Speed       float32
-	CapturedAt  time.Time
-	Status      contracts.DriverStatus
+type UpdateDriverStatusRequest struct {
+	DriverID        uuid.UUID
+	UserType        enums.UserType
+	Coordinates     domain.Coordinates
+	Accuracy        float32
+	Heading         float32
+	Speed           float32
+	CapturedAt      time.Time
+	Status          contracts.DriverStatus
+	StatusUpdatedAt time.Time
 }
 
 // Validate ensures the GPS data is physically valid
-func (r UpdateRequest) Validate() error {
+func (r UpdateDriverStatusRequest) Validate() error {
 	if err := r.Coordinates.Validate(); err != nil {
 		return errors.NewValidationErrorf("invalid coordinates: %w", err)
 	}
@@ -40,6 +41,10 @@ func (r UpdateRequest) Validate() error {
 	// Speed should be non-negative (m/s)
 	if r.Speed < 0 {
 		return errors.NewBusinessError("speed cannot be negative")
+	}
+
+	if r.DriverID == uuid.Nil {
+		return errors.NewValidationErrorf("user ID cannot be empty")
 	}
 
 	return nil

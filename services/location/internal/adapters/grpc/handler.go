@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/google/uuid"
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
@@ -38,18 +39,19 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 
 	h.app.Logger.Debug("User updates location.", "user-type", info.Sender.Type.String(), "sender-id", info.Sender.ID.String(), "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
 
-	updateRequest := &service.UpdateRequest{
-		UserID:   info.Sender.ID,
+	updateRequest := &service.UpdateDriverStatusRequest{
+		DriverID: info.Sender.ID,
 		UserType: enums.UserType(info.Sender.Type),
 		Coordinates: common.Coordinates{
 			Latitude:  req.GetLatitude(),
 			Longitude: req.GetLongitude(),
 		},
-		Accuracy:   req.GetAccuracy(),
-		Heading:    req.GetHeading(),
-		Speed:      req.GetSpeed(),
-		CapturedAt: time.Unix(info.Trace.Timestamp, 0),
-		Status:     contracts.DriverStatus(req.GetStatus()),
+		Accuracy:        req.GetAccuracy(),
+		Heading:         req.GetHeading(),
+		Speed:           req.GetSpeed(),
+		CapturedAt:      time.Unix(info.Trace.Timestamp, 0),
+		Status:          contracts.DriverStatus(req.GetStatus()),
+		StatusUpdatedAt: req.StatusUpdatedAt.AsTime(),
 	}
 	err = updateRequest.Validate()
 	if err != nil {
@@ -77,12 +79,13 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 
 	// 3. Map Result to Proto Response
 	return &locationv1.DriverLocation{
-		Latitude:  result.Coordinates.Latitude,
-		Longitude: result.Coordinates.Longitude,
-		Accuracy:  result.Accuracy,
-		Heading:   result.Heading,
-		Speed:     result.Speed,
-		Status:    result.Status.String(),
+		Latitude:        result.Coordinates.Latitude,
+		Longitude:       result.Coordinates.Longitude,
+		Accuracy:        result.Accuracy,
+		Heading:         result.Heading,
+		Speed:           result.Speed,
+		Status:          result.Status.String(),
+		StatusUpdatedAt: timestamppb.New(result.StatusUpdatedAt),
 	}, nil
 }
 
@@ -118,15 +121,11 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 	driverLocations := make([]*locationv1.SearchNearbyDriversResponse_Driver, 0, len(results))
 	for _, loc := range results {
 		driverLocations = append(driverLocations, &locationv1.SearchNearbyDriversResponse_Driver{
-			UserId: loc.UserID.String(),
-			Location: &locationv1.DriverLocation{
-				Latitude:  loc.Coordinates.Latitude,
-				Longitude: loc.Coordinates.Longitude,
-				Accuracy:  loc.Accuracy,
-				Heading:   loc.Heading,
-				Speed:     loc.Speed,
-				Status:    loc.Status.String(),
-			},
+			UserId:         loc.UserID.String(),
+			Latitude:       loc.Coordinates.Latitude,
+			Longitude:      loc.Coordinates.Longitude,
+			DistanceKm:     loc.DistanceKm,
+			AvailableSince: timestamppb.New(loc.StatusUpdatedAt),
 		})
 	}
 

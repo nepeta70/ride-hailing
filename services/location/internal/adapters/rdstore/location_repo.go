@@ -123,15 +123,19 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index
-	query := &redis.GeoSearchQuery{
-		Radius:     float64(radiusKm),
-		Longitude:  coordinates.Longitude,
-		Latitude:   coordinates.Latitude,
-		RadiusUnit: "km",
-		Count:      r.cfg.Logic.TopKNearby,
-		Sort:       "ASC",
+	query := &redis.GeoSearchLocationQuery{
+		GeoSearchQuery: redis.GeoSearchQuery{
+			Radius:     float64(radiusKm),
+			Longitude:  coordinates.Longitude,
+			Latitude:   coordinates.Latitude,
+			RadiusUnit: "km",
+			Count:      r.cfg.Logic.TopKNearby,
+			Sort:       "ASC",
+		},
+		WithDist:  true,
+		WithCoord: true,
 	}
-	geoResults, err := r.client.GeoSearch(ctx, indexKey, query).Result()
+	geoResults, err := r.client.GeoSearchLocation(ctx, indexKey, query).Result()
 
 	if err != nil {
 		r.metrics.DependencyFailure("redis", "geosearch", "search_nearby")
@@ -143,8 +147,11 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 	}
 
 	pipe := r.client.Pipeline()
+	geoMap := make(map[string]*redis.GeoLocation)
 	cmds := make(map[string]*redis.SliceCmd)
-	for _, driverID := range geoResults {
+	for _, location := range geoResults {
+		driverID := location.Name
+		geoMap[driverID] = &location
 		cmds[driverID] = pipe.HMGet(ctx, driverLocationKeyPrefix+driverID, "status", "data")
 	}
 
@@ -171,6 +178,7 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 		if err := json.Unmarshal([]byte(parts[1].(string)), &loc); err != nil {
 			continue
 		}
+		loc.DistanceKm = float32(geoMap[locationKey].Dist) // Distance in kilometers
 
 		results = append(results, &loc)
 	}

@@ -56,7 +56,7 @@ func NewLocationService(opts *LocationServiceOpts) *LocationService {
 	}
 }
 
-func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error {
+func (s *LocationService) Update(ctx context.Context, req *UpdateDriverStatusRequest) error {
 	if err := ctx.Err(); err != nil {
 		return errors.ErrContextError
 	}
@@ -66,7 +66,7 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error 
 
 	// 2. Map to Domain (The Geohash-only object you wanted)
 	loc := &domain.DriverLocation{
-		UserID:   req.UserID,
+		UserID:   req.DriverID,
 		UserType: req.UserType,
 		Coordinates: common.Coordinates{
 			Latitude:  req.Coordinates.Latitude,

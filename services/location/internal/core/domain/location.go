@@ -10,14 +10,16 @@ import (
 )
 
 type DriverLocation struct {
-	UserID      uuid.UUID              `json:"user_id"`
-	UserType    enums.UserType         `json:"user_type"`
-	Coordinates common.Coordinates     `json:"coordinates"`
-	Accuracy    float32                `json:"accuracy"`
-	Heading     float32                `json:"heading"`
-	Speed       float32                `json:"speed"`
-	CapturedAt  time.Time              `json:"captured_at"`
-	Status      contracts.DriverStatus `json:"status"`
+	UserID          uuid.UUID              `json:"user_id"`
+	UserType        enums.UserType         `json:"user_type"`
+	Coordinates     common.Coordinates     `json:"coordinates"`
+	Accuracy        float32                `json:"accuracy"`
+	Heading         float32                `json:"heading"`
+	Speed           float32                `json:"speed"`
+	CapturedAt      time.Time              `json:"captured_at"`
+	Status          contracts.DriverStatus `json:"status"`
+	StatusUpdatedAt time.Time              `json:"status_updated_at"`
+	DistanceKm      float32                `json:"distance_km"`
 }
 
 func (l *DriverLocation) NewLocation() *DriverLocation {

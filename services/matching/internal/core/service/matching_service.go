@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
+	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -84,6 +86,19 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 		return uuid.Nil, nil // No candidates found, return nil UUID and no error
 	}
 
+	// TODO: implement better matching logic here. For now, just pick the first candidate.
+	slices.SortFunc(candidates, func(a, b *locationv1.SearchNearbyDriversResponse_Driver) int {
+		return 0
+		// distA := common.CalculateDistance(request.PickupLocation, &common.Coordinates{
+		// 	Latitude:  a.Location.Latitude,
+		// 	Longitude: a.Location.Longitude,
+		// })
+		// distB := common.CalculateDistance(request.PickupLocation, &common.Coordinates{
+		// 	Latitude:  b.Location.Latitude,
+		// 	Longitude: b.Location.Longitude,
+		// })
+		// return int(distA - distB)
+	})
 	candidate := candidates[0].GetUserId()
 	driverID := uuid.MustParse(candidate)
 	event := &contracts.RideMatchedEvent{

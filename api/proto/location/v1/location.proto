@@ -31,6 +31,8 @@ message DriverLocation {
   float speed = 5;
 
   string status = 6;
+
+  google.protobuf.Timestamp status_updated_at = 7;
 }
 
 message UserID {
@@ -49,7 +51,10 @@ message SearchNearbyDriversRequest {
 message SearchNearbyDriversResponse {
   message Driver {
     string user_id = 1;
-    DriverLocation location = 2;
+    double latitude = 2;
+    double longitude = 3;
+    float distance_km = 4; // Distance from the search point in kilometers
+    google.protobuf.Timestamp available_since = 5; // timestamp of when the driver became available
   }
   repeated Driver drivers = 1;
 }
