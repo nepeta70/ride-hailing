@@ -68,24 +68,19 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 }
 
 func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[string]string, request *contracts.RideRequestedEvent) (uuid.UUID, error) {
-	// info, ok := s.contextManager.Extract(ctx)
-	// if !ok {
-	// 	return uuid.Nil, errors.NewPermanentErrorf("missing request info in context")
-	// }
-
 	md := metadata.New(headers)
 	md.Append("api-key", s.config.LocationService.APIKey)
 	ctx = metadata.NewOutgoingContext(ctx, md)
-	s.logger.Debug("MatchingService: Getting candidates for ride request", "ride_id", request.RideID, "pickup_location", request.PickupLocation)
+	s.logger.Debug("MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
 	candidates, err := s.client.GetCandidates(ctx, request.PickupLocation)
 	if err != nil {
-		s.logger.Error("Failed to get candidates from location service", "error", err)
+		s.logger.Error("MatchingService: Failed to get candidates from location service", "error", err)
 		s.metrics.DependencyFailure("LocationService", "GetCandidates", err.Error())
 		return uuid.Nil, err
 	}
 
 	if len(candidates) == 0 {
-		s.logger.Warn("No drivers available for ride.", "ride_id", request.RideID)
+		s.logger.Warn("MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
 		return uuid.Nil, nil // No candidates found, return nil UUID and no error
 	}
 
@@ -100,9 +95,9 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 	message := contracts.NewEventMessage(event)
 	message.AddHeaders(headers)
 	err = s.publisher.Publish(ctx, contracts.TopicMatching, message)
-	s.logger.Debug("Published RideMatchedEvent", "ride_id", request.RideID, "driver_id", driverID)
+	s.logger.Debug("MatchingService: Published RideMatchedEvent", "ride_id", request.RideID.String(), "driver_id", driverID.String())
 	if err != nil {
-		s.logger.Error("Failed to publish RideMatchedEvent", "error", err)
+		s.logger.Error("MatchingService: Failed to publish RideMatchedEvent", "error", err)
 		s.metrics.DependencyFailure("EventPublisher", "Publish", err.Error())
 		return uuid.Nil, err
 	}

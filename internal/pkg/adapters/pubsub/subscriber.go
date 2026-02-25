@@ -3,7 +3,6 @@ package pubsub
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -60,18 +59,19 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 	if s.config.EnableLogging {
 		kfLogger = &kafkaLogger{logger: s.telemetry.Logger()}
 	}
+	sTopic := topic.String()
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:           s.config.Brokers,
 		GroupID:           s.groupID,
-		Topic:             topic.String(),
+		Topic:             sTopic,
 		MinBytes:          s.config.MinBytes,
 		MaxBytes:          s.config.MaxBytes,
 		MaxWait:           s.config.MaxWait,
+		SessionTimeout:    s.config.SessionTimeout,
+		RebalanceTimeout:  s.config.RebalanceTimeout,
+		HeartbeatInterval: s.config.HeartbeatInterval,
 		Logger:            kfLogger,
 		ErrorLogger:       &kafkaErrorLogger{logger: s.telemetry.Logger()},
-		SessionTimeout:    30 * time.Second,
-		RebalanceTimeout:  30 * time.Second,
-		HeartbeatInterval: 3 * time.Second,
 	})
 
 	s.mu.Lock()
@@ -79,20 +79,20 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 	s.mu.Unlock()
 
 	go func() {
-		s.telemetry.Logger().Debug("Subscriber started", "topic", topic)
+		s.telemetry.Logger().Debug("Subscriber started", "topic", sTopic)
 		for {
-			s.telemetry.Logger().Debug("waiting for message", "topic", topic)
+			s.telemetry.Logger().Debug("Waiting for message", "topic", sTopic)
 			message, err := reader.ReadMessage(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
-					s.telemetry.Logger().Debug("subscriber context cancelled", "topic", topic)
+					s.telemetry.Logger().Debug("Subscriber context cancelled", "topic", sTopic)
 					return
 				}
-				s.telemetry.Logger().Error("failed to read message", "error", err, "topic", topic)
+				s.telemetry.Logger().Error("Failed to read message", "error", err, "topic", sTopic)
 				continue
 			}
 
-			s.telemetry.Logger().Debug("received kafka message", "topic", topic, "partition", message.Partition, "offset", message.Offset, "size", len(message.Value))
+			s.telemetry.Logger().Debug("Received kafka message", "topic", sTopic, "partition", message.Partition, "offset", message.Offset, "size", len(message.Value))
 
 			// Process message with retry logic
 			retrier := s.retrierFactory.NewExponentialBackoffRetrier(s.ServiceName(), s.config.BatchTimeout)
@@ -109,17 +109,17 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 				if errors.IsTransient(err) {
 					s.telemetry.Metrics().DependencyFailure(s.ServiceName(), "message_handler", "transient_error")
 					s.telemetry.Logger().Error("handler failed after retries (transient) - message lost",
-						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
+						"error", err, "topic", sTopic, "partition", message.Partition, "offset", message.Offset)
 					// TODO: Send to DLQ for manual processing
 				} else if errors.IsPermanent(err) || errors.IsBusiness(err) {
 					s.telemetry.Metrics().DependencyFailure(s.ServiceName(), "message_handler", "permanent_error")
 					s.telemetry.Logger().Warn("handler failed with permanent/business error - skipping message",
-						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
+						"error", err, "topic", sTopic, "partition", message.Partition, "offset", message.Offset)
 					// Don't retry, just log and continue
 				} else {
 					s.telemetry.Metrics().DependencyFailure(s.ServiceName(), "message_handler", "unknown_error")
 					s.telemetry.Logger().Error("handler failed with unknown error",
-						"error", err, "topic", topic, "partition", message.Partition, "offset", message.Offset)
+						"error", err, "topic", sTopic, "partition", message.Partition, "offset", message.Offset)
 				}
 			}
 		}

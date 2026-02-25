@@ -36,7 +36,7 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 		return nil, err
 	}
 
-	h.app.Logger.Debug("User updates location", "user-type", info.Sender.Type, "sender-id", info.Sender.ID, "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
+	h.app.Logger.Debug("User updates location.", "user-type", info.Sender.Type.String(), "sender-id", info.Sender.ID.String(), "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
 
 	updateRequest := &service.UpdateRequest{
 		UserID:   info.Sender.ID,
