@@ -11,7 +11,7 @@ import (
 
 type DriverLocation struct {
 	UserID          uuid.UUID              `json:"user_id"`
-	UserType        enums.UserType         `json:"user_type"`
+	SenderType      enums.SenderType       `json:"sender_type"`
 	Coordinates     common.Coordinates     `json:"coordinates"`
 	Accuracy        float32                `json:"accuracy"`
 	Heading         float32                `json:"heading"`

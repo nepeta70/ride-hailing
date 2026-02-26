@@ -2,6 +2,15 @@ package enums
 
 type SenderType string
 
+const (
+	SenderTypeDriver    SenderType = "driver"
+	SenderTypeRider     SenderType = "rider"
+	SenderTypeUser      SenderType = "user" // rider or driver
+	SenderTypeAdmin     SenderType = "admin"
+	SenderTypeAnonymous SenderType = "anonymous"
+	SenderTypeService   SenderType = "service"
+)
+
 func (u SenderType) IsValid() bool {
 	switch u {
 	case SenderTypeDriver, SenderTypeRider, SenderTypeUser, SenderTypeAdmin, SenderTypeAnonymous, SenderTypeService:
@@ -14,12 +23,3 @@ func (u SenderType) IsValid() bool {
 func (u SenderType) String() string {
 	return string(u)
 }
-
-const (
-	SenderTypeDriver    SenderType = "driver"
-	SenderTypeRider     SenderType = "rider"
-	SenderTypeUser      SenderType = "user" // rider or driver
-	SenderTypeAdmin     SenderType = "admin"
-	SenderTypeAnonymous SenderType = "anonymous"
-	SenderTypeService   SenderType = "service"
-)

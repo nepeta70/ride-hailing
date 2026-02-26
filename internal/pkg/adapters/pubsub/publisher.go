@@ -90,7 +90,7 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error {
 	tracer := k.telemetry.Tracer()
 	ctx, span := tracer.Start(ctx, topic.String()+" publish",
-		trace.WithSpanKind(trace.SpanKindProducer)) // Fixed: use trace package
+		trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()
 
 	data, err := json.Marshal(message)

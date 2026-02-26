@@ -1,3 +1,0 @@
-package domain
-
-// ...placeholder for order domain model...

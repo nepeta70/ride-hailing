@@ -12,7 +12,7 @@ import (
 
 type UpdateDriverStatusRequest struct {
 	DriverID        uuid.UUID
-	UserType        enums.UserType
+	SenderType      enums.SenderType
 	Coordinates     domain.Coordinates
 	Accuracy        float32
 	Heading         float32
@@ -45,6 +45,10 @@ func (r UpdateDriverStatusRequest) Validate() error {
 
 	if r.DriverID == uuid.Nil {
 		return errors.NewValidationErrorf("user ID cannot be empty")
+	}
+
+	if r.SenderType != enums.SenderTypeDriver {
+		return errors.NewValidationErrorf("user type must be 'driver'")
 	}
 
 	return nil

@@ -46,12 +46,11 @@ func main() {
 	}
 	defer redisClient.Close()
 
-	locationRepository := rdstore.NewLocationRepository(cfg, redisClient, logger, tel.Metrics())
+	locationRepository := rdstore.NewLocationRepository(cfg, redisClient, tel)
 	app, err := app.NewApplication(&app.ApplicationOpts{
 		Config:         cfg,
 		ContextManager: ctxmgr.NewContextManager(),
-		Logger:         logger,
-		Metrics:        tel.Metrics(),
+		Telemetry:      tel,
 		LocationRepo:   locationRepository,
 		RetryFactory:   retrierFactory,
 	})
@@ -60,7 +59,7 @@ func main() {
 		return
 	}
 
-	handler := grpcAdapters.NewLocationHandler(app)
+	handler := grpcAdapters.NewLocationHandler(app, tel)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:            &cfg.BaseConfig,

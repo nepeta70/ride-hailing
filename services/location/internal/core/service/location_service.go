@@ -14,10 +14,9 @@ import (
 )
 
 type LocationServiceOpts struct {
-	Config  *config.Config
-	Repo    ports.LocationRepository
-	Logger  pkgPorts.Logger
-	Metrics pkgPorts.Metrics
+	Config    *config.Config
+	Repo      ports.LocationRepository
+	Telemetry pkgPorts.TelemetryProvider
 }
 
 func (opts *LocationServiceOpts) Validate() error {
@@ -27,21 +26,18 @@ func (opts *LocationServiceOpts) Validate() error {
 	if opts.Repo == nil {
 		return errors.NewValidationErrorf("repo cannot be nil")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger cannot be nil")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry cannot be nil")
 	}
-	if opts.Metrics == nil {
-		return errors.NewValidationErrorf("metrics cannot be nil")
-	}
+
 	return nil
 }
 
 type LocationService struct {
-	config       *config.Config
-	repo         ports.LocationRepository
-	retryFactory pkgPorts.RetrierFactoryInterface
-	logger       pkgPorts.Logger
-	metrics      pkgPorts.Metrics
+	config            *config.Config
+	repo              ports.LocationRepository
+	retryFactory      pkgPorts.RetrierFactoryInterface
+	telemetryProvider pkgPorts.TelemetryProvider
 }
 
 func NewLocationService(opts *LocationServiceOpts) *LocationService {
@@ -49,10 +45,9 @@ func NewLocationService(opts *LocationServiceOpts) *LocationService {
 		panic(err)
 	}
 	return &LocationService{
-		config:  opts.Config,
-		repo:    opts.Repo,
-		logger:  opts.Logger,
-		metrics: opts.Metrics,
+		config:            opts.Config,
+		repo:              opts.Repo,
+		telemetryProvider: opts.Telemetry,
 	}
 }
 
@@ -61,13 +56,13 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateDriverStatusReq
 		return errors.ErrContextError
 	}
 	if err := req.Validate(); err != nil {
-		return err // Returns the Business Error
+		return err // Returns the validation Error
 	}
 
 	// 2. Map to Domain (The Geohash-only object you wanted)
 	loc := &domain.DriverLocation{
-		UserID:   req.DriverID,
-		UserType: req.UserType,
+		UserID:     req.DriverID,
+		SenderType: req.SenderType,
 		Coordinates: common.Coordinates{
 			Latitude:  req.Coordinates.Latitude,
 			Longitude: req.Coordinates.Longitude,
@@ -106,12 +101,13 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 	var drivers []*domain.DriverLocation
 	var err error
 	for attempt := 1; radius <= s.config.Logic.MaxRadiusSearchKm; attempt++ {
+		s.telemetryProvider.Logger().DebugContext(ctx, "Searching for nearby drivers", "radius", radius, "attempt", attempt)
 		drivers, err = s.repo.SearchNearby(ctx, coordinates, radius)
 		if err == nil {
 			if len(drivers) > 0 {
 				return drivers, nil
 			}
-			return nil, errors.NewTransientErrorf("no drivers found within radius %.2f km", radius)
+			s.telemetryProvider.Logger().DebugContext(ctx, "No drivers found within radius, expanding search", "radius", radius)
 		}
 		radius *= 2 // Exponential backoff for radius
 		if radius > s.config.Logic.MaxRadiusSearchKm {
@@ -119,5 +115,8 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 		}
 	}
 
+	if len(drivers) == 0 {
+		return nil, errors.NewErrNotFoundf("no drivers found within radius %.2f km", radius)
+	}
 	return drivers, err
 }

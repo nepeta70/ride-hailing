@@ -85,8 +85,7 @@ func BusinessError(err error) error {
 
 // IsTransient returns true if the error should be retried
 func IsTransient(err error) bool {
-	var catErr *CategorizedError
-	if errors.As(err, &catErr) {
+	if catErr, ok := errors.AsType[*CategorizedError](err); ok {
 		return catErr.Category == Transient
 	}
 	return false
@@ -94,8 +93,7 @@ func IsTransient(err error) bool {
 
 // IsPermanent returns true if the error should not be retried
 func IsPermanent(err error) bool {
-	var catErr *CategorizedError
-	if errors.As(err, &catErr) {
+	if catErr, ok := errors.AsType[*CategorizedError](err); ok {
 		return catErr.Category == Permanent
 	}
 	return false
@@ -103,8 +101,7 @@ func IsPermanent(err error) bool {
 
 // IsBusiness returns true if the error is a business logic error
 func IsBusiness(err error) bool {
-	var catErr *CategorizedError
-	if errors.As(err, &catErr) {
+	if catErr, ok := errors.AsType[*CategorizedError](err); ok {
 		return catErr.Category == Business
 	}
 	return false
@@ -120,6 +117,10 @@ func NewErrJSONUnmarshal(err error) error {
 
 func NewErrNotFound(msg string) error {
 	return NewBusinessErrorf("not found: %s", msg)
+}
+
+func NewErrNotFoundf(format string, args ...any) error {
+	return NewBusinessErrorf("not found: "+format, args...)
 }
 
 // IsNotFound checks if the error message contains 'not found'.

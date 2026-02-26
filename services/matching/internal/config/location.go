@@ -20,3 +20,11 @@ func (c *LocationServiceConfig) Validate() error {
 	}
 	return nil
 }
+
+func DefaultLocationServiceConfig() *LocationServiceConfig {
+	return &LocationServiceConfig{
+		LocationServiceAddress: "localhost:50051",
+		APIKey:                 "",
+		SenderID:               "",
+	}
+}

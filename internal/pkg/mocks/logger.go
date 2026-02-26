@@ -50,4 +50,12 @@ func (m *MockLogger) ErrorContext(ctx context.Context, msg string, args ...any) 
 	m.Error(msg, args...)
 }
 
+func (m *MockLogger) DebugContext(ctx context.Context, msg string, args ...any) {
+	m.Debug(msg, args...)
+}
+
+func (m *MockLogger) WarnContext(ctx context.Context, msg string, args ...any) {
+	m.Warn(msg, args...)
+}
+
 var _ ports.Logger = (*MockLogger)(nil)

@@ -23,14 +23,13 @@ const (
 )
 
 type LocationRepository struct {
-	client  *redis.Client
-	cfg     *config.Config
-	logger  pkgPorts.Logger
-	metrics pkgPorts.Metrics
+	client    *redis.Client
+	cfg       *config.Config
+	telemetry pkgPorts.TelemetryProvider
 }
 
-func NewLocationRepository(cfg *config.Config, client *rdstore.RedisClient, logger pkgPorts.Logger, metrics pkgPorts.Metrics) *LocationRepository {
-	return &LocationRepository{client: client.Rdb, cfg: cfg, logger: logger, metrics: metrics}
+func NewLocationRepository(cfg *config.Config, client *rdstore.RedisClient, telemetry pkgPorts.TelemetryProvider) *LocationRepository {
+	return &LocationRepository{client: client.Rdb, cfg: cfg, telemetry: telemetry}
 }
 
 func driverLocationKey(userID uuid.UUID) string {
@@ -72,7 +71,7 @@ func (r *LocationRepository) Save(ctx context.Context, loc *domain.DriverLocatio
 	pipe.Expire(ctx, driverLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
 
 	if _, err = pipe.Exec(ctx); err != nil {
-		r.metrics.DependencyFailure("redis", "pipe_exec", "save_location")
+		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
 		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
 	}
 	return nil
@@ -89,7 +88,7 @@ func (r *LocationRepository) Get(ctx context.Context, userID uuid.UUID) (*domain
 		return nil, errors.NewErrNotFound("location data for userID " + userID.String())
 	}
 	if err != nil {
-		r.metrics.DependencyFailure("redis", "hget", "get_location")
+		r.telemetry.Metrics().DependencyFailure("redis", "hget", "get_location")
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
 	}
 
@@ -106,13 +105,13 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 	defer cancel()
 	// Remove metadata
 	if err := r.client.Del(ctx, driverLocationKey(userID)).Err(); err != nil {
-		r.metrics.DependencyFailure("redis", "del", "remove_user_location")
+		r.telemetry.Metrics().DependencyFailure("redis", "del", "remove_user_location")
 		return errors.NewTransientErrorf("failed to delete location metadata: %w", err)
 	}
 
 	// Remove from geospatial index (ZSET)
 	if err := r.client.ZRem(ctx, indexKey, userID.String()).Err(); err != nil {
-		r.metrics.DependencyFailure("redis", "zrem", "remove_user_location")
+		r.telemetry.Metrics().DependencyFailure("redis", "zrem", "remove_user_location")
 		return errors.NewTransientErrorf("failed to remove from geospatial index: %w", err)
 	}
 
@@ -135,10 +134,12 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 		WithDist:  true,
 		WithCoord: true,
 	}
+	r.telemetry.Logger().DebugContext(ctx, "Executing GeoSearch with query", "query", query)
 	geoResults, err := r.client.GeoSearchLocation(ctx, indexKey, query).Result()
 
 	if err != nil {
-		r.metrics.DependencyFailure("redis", "geosearch", "search_nearby")
+		r.telemetry.Logger().ErrorContext(ctx, "GeoSearch query failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "geosearch", "search_nearby")
 		return nil, errors.NewTransientErrorf("redis georadius query failed: %w", err)
 	}
 
@@ -157,7 +158,8 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 
 	_, err = pipe.Exec(ctx)
 	if err != nil && err != redis.Nil {
-		r.metrics.DependencyFailure("redis", "pipeline", "search_nearby")
+		r.telemetry.Logger().ErrorContext(ctx, "Pipeline execution failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "pipeline", "search_nearby")
 		return nil, errors.NewTransientErrorf("pipeline execution failed: %w", err)
 	}
 
@@ -176,6 +178,7 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 		}
 		var loc domain.DriverLocation
 		if err := json.Unmarshal([]byte(parts[1].(string)), &loc); err != nil {
+			r.telemetry.Logger().ErrorContext(ctx, "Failed to unmarshal driver location", "error", err)
 			continue
 		}
 		loc.DistanceKm = float32(geoMap[locationKey].Dist) // Distance in kilometers
@@ -190,7 +193,8 @@ func (r *LocationRepository) asyncRemoveFromIndex(userID string) {
 		bgCtx, cancel := context.WithTimeout(context.Background(), r.cfg.Timeouts.RequestTimeout)
 		defer cancel()
 		if err := r.client.ZRem(bgCtx, indexKey, userID).Err(); err != nil {
-			r.metrics.DependencyFailure("redis", "zrem", "async_remove_from_index")
+			r.telemetry.Logger().ErrorContext(bgCtx, "Failed to remove from geospatial index", "error", err)
+			r.telemetry.Metrics().DependencyFailure("redis", "zrem", "async_remove_from_index")
 		}
 	}()
 }
@@ -200,7 +204,8 @@ func (r *LocationRepository) HealthCheck(ctx context.Context) error {
 	defer cancel()
 	_, err := r.client.Ping(ctx).Result()
 	if err != nil {
-		r.metrics.DependencyFailure("redis", "ping", "health_check")
+		r.telemetry.Logger().ErrorContext(ctx, "Redis ping failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "ping", "health_check")
 		return errors.NewTransientErrorf("redis ping failed: %w", err)
 	}
 	return nil

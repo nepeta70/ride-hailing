@@ -14,21 +14,22 @@ import (
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	common "github.com/nepeta70/ride-hailing/internal/pkg/core"
-	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	pkgErrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/app"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/service"
 )
 
 // LocationHandler implements the LocationService gRPC interface.
 type LocationHandler struct {
-	locationv1.UnimplementedLocationServiceServer
-	app *app.Application
+	//locationv1.UnimplementedLocationServiceServer
+	app       *app.Application
+	telemetry ports.TelemetryProvider
 }
 
-func NewLocationHandler(app *app.Application) *LocationHandler {
-	return &LocationHandler{app: app}
+func NewLocationHandler(app *app.Application, telemetry ports.TelemetryProvider) *LocationHandler {
+	return &LocationHandler{app: app, telemetry: telemetry}
 }
 
 func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locationv1.DriverLocation) (*emptypb.Empty, error) {
@@ -37,11 +38,11 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 		return nil, err
 	}
 
-	h.app.Logger.Debug("User updates location.", "user-type", info.Sender.Type.String(), "sender-id", info.Sender.ID.String(), "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
+	h.telemetry.Logger().DebugContext(ctx, "User updates location.", "user-type", info.Sender.Type, "sender-id", info.Sender.ID, "latitude", req.GetLatitude(), "longitude", req.GetLongitude())
 
 	updateRequest := &service.UpdateDriverStatusRequest{
-		DriverID: info.Sender.ID,
-		UserType: enums.UserType(info.Sender.Type),
+		DriverID:   info.Sender.ID,
+		SenderType: info.Sender.Type,
 		Coordinates: common.Coordinates{
 			Latitude:  req.GetLatitude(),
 			Longitude: req.GetLongitude(),
@@ -139,7 +140,7 @@ func (h *LocationHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.Requ
 
 	if !ok {
 		e := "no metadata found in context"
-		h.app.Logger.Error(e)
+		h.telemetry.Logger().ErrorContext(ctx, e)
 		return nil, pkgErrors.NewPermanentError(e)
 	}
 	return info, nil
@@ -161,3 +162,5 @@ func mapError(err error) error {
 	}
 	return status.Error(codes.Internal, "an internal error occurred")
 }
+
+var _ locationv1.LocationServiceServer = (*LocationHandler)(nil)

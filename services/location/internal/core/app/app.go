@@ -13,8 +13,7 @@ import (
 type ApplicationOpts struct {
 	Config         *config.Config
 	ContextManager *ctxmgr.ContextManager
-	Logger         pkgPorts.Logger
-	Metrics        pkgPorts.Metrics
+	Telemetry      pkgPorts.TelemetryProvider
 	LocationRepo   ports.LocationRepository
 	RetryFactory   pkgPorts.RetrierFactoryInterface
 }
@@ -23,8 +22,8 @@ func (opts *ApplicationOpts) Validate() error {
 	if opts.ContextManager == nil {
 		return errors.NewValidationErrorf("context manager cannot be nil")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger cannot be nil")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry cannot be nil")
 	}
 	if opts.LocationRepo == nil {
 		return errors.NewValidationErrorf("location repository cannot be nil")
@@ -32,15 +31,12 @@ func (opts *ApplicationOpts) Validate() error {
 	if opts.RetryFactory == nil {
 		return errors.NewValidationErrorf("retry factory cannot be nil")
 	}
-	if opts.Metrics == nil {
-		return errors.NewValidationErrorf("metrics cannot be nil")
-	}
 	return nil
 }
 
 type Application struct {
 	ContextManager  *ctxmgr.ContextManager
-	Logger          pkgPorts.Logger
+	Telemetry       pkgPorts.TelemetryProvider
 	LocationService *service.LocationService
 }
 
@@ -50,14 +46,13 @@ func NewApplication(opts *ApplicationOpts) (*Application, error) {
 	}
 
 	locationService := service.NewLocationService(&service.LocationServiceOpts{
-		Config:  opts.Config,
-		Repo:    opts.LocationRepo,
-		Logger:  opts.Logger,
-		Metrics: opts.Metrics,
+		Config:    opts.Config,
+		Repo:      opts.LocationRepo,
+		Telemetry: opts.Telemetry,
 	})
 	return &Application{
 		ContextManager:  opts.ContextManager,
-		Logger:          opts.Logger,
+		Telemetry:       opts.Telemetry,
 		LocationService: locationService,
 	}, nil
 }

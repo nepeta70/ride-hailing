@@ -20,8 +20,7 @@ type MatchingServiceOpts struct {
 	Client         ports.GetCandidates
 	Publisher      pkgPorts.EventPublisher
 	ContextManager *ctxmgr.ContextManager
-	Logger         pkgPorts.Logger
-	Metrics        pkgPorts.Metrics
+	Telemetry      pkgPorts.TelemetryProvider
 }
 
 func (o *MatchingServiceOpts) Validate() error {
@@ -34,11 +33,8 @@ func (o *MatchingServiceOpts) Validate() error {
 	if o.Publisher == nil {
 		return errors.NewValidationErrorf("publisher is required")
 	}
-	if o.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
-	}
-	if o.Metrics == nil {
-		return errors.NewValidationErrorf("metrics is required")
+	if o.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry is required")
 	}
 	if o.ContextManager == nil {
 		return errors.NewValidationErrorf("context manager is required")
@@ -63,8 +59,8 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 		config:         opts.Config,
 		client:         opts.Client,
 		publisher:      opts.Publisher,
-		logger:         opts.Logger,
-		metrics:        opts.Metrics,
+		logger:         opts.Telemetry.Logger(),
+		metrics:        opts.Telemetry.Metrics(),
 		contextManager: opts.ContextManager,
 	}, nil
 }
@@ -73,31 +69,29 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 	md := metadata.New(headers)
 	md.Append("api-key", s.config.LocationService.APIKey)
 	ctx = metadata.NewOutgoingContext(ctx, md)
-	s.logger.Debug("MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
+	s.logger.DebugContext(ctx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
 	candidates, err := s.client.GetCandidates(ctx, request.PickupLocation)
 	if err != nil {
-		s.logger.Error("MatchingService: Failed to get candidates from location service", "error", err)
-		s.metrics.DependencyFailure("LocationService", "GetCandidates", err.Error())
 		return uuid.Nil, err
 	}
 
 	if len(candidates) == 0 {
-		s.logger.Warn("MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
+		s.logger.WarnContext(ctx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
 		return uuid.Nil, nil // No candidates found, return nil UUID and no error
 	}
 
-	// TODO: implement better matching logic here. For now, just pick the first candidate.
 	slices.SortFunc(candidates, func(a, b *locationv1.SearchNearbyDriversResponse_Driver) int {
+		xa := s.SortWeight(a)
+		xb := s.SortWeight(b)
+
+		if xa < xb {
+			return -1
+		}
+		if xa > xb {
+			return 1
+		}
+
 		return 0
-		// distA := common.CalculateDistance(request.PickupLocation, &common.Coordinates{
-		// 	Latitude:  a.Location.Latitude,
-		// 	Longitude: a.Location.Longitude,
-		// })
-		// distB := common.CalculateDistance(request.PickupLocation, &common.Coordinates{
-		// 	Latitude:  b.Location.Latitude,
-		// 	Longitude: b.Location.Longitude,
-		// })
-		// return int(distA - distB)
 	})
 	candidate := candidates[0].GetUserId()
 	driverID := uuid.MustParse(candidate)
@@ -105,18 +99,21 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 		RideID:   request.RideID,
 		DriverID: driverID,
 	}
-	// TODO: handle candidates not found
-	// For the moment, just pick the first candidate. Implement better matching logic here.
+
 	message := contracts.NewEventMessage(event)
 	message.AddHeaders(headers)
 	err = s.publisher.Publish(ctx, contracts.TopicMatching, message)
-	s.logger.Debug("MatchingService: Published RideMatchedEvent", "ride_id", request.RideID.String(), "driver_id", driverID.String())
+	s.logger.DebugContext(ctx, "MatchingService: Published RideMatchedEvent", "ride_id", request.RideID.String(), "driver_id", driverID.String())
 	if err != nil {
-		s.logger.Error("MatchingService: Failed to publish RideMatchedEvent", "error", err)
+		s.logger.ErrorContext(ctx, "MatchingService: Failed to publish RideMatchedEvent", "error", err)
 		s.metrics.DependencyFailure("EventPublisher", "Publish", err.Error())
 		return uuid.Nil, err
 	}
 
 	// Implement matching logic here
 	return driverID, nil
+}
+
+func (s *MatchingService) SortWeight(driver *locationv1.SearchNearbyDriversResponse_Driver) float32 {
+	return driver.DistanceKm*s.config.Logic.DistanceWeight + float32(driver.AvailableSince.Seconds)*s.config.Logic.AvailabilityWeight
 }

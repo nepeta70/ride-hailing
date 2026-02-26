@@ -78,13 +78,13 @@ func (a *Application) Start(ctx context.Context) error {
 func (a *Application) handleRideEvent(ctx context.Context, headers map[string]string, msg []byte) error {
 	var event contracts.EventMessage
 	if err := json.Unmarshal(msg, &event); err != nil {
-		a.logger.Error("Poison message received", "error", err)
+		a.logger.ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {
-		a.logger.Error("Failed to create RequestInfo from headers")
+		a.logger.ErrorContext(ctx, "Failed to create RequestInfo from headers")
 		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
 	}
 	a.contextManager.Inject(ctx, info)
@@ -97,10 +97,10 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 		rideEvent := &payload
 
-		a.logger.Debug("Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
+		a.logger.DebugContext(ctx, "Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
 		_, err := a.service.MatchRiderToDriver(ctx, headers, rideEvent)
 		if err != nil {
-			a.logger.Error("Error matching rider to driver", "error", err)
+			a.logger.ErrorContext(ctx, "Error matching rider to driver", "error", err)
 			return err
 		}
 

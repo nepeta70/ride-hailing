@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/grafana/pyroscope-go"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
@@ -35,6 +34,8 @@ type TelemetryProvider struct {
 }
 
 func NewTelemetryProvider(ctx context.Context, config *config.BaseConfig) (*TelemetryProvider, error) {
+	loggerFactory := NewLoggerFactory(&config.Logging)
+
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
@@ -46,7 +47,7 @@ func NewTelemetryProvider(ctx context.Context, config *config.BaseConfig) (*Tele
 		return nil, err
 	}
 
-	logger, lProvider, err := setupLogger(ctx, config, res)
+	logger, lProvider, err := setupLogger(ctx, config, res, loggerFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (p *TelemetryProvider) LoggerProvider() *sdklog.LoggerProvider {
 	return p.loggerProvider
 }
 
-func setupLogger(ctx context.Context, config *config.BaseConfig, res *resource.Resource) (ports.Logger, *sdklog.LoggerProvider, error) {
+func setupLogger(ctx context.Context, config *config.BaseConfig, res *resource.Resource, loggerFactory *LoggerFactory) (ports.Logger, *sdklog.LoggerProvider, error) {
 	logExporter, err := otlploggrpc.New(ctx,
 		otlploggrpc.WithEndpoint(config.Telemetry.OpentelemetryAddress),
 		otlploggrpc.WithInsecure(),
@@ -135,12 +136,7 @@ func setupLogger(ctx context.Context, config *config.BaseConfig, res *resource.R
 		otelslog.WithLoggerProvider(lProvider),
 	)
 
-	consoleHandler := config.Logging.GetConsoleLogger()
-
-	logHandler := slog.NewMultiHandler(consoleHandler, otelHandler)
-
-	logger := slog.New(logHandler)
-	slog.SetDefault(logger)
+	logger := loggerFactory.CreateLogger(otelHandler)
 
 	return logger, lProvider, nil
 }

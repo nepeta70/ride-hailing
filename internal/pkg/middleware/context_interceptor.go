@@ -71,6 +71,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		ctx, span := tr.Start(ctx, "Middleware.ContextInterceptor", trace.WithSpanKind(trace.SpanKindInternal))
 		defer span.End()
 
+		i.telemetry.Logger().Debug("gRPC request received", "method", info.FullMethod, "payload", req, "timestamp", time.Now().Format(time.RFC3339))
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "missing_metadata")

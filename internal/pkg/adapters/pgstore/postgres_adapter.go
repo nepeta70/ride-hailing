@@ -51,6 +51,7 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 	dbConn, err := sql.Open("postgres", opts.Config.DSN())
 	if err != nil {
 		// If the driver name or DSN format is wrong, it's a permanent code/config bug
+		opts.Logger.Error("Failed to open postgres connection", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to open postgres connection: %w", err)
 	}
 
@@ -63,6 +64,7 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 	})
 
 	if err != nil {
+		opts.Logger.Error("Failed to ping postgres after retries", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to ping postgres: %w", err)
 	}
 
@@ -92,7 +94,7 @@ func (db *PostgresDB) HealthCheck(ctx context.Context) error {
 	defer cancel()
 	if err := db.DB.PingContext(ctx); err != nil {
 		// Database being unreachable is a transient infrastructure issue
-		db.logger.Error("Postgres health check failed", "error", err)
+		db.logger.DebugContext(ctx, "Postgres health check failed", "error", err)
 		db.metrics.DependencyFailure(db.ServiceName(), "health_check", "error")
 		return errors.NewTransientErrorf("postgres ping failed: %w", err)
 	}
@@ -117,6 +119,7 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 		var err error
 		rows, err = db.DB.QueryContext(ctx, query, args...)
 		if err != nil {
+			db.logger.ErrorContext(ctx, "Query execution failed", "error", err)
 			// You can add logic here to check if the error is worth retrying
 			db.metrics.DependencyFailure(db.ServiceName(), "query", "error")
 			return errors.NewTransientErrorf("query failed: %w", err)
@@ -137,6 +140,7 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 		var err error
 		res, err = db.DB.ExecContext(ctx, query, args...)
 		if err != nil {
+			db.logger.ErrorContext(ctx, "Exec execution failed", "error", err)
 			db.metrics.DependencyFailure(db.ServiceName(), "exec", "error")
 			return errors.NewTransientErrorf("exec failed: %w", err)
 		}
