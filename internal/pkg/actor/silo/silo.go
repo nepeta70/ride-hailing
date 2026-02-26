@@ -22,7 +22,7 @@ type GrainActivation struct {
 
 type SiloOptions struct {
 	Timeout        time.Duration
-	Logger         ports.Logger
+	Telemetry      ports.TelemetryProvider
 	RetrierFactory ports.RetrierFactoryInterface
 }
 
@@ -30,8 +30,8 @@ func (opts *SiloOptions) Validate() error {
 	if opts.Timeout <= 0 {
 		return errors.NewValidationErrorf("timeout must be greater than zero")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
 	}
 	if opts.RetrierFactory == nil {
 		return errors.NewValidationErrorf("retrier factory is required")
@@ -46,7 +46,7 @@ type Silo struct {
 	factories   sync.Map // map[string]ports.GrainFactory
 	timeout     time.Duration
 	retrier     ports.RetrierInterface
-	logger      ports.Logger
+	telemetry  ports.TelemetryProvider
 }
 
 func NewSilo(opts *SiloOptions) (*Silo, error) {
@@ -56,7 +56,7 @@ func NewSilo(opts *SiloOptions) (*Silo, error) {
 	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(siloServiceName, opts.Timeout)
 	return &Silo{
 		timeout: opts.Timeout,
-		logger:  opts.Logger,
+		telemetry:  opts.Telemetry,
 		retrier: strategy,
 	}, nil
 }
@@ -103,7 +103,7 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 
 	// Won race, activate (pass identity so grain knows which entity it is)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "grain activation failed after retry strategy",
+		s.telemetry.Logger().ErrorContext(ctx, "grain activation failed after retry strategy",
 			"identity", key,
 			"error", err)
 		s.activations.Delete(key) // Cleanup so next request can try fresh

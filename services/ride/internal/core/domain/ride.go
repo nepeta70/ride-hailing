@@ -20,6 +20,19 @@ const (
 	RideStatusCompleted RideStatus = "COMPLETED"
 )
 
+func (s RideStatus) IsValid() bool {
+	switch s {
+	case RideStatusNew, RideStatusRequested, RideStatusAccepted, RideStatusCancelled, RideStatusStarted, RideStatusCompleted:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s RideStatus) String() string {
+	return string(s)
+}
+
 const (
 	RideGrainKind enums.AggregateType = "Ride"
 )

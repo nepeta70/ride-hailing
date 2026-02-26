@@ -11,6 +11,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -89,8 +90,15 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 
 func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error {
 	tracer := k.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, topic.String()+" publish",
-		trace.WithSpanKind(trace.SpanKindProducer))
+	ctx, span := tracer.Start(ctx, "Kafka Publish",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("topic", topic.String()),
+			attribute.String("operation", "publish"),
+			attribute.String("message_type", message.EventType.String()),
+		),
+	)
+
 	defer span.End()
 
 	data, err := json.Marshal(message)

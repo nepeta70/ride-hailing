@@ -45,7 +45,7 @@ func main() {
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, tel)
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
@@ -54,9 +54,8 @@ func main() {
 
 	pg, err := pgstore.NewPostgresDB(&pgstore.PostgresOpts{
 		Config:         &cfg.Postgres,
-		Logger:         logger,
 		RetrierFactory: retrierFactory,
-		Metrics:        tel.Metrics(),
+		Telemetry:      tel,
 	})
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)
@@ -105,7 +104,7 @@ func main() {
 		GrainTimeout:   cfg.Timeouts.RequestTimeout,
 		Storage:        storage.GrainStorage(),
 		EventPublisher: eventPublisher,
-		Logger:         logger,
+		Telemetry:      tel,
 		RetrierFactory: retrierFactory,
 		ContextManager: contextManager,
 	})

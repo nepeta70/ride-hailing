@@ -6,6 +6,8 @@ import (
 	"slices"
 
 	"github.com/shopspring/decimal"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
@@ -20,9 +22,9 @@ import (
 type RideGrainOptions struct {
 	Storage        ports.GrainStorage
 	EventPub       pkgPorts.EventPublisher
-	Logger         pkgPorts.Logger
 	Topic          contracts.Topic
 	ContextManager *ctxmgr.ContextManager
+	Telemetry      pkgPorts.TelemetryProvider
 }
 
 func (opts *RideGrainOptions) Validate() error {
@@ -32,8 +34,8 @@ func (opts *RideGrainOptions) Validate() error {
 	if opts.EventPub == nil {
 		return errors.NewValidationErrorf("event publisher is required")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
 	}
 	if opts.Topic == "" {
 		return errors.NewValidationErrorf("topic is required")
@@ -56,7 +58,7 @@ type RideGrain struct {
 	version        int
 	storage        ports.GrainStorage
 	eventPub       pkgPorts.EventPublisher
-	logger         pkgPorts.Logger
+	telemetry      pkgPorts.TelemetryProvider
 	topic          contracts.Topic
 	contextManager *ctxmgr.ContextManager
 }
@@ -67,7 +69,7 @@ func NewRideGrain(options *RideGrainOptions) *RideGrain {
 	return &RideGrain{
 		storage:        options.Storage,
 		eventPub:       options.EventPub,
-		logger:         options.Logger,
+		telemetry:      options.Telemetry,
 		topic:          options.Topic,
 		contextManager: options.ContextManager,
 		state: &domain.RideState{
@@ -83,6 +85,16 @@ func (g *RideGrain) GetIdentity() *grain.GrainIdentity {
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
 	g.identity = identity
 
+	ctx, span := g.telemetry.Tracer().Start(ctx, "Ride Grain",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("system", "grain"),
+			attribute.String("operation", "Activate"),
+			attribute.String("identity", identity.String()),
+		),
+	)
+	defer span.End()
+
 	// Try to load existing state from storage
 	version, err := g.storage.Load(ctx, identity, g.state)
 	if err != nil {
@@ -93,12 +105,12 @@ func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentit
 				Status: domain.RideStatusNew,
 			}
 			g.version = 0
-			g.logger.Info("Activating new ride grain", "identity", identity.String())
+			g.telemetry.Logger().InfoContext(ctx, "Activating new ride grain", "identity", identity.String())
 			return nil
 		}
 
 		// Actual error - failed to load existing grain
-		g.logger.Error("Failed to load state for grain",
+		g.telemetry.Logger().ErrorContext(ctx, "Failed to load state for grain",
 			"identity", identity.EntityID,
 			"error", err)
 		return errors.NewTransientErrorf("failed to load ride state: %w", err)
@@ -106,7 +118,7 @@ func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentit
 
 	// Successfully loaded existing grain
 	g.version = version
-	g.logger.Debug("Loaded existing ride grain",
+	g.telemetry.Logger().DebugContext(ctx, "Loaded existing ride grain",
 		"identity", identity.String(),
 		"version", version,
 		"status", g.state.Status)
@@ -119,15 +131,27 @@ func (g *RideGrain) OnDeactivate(ctx context.Context) error {
 
 func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPorts.Message, error) {
 	messageType := fmt.Sprintf("%T", msg)
+	ctx, span := g.telemetry.Tracer().Start(ctx, "Ride Grain",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("system", "grain"),
+			attribute.String("operation", "Receive"),
+			attribute.String("identity", g.identity.String()),
+			attribute.String("message_type", messageType),
+			attribute.String("status", g.state.Status.String()),
+		),
+	)
+	defer span.End()
+
 	if slices.Contains(terminalStates, g.state.Status) {
-		g.logger.Warn("Received command for ride in terminal state",
+		g.telemetry.Logger().WarnContext(ctx, "Received command for ride in terminal state",
 			"ride_id", g.identity.EntityID,
 			"status", g.state.Status,
 			"command_type", messageType)
 		return nil, errors.NewBusinessErrorf("cannot process command %T in terminal state %s", msg, g.state.Status)
 	}
 
-	g.logger.Debug("Receiving message", "type", messageType)
+	g.telemetry.Logger().DebugContext(ctx, "Receiving message", "type", messageType)
 	switch cmd := msg.(type) {
 	case *RequestRideCommand:
 		return g.handleRequestRide(ctx, cmd)
@@ -372,7 +396,7 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) error {
 	info, ok := g.contextManager.Extract(ctx)
 	if !ok {
-		g.logger.Warn("Failed to extract request info from context, publishing event without trace information",
+		g.telemetry.Logger().WarnContext(ctx, "Failed to extract request info from context, publishing event without trace information",
 			"event_type", event.EventType(),
 			"ride_id", g.identity.EntityID)
 	}
@@ -380,7 +404,7 @@ func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) err
 	message.AddHeaders(info.ToByteMap())
 	err := g.eventPub.Publish(ctx, contracts.TopicRide, message)
 	if err != nil {
-		g.logger.Error("Failed to publish event",
+		g.telemetry.Logger().ErrorContext(ctx, "Failed to publish event",
 			"event_type", event.EventType(),
 			"ride_id", g.identity.EntityID,
 			"error", err)

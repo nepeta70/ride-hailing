@@ -39,7 +39,7 @@ func main() {
 
 	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, tel)
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return

@@ -87,12 +87,11 @@ func main() {
 	}
 
 	application, err := app.NewApplication(&app.AppOptions{
-		Logger:         logger,
-		Metrics:        tel.Metrics(),
 		Service:        matchingService,
 		Subscriber:     subscriber,
 		EventPublisher: publisher,
 		ContextManager: contextManager,
+		Telemetry:      tel,
 	})
 	if err != nil {
 		logger.Error("Failed to create application:", "error", err)

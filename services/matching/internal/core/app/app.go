@@ -9,23 +9,22 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/core/service"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AppOptions struct {
-	Logger         ports.Logger
-	Metrics        ports.Metrics
 	Service        *service.MatchingService
 	Subscriber     ports.EventSubscriber
 	EventPublisher ports.EventPublisher
 	ContextManager *ctxmgr.ContextManager
+	Telemetry      ports.TelemetryProvider
 }
 
 func (o *AppOptions) Validate() error {
-	if o.Logger == nil {
-		return errors.NewValidationErrorf("Logger is required")
-	}
-	if o.Metrics == nil {
-		return errors.NewValidationErrorf("Metrics is required")
+	if o.Telemetry == nil {
+		return errors.NewValidationErrorf("TelemetryProvider is required")
 	}
 	if o.Service == nil {
 		return errors.NewValidationErrorf("MatchingService is required")
@@ -43,12 +42,11 @@ func (o *AppOptions) Validate() error {
 }
 
 type Application struct {
-	logger         ports.Logger
-	metrics        ports.Metrics
 	service        *service.MatchingService
 	subscriber     ports.EventSubscriber
 	publisher      ports.EventPublisher
 	contextManager *ctxmgr.ContextManager
+	telemetry      ports.TelemetryProvider
 }
 
 func NewApplication(options *AppOptions) (*Application, error) {
@@ -57,8 +55,7 @@ func NewApplication(options *AppOptions) (*Application, error) {
 	}
 
 	return &Application{
-		logger:         options.Logger,
-		metrics:        options.Metrics,
+		telemetry:      options.Telemetry,
 		service:        options.Service,
 		subscriber:     options.Subscriber,
 		publisher:      options.EventPublisher,
@@ -76,15 +73,27 @@ func (a *Application) Start(ctx context.Context) error {
 }
 
 func (a *Application) handleRideEvent(ctx context.Context, headers map[string]string, msg []byte) error {
+	ctx = a.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
+	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Ride Event",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("topic", contracts.TopicRide.String()),
+			attribute.String("operation", "consume"),
+			attribute.String("message_type", "RideEvent"),
+		),
+	)
+
+	defer span.End()
+
 	var event contracts.EventMessage
 	if err := json.Unmarshal(msg, &event); err != nil {
-		a.logger.ErrorContext(ctx, "Poison message received", "error", err)
+		a.telemetry.Logger().ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {
-		a.logger.ErrorContext(ctx, "Failed to create RequestInfo from headers")
+		a.telemetry.Logger().ErrorContext(ctx, "Failed to create RequestInfo from headers")
 		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
 	}
 	a.contextManager.Inject(ctx, info)
@@ -97,10 +106,10 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 		rideEvent := &payload
 
-		a.logger.DebugContext(ctx, "Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
+		a.telemetry.Logger().DebugContext(ctx, "Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
 		_, err := a.service.MatchRiderToDriver(ctx, headers, rideEvent)
 		if err != nil {
-			a.logger.ErrorContext(ctx, "Error matching rider to driver", "error", err)
+			a.telemetry.Logger().ErrorContext(ctx, "Error matching rider to driver", "error", err)
 			return err
 		}
 

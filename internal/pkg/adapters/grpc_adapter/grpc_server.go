@@ -67,7 +67,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 	grpcAddr := fmt.Sprintf(":%d", opts.Config.Server.Port)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		opts.Logger.Error("failed to listen: %v", "error", err)
+		opts.Logger.Error("Failed to listen:", "error", err)
 		return nil, err
 	}
 
@@ -135,18 +135,17 @@ func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.Heal
 }
 
 func (s *GRPCAdapter) Run(ctx context.Context) {
-	s.logger.InfoContext(ctx, "Running "+s.serviceName+" gRPC server")
 	// 1. Start serving in background
 	go func() {
-		s.logger.InfoContext(ctx, "gRPC server starting", "addr", s.Address)
+		s.logger.InfoContext(ctx, "gRPC server starting", "service", s.serviceName, "addr", s.Address)
 		if err := s.Server.Serve(s.Listener); err != nil && err != grpc.ErrServerStopped {
-			s.logger.ErrorContext(ctx, "gRPC server error", "error", err)
+			s.logger.ErrorContext(ctx, "gRPC server error", "service", s.serviceName, "error", err)
 		}
 	}()
 
 	// 2. Wait for context cancellation (SIGTERM/Interrupt)
 	<-ctx.Done()
-	s.logger.InfoContext(ctx, "shutting down "+s.serviceName+" gRPC server	...")
+	s.logger.InfoContext(ctx, "shutting down gRPC server...", "service", s.serviceName)
 
 	// 3. Graceful Shutdown logic
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.config.Timeouts.ShutdownTimeout)
@@ -160,13 +159,13 @@ func (s *GRPCAdapter) Run(ctx context.Context) {
 
 	select {
 	case <-done:
-		s.logger.InfoContext(ctx, "Graceful shutdown of "+s.serviceName+" gRPC server complete")
+		s.logger.InfoContext(ctx, "Graceful shutdown of gRPC server complete", "service", s.serviceName)
 	case <-shutdownCtx.Done():
-		s.logger.WarnContext(ctx, "Graceful shutdown timed out, forcing stop")
+		s.logger.WarnContext(ctx, "Graceful shutdown timed out, forcing stop", "service", s.serviceName)
 		s.Server.Stop()
 	}
 
-	s.logger.InfoContext(ctx, "shutdown "+s.serviceName+" gRPC server complete")
+	s.logger.InfoContext(ctx, "shutdown gRPC server complete", "service", s.serviceName)
 }
 
 func (s *GRPCAdapter) RegisterService(server *grpc.ServiceDesc, handler any) {
