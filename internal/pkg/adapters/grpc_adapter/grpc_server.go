@@ -13,6 +13,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/middleware"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -72,11 +73,10 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 
 	filteredChainOpts := &middleware.FilteredChainOpts{
 		Config:                 opts.Config,
-		Logger:                 opts.Logger,
+		Telemetry:              opts.Telemetry,
 		ContextManager:         opts.ContextManager,
 		EndpointRoles:          opts.AuthConfiguration,
 		AdditionalInterceptors: opts.AdditionalInterceptors,
-		Metrics:                opts.Telemetry.GetMetrics(),
 	}
 	filteredChain, err := middleware.NewInterceptorChain(filteredChainOpts)
 	if err != nil {
@@ -88,6 +88,11 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(maxMsgSize),
 		grpc.MaxSendMsgSize(maxMsgSize),
+		grpc.StatsHandler(otelgrpc.NewServerHandler(
+			otelgrpc.WithTracerProvider(opts.Telemetry.TracerProvider()),
+			otelgrpc.WithMeterProvider(opts.Telemetry.MeterProvider()),
+			otelgrpc.WithPropagators(opts.Telemetry.Propagator()),
+		)),
 		grpc.ChainUnaryInterceptor(filteredChain.FilteredChain()),
 	)
 
@@ -119,7 +124,7 @@ func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.Heal
 				for _, p := range providers {
 					status := healthpb.HealthCheckResponse_SERVING
 					if err := p.HealthCheck(ctx); err != nil {
-						s.logger.Warn("Health check failed", "service", p.ServiceName(), "error", err)
+						s.logger.WarnContext(ctx, "Health check failed", "service", p.ServiceName(), "error", err)
 						status = healthpb.HealthCheckResponse_NOT_SERVING
 					}
 					s.HealthService.SetServingStatus(p.ServiceName(), status)
@@ -130,18 +135,18 @@ func (s *GRPCAdapter) MonitorHealth(ctx context.Context, providers ...ports.Heal
 }
 
 func (s *GRPCAdapter) Run(ctx context.Context) {
-	s.logger.Info("Running " + s.serviceName + " gRPC server")
+	s.logger.InfoContext(ctx, "Running "+s.serviceName+" gRPC server")
 	// 1. Start serving in background
 	go func() {
-		s.logger.Info("gRPC server starting", "addr", s.Address)
+		s.logger.InfoContext(ctx, "gRPC server starting", "addr", s.Address)
 		if err := s.Server.Serve(s.Listener); err != nil && err != grpc.ErrServerStopped {
-			s.logger.Error("gRPC server error", "error", err)
+			s.logger.ErrorContext(ctx, "gRPC server error", "error", err)
 		}
 	}()
 
 	// 2. Wait for context cancellation (SIGTERM/Interrupt)
 	<-ctx.Done()
-	s.logger.Info("shutting down " + s.serviceName + " gRPC server	...")
+	s.logger.InfoContext(ctx, "shutting down "+s.serviceName+" gRPC server	...")
 
 	// 3. Graceful Shutdown logic
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.config.Timeouts.ShutdownTimeout)
@@ -155,13 +160,13 @@ func (s *GRPCAdapter) Run(ctx context.Context) {
 
 	select {
 	case <-done:
-		s.logger.Info("Graceful shutdown of " + s.serviceName + " gRPC server complete")
+		s.logger.InfoContext(ctx, "Graceful shutdown of "+s.serviceName+" gRPC server complete")
 	case <-shutdownCtx.Done():
-		s.logger.Warn("Graceful shutdown timed out, forcing stop")
+		s.logger.WarnContext(ctx, "Graceful shutdown timed out, forcing stop")
 		s.Server.Stop()
 	}
 
-	s.logger.Info("shutdown " + s.serviceName + " gRPC server complete")
+	s.logger.InfoContext(ctx, "shutdown "+s.serviceName+" gRPC server complete")
 }
 
 func (s *GRPCAdapter) RegisterService(server *grpc.ServiceDesc, handler any) {

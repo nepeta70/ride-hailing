@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	valueobjects "github.com/nepeta70/ride-hailing/internal/pkg/domain/value_objects"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	valueobjects "github.com/nepeta70/ride-hailing/internal/pkg/core/value_objects"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 )
@@ -22,15 +23,15 @@ type DirectionsEstimator struct {
 
 // Fallback when google maps is not available
 // Distance calculates the Haversine distance between two geographic coordinates in meters.
-func (dc *DirectionsEstimator) Distance(p1, p2 valueobjects.Coordinates) float64 {
+func (dc *DirectionsEstimator) Distance(p1, p2 *core.Coordinates) float64 {
 	const earthRadius = 6371230.0 // Radius of the earth in meters
 
 	d2rad := math.Pi / 180
 
-	phi1 := p1.Lat() * d2rad
-	phi2 := p2.Lat() * d2rad
-	dphi := (p2.Lat() - p1.Lat()) * d2rad
-	dlambda := (p2.Lon() - p1.Lon()) * d2rad
+	phi1 := p1.Latitude * d2rad
+	phi2 := p2.Latitude * d2rad
+	dphi := (p2.Latitude - p1.Latitude) * d2rad
+	dlambda := (p2.Longitude - p1.Longitude) * d2rad
 
 	sindphi2 := math.Sin(dphi / 2)
 	sindlambda2 := math.Sin(dlambda / 2)
@@ -48,21 +49,10 @@ func NewDirectionsEstimator() *DirectionsEstimator {
 	return &DirectionsEstimator{}
 }
 
-func (dc *DirectionsEstimator) GetDirections(ctx context.Context, origin, destination string) (*domain.DirectionsResponse, error) {
-	// This is a fallback implementation and does not provide real directions.
-	// In a real-world scenario, you would call an external service here.
-	pickupCoords, err := CoordinatesFromString(origin)
-	if err != nil {
-		return nil, errors.BusinessError(err)
-	}
-	dropoffCoords, err := CoordinatesFromString(destination)
-	if err != nil {
-		return nil, errors.BusinessError(err)
-	}
-
+func (dc *DirectionsEstimator) GetDirections(ctx context.Context, origin, destination *core.Coordinates) (*domain.DirectionsResponse, error) {
 	meters := dc.Distance(
-		*pickupCoords,
-		*dropoffCoords,
+		origin,
+		destination,
 	)
 
 	distance := meters * getCircuityFactor(meters)

@@ -5,45 +5,79 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	common "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/nepeta70/ride-hailing/services/location/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
 )
 
+type LocationServiceOpts struct {
+	Config    *config.Config
+	Repo      ports.LocationRepository
+	Telemetry pkgPorts.TelemetryProvider
+}
+
+func (opts *LocationServiceOpts) Validate() error {
+	if opts.Config == nil {
+		return errors.NewValidationErrorf("config cannot be nil")
+	}
+	if opts.Repo == nil {
+		return errors.NewValidationErrorf("repo cannot be nil")
+	}
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry cannot be nil")
+	}
+
+	return nil
+}
+
 type LocationService struct {
-	repo ports.LocationRepository
+	config            *config.Config
+	repo              ports.LocationRepository
+	retryFactory      pkgPorts.RetrierFactoryInterface
+	telemetryProvider pkgPorts.TelemetryProvider
 }
 
-func NewLocationService(r ports.LocationRepository) *LocationService {
-	return &LocationService{repo: r}
+func NewLocationService(opts *LocationServiceOpts) *LocationService {
+	if err := opts.Validate(); err != nil {
+		panic(err)
+	}
+	return &LocationService{
+		config:            opts.Config,
+		repo:              opts.Repo,
+		telemetryProvider: opts.Telemetry,
+	}
 }
 
-func (s *LocationService) Update(ctx context.Context, req *UpdateRequest) error {
+func (s *LocationService) Update(ctx context.Context, req *UpdateDriverStatusRequest) error {
 	if err := ctx.Err(); err != nil {
 		return errors.ErrContextError
 	}
 	if err := req.Validate(); err != nil {
-		return err // Returns the Business Error
+		return err // Returns the validation Error
 	}
 
 	// 2. Map to Domain (The Geohash-only object you wanted)
-	loc := &domain.UserLocation{
-		UserID:   req.UserID,
-		UserType: req.UserType,
-		Coordinates: domain.Coordinates{
+	loc := &domain.DriverLocation{
+		UserID:     req.DriverID,
+		SenderType: req.SenderType,
+		Coordinates: common.Coordinates{
 			Latitude:  req.Coordinates.Latitude,
 			Longitude: req.Coordinates.Longitude,
 		},
 		Accuracy:   req.Accuracy,
 		Heading:    req.Heading,
 		Speed:      req.Speed,
+		Status:     req.Status,
 		CapturedAt: req.CapturedAt,
 	}
 
 	return s.repo.Save(ctx, loc)
 }
 
-func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
+func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -57,9 +91,32 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
-func (s *LocationService) SearchNearby(ctx context.Context, req *SearchNearbyRequest) ([]*domain.UserLocation, error) {
+func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.Coordinates) ([]*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
-	return s.repo.SearchNearby(ctx, req.Coordinates, req.RadiusKm)
+
+	radius := s.config.Logic.MinRadiusSearchKm
+
+	var drivers []*domain.DriverLocation
+	var err error
+	for attempt := 1; radius <= s.config.Logic.MaxRadiusSearchKm; attempt++ {
+		s.telemetryProvider.Logger().DebugContext(ctx, "Searching for nearby drivers", "radius", radius, "attempt", attempt)
+		drivers, err = s.repo.SearchNearby(ctx, coordinates, radius)
+		if err == nil {
+			if len(drivers) > 0 {
+				return drivers, nil
+			}
+			s.telemetryProvider.Logger().DebugContext(ctx, "No drivers found within radius, expanding search", "radius", radius)
+		}
+		radius *= 2 // Exponential backoff for radius
+		if radius > s.config.Logic.MaxRadiusSearchKm {
+			radius = s.config.Logic.MaxRadiusSearchKm
+		}
+	}
+
+	if len(drivers) == 0 {
+		return nil, errors.NewErrNotFoundf("no drivers found within radius %.2f km", radius)
+	}
+	return drivers, err
 }

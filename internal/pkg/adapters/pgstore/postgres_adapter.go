@@ -12,36 +12,67 @@ import (
 
 const postgresServiceName = "PostgresDB"
 
+type PostgresOpts struct {
+	Config         *PostgresConfig
+	Logger         ports.Logger
+	RetrierFactory ports.RetrierFactoryInterface
+	Metrics        ports.Metrics
+}
+
+func (o *PostgresOpts) Validate() error {
+	if o.Config == nil {
+		return errors.NewValidationErrorf("PostgresConfig is required")
+	}
+	if o.Logger == nil {
+		return errors.NewValidationErrorf("Logger is required")
+	}
+	if o.RetrierFactory == nil {
+		return errors.NewValidationErrorf("RetrierFactory is required")
+	}
+	if o.Metrics == nil {
+		return errors.NewValidationErrorf("Metrics is required")
+	}
+	return nil
+}
+
 type PostgresDB struct {
 	config       *PostgresConfig
 	logger       ports.Logger
 	retryFactory ports.RetrierFactoryInterface
+	metrics      ports.Metrics
 	*sql.DB
 }
 
-func NewPostgresDB(config *PostgresConfig, retrierFactory ports.RetrierFactoryInterface, logger ports.Logger) (*PostgresDB, error) {
-	dbConn, err := sql.Open("postgres", config.DSN())
+func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+
+	dbConn, err := sql.Open("postgres", opts.Config.DSN())
 	if err != nil {
 		// If the driver name or DSN format is wrong, it's a permanent code/config bug
+		opts.Logger.Error("Failed to open postgres connection", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to open postgres connection: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.PingTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), opts.Config.PingTimeout)
 	defer cancel()
 
-	strategy := retrierFactory.NewExponentialBackoffRetrier(postgresServiceName, config.PingTimeout)
-	err = strategy.Do(ctx, func() error {
+	retrier := opts.RetrierFactory.NewExponentialBackoffRetrier(postgresServiceName, opts.Config.PingTimeout)
+	err = retrier.Do(ctx, func() error {
 		return dbConn.PingContext(ctx)
 	})
 
 	if err != nil {
+		opts.Logger.Error("Failed to ping postgres after retries", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to ping postgres: %w", err)
 	}
 
 	db := &PostgresDB{
-		config:       config,
-		logger:       logger,
-		retryFactory: retrierFactory,
+		config:       opts.Config,
+		logger:       opts.Logger,
+		retryFactory: opts.RetrierFactory,
+		metrics:      opts.Metrics,
 		DB:           dbConn,
 	}
 	return db, nil
@@ -52,6 +83,7 @@ func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.T
 	defer cancel()
 	tx, err := db.DB.BeginTx(beginCtx, opts)
 	if err != nil {
+		db.metrics.DependencyFailure(db.ServiceName(), "begin_transaction", "error")
 		return nil, errors.NewTransientErrorf("failed to begin postgres transaction: %w", err)
 	}
 	return &PostgresTx{tx}, nil
@@ -62,7 +94,8 @@ func (db *PostgresDB) HealthCheck(ctx context.Context) error {
 	defer cancel()
 	if err := db.DB.PingContext(ctx); err != nil {
 		// Database being unreachable is a transient infrastructure issue
-		db.logger.Error("Postgres health check failed", "error", err)
+		db.logger.DebugContext(ctx, "Postgres health check failed", "error", err)
+		db.metrics.DependencyFailure(db.ServiceName(), "health_check", "error")
 		return errors.NewTransientErrorf("postgres ping failed: %w", err)
 	}
 	return nil
@@ -86,7 +119,9 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 		var err error
 		rows, err = db.DB.QueryContext(ctx, query, args...)
 		if err != nil {
+			db.logger.ErrorContext(ctx, "Query execution failed", "error", err)
 			// You can add logic here to check if the error is worth retrying
+			db.metrics.DependencyFailure(db.ServiceName(), "query", "error")
 			return errors.NewTransientErrorf("query failed: %w", err)
 		}
 		return nil
@@ -105,6 +140,8 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 		var err error
 		res, err = db.DB.ExecContext(ctx, query, args...)
 		if err != nil {
+			db.logger.ErrorContext(ctx, "Exec execution failed", "error", err)
+			db.metrics.DependencyFailure(db.ServiceName(), "exec", "error")
 			return errors.NewTransientErrorf("exec failed: %w", err)
 		}
 		return nil

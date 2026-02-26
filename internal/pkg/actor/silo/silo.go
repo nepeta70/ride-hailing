@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
@@ -103,7 +103,7 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 
 	// Won race, activate (pass identity so grain knows which entity it is)
 	if err != nil {
-		s.logger.Error("grain activation failed after retry strategy",
+		s.logger.ErrorContext(ctx, "grain activation failed after retry strategy",
 			"identity", key,
 			"error", err)
 		s.activations.Delete(key) // Cleanup so next request can try fresh

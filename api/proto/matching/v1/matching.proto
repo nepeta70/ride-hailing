@@ -11,9 +11,7 @@ service MatchingService {
 }
 
 message MatchingRequest {
-  string request_id = 1;
-  // Unique identifier for the ride request
-  string ride_request_id = 2;
+  string ride_id = 1;
 }
 message MatchingResponse {
   string driver_id = 1;

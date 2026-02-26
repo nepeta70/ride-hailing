@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 

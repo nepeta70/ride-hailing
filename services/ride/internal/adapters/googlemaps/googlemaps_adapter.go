@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
@@ -68,16 +69,16 @@ func (g *GoogleMapsAdapter) ServiceName() string {
 	return "Google Maps API"
 }
 
-func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destination string) (*domain.DirectionsResponse, error) {
+func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destination *core.Coordinates) (*domain.DirectionsResponse, error) {
 	routes, _, err := g.client.Directions(ctx, &maps.DirectionsRequest{
-		Origin:        origin,
-		Destination:   destination,
+		Origin:        origin.String(),
+		Destination:   destination.String(),
 		Mode:          maps.TravelModeDriving,
 		DepartureTime: "now",
 	})
 
 	if err != nil {
-		g.logger.Warn("Google Maps API error: %v. Using fallback distance calculator.", "error", err)
+		g.logger.Warn("Google Maps API error: Using fallback distance calculator.", "error", err)
 		return g.fallbackService.GetDirections(ctx, origin, destination)
 	}
 	if len(routes) == 0 || len(routes[0].Legs) == 0 {

@@ -34,33 +34,48 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
 	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+	logger := tel.Logger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
+	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
-	pg, err := pgstore.NewPostgresDB(&cfg.Postgres, retrierFactory, logger)
+	pg, err := pgstore.NewPostgresDB(&pgstore.PostgresOpts{
+		Config:         &cfg.Postgres,
+		Logger:         logger,
+		RetrierFactory: retrierFactory,
+		Metrics:        tel.Metrics(),
+	})
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)
 		return
 	}
 
+	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
-
-	eventPublisher := pubsub.NewEventPublisher(cfg.Kafka, topicProvider, logger)
+	eventPublisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
+		Config:         cfg.Kafka,
+		TopicProvider:  topicProvider,
+		Telemetry:      tel,
+		RetrierFactory: retrierFactory,
+		ContextManager: contextManager,
+	})
+	if err != nil {
+		logger.Error("Failed to create event publisher:", "error", err)
+		return
+	}
 	defer eventPublisher.Close()
 
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
@@ -92,6 +107,7 @@ func main() {
 		EventPublisher: eventPublisher,
 		Logger:         logger,
 		RetrierFactory: retrierFactory,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create grain system:", "error", err)
@@ -126,7 +142,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, redisClient, pg)
+	grpcServer.MonitorHealth(ctx, redisClient, pg, eventPublisher)
 
 	grpcServer.Run(ctx)
 }

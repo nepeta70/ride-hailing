@@ -28,28 +28,38 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
-
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
 	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
 		return
 	}
 	defer tel.Shutdown(ctx)
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.GetMetrics())
+	logger := tel.Logger()
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger)
+	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
-	locationRepository := rdstore.NewRedisRepository(cfg, redisClient, logger)
-	app := app.NewApplication(ctxmgr.NewContextManager(), logger, locationRepository)
+	locationRepository := rdstore.NewLocationRepository(cfg, redisClient, tel)
+	app, err := app.NewApplication(&app.ApplicationOpts{
+		Config:         cfg,
+		ContextManager: ctxmgr.NewContextManager(),
+		Telemetry:      tel,
+		LocationRepo:   locationRepository,
+		RetryFactory:   retrierFactory,
+	})
+	if err != nil {
+		logger.Error("Failed to create application:", "error", err)
+		return
+	}
 
-	handler := grpcAdapters.NewLocationHandler(app)
+	handler := grpcAdapters.NewLocationHandler(app, tel)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:            &cfg.BaseConfig,

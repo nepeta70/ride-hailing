@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/google/uuid"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
@@ -15,8 +16,8 @@ import (
 type EstimateFareCommand struct {
 	RiderID         uuid.UUID
 	RequestID       uuid.UUID
-	PickupLocation  string
-	DropoffLocation string
+	PickupLocation  *core.Coordinates
+	DropoffLocation *core.Coordinates
 	CountryCode     string
 }
 
@@ -25,12 +26,15 @@ func (q *EstimateFareCommand) Validate() error {
 		return errors.NewValidationErrorf("invalid rider ID format")
 	}
 
-	if q.PickupLocation == "" || q.DropoffLocation == "" {
-		return errors.NewValidationErrorf("pickup and dropoff locations are required")
+	err := q.PickupLocation.Validate()
+	if err != nil {
+		return errors.NewValidationErrorf("invalid pickup location: %v", err)
 	}
-	if q.PickupLocation == q.DropoffLocation {
-		return errors.NewValidationErrorf("pickup and dropoff locations cannot be the same")
+	err = q.DropoffLocation.Validate()
+	if err != nil {
+		return errors.NewValidationErrorf("invalid dropoff location: %v", err)
 	}
+
 	if q.RequestID == uuid.Nil {
 		return errors.NewValidationErrorf("invalid request ID format")
 	}

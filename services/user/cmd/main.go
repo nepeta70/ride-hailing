@@ -27,17 +27,18 @@ func main() {
 		log.Printf("Warning: could not load config.json (%v), using default port %d", err, cfg.Server.Port)
 	}
 
-	logger := cfg.Logging.ConfigureLogger()
+	tel, err := telemetry.NewTelemetryProvider(ctx, &cfg.BaseConfig)
+	if err != nil {
+		log.Printf("ERROR: Failed to create telemetry provider: %v", err)
+		return
+	}
+	defer tel.Shutdown(ctx)
+
+	logger := tel.Logger()
 
 	repo := inmemory.NewInMemoryUserRepository()
 	application := app.NewApplication(cfg, logger, repo, repo)
 	handler := grpcAdapters.NewUserHandler(application)
-	tel, err := telemetry.NewTelemetryProvider(ctx, cfg.ServiceName, &cfg.Telemetry, logger)
-	if err != nil {
-		logger.Error("Failed to create telemetry provider:", "error", err)
-		return
-	}
-	defer tel.Shutdown(ctx)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:         &cfg.BaseConfig,

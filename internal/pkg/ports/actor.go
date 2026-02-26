@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
 
 // Message is the base interface for all grain messages (commands, queries, responses)

@@ -13,3 +13,11 @@ type kafkaLogger struct {
 func (l *kafkaLogger) Printf(msg string, args ...any) {
 	l.logger.Info(fmt.Sprintf(msg, args...))
 }
+
+type kafkaErrorLogger struct {
+	logger ports.Logger
+}
+
+func (l *kafkaErrorLogger) Printf(msg string, args ...any) {
+	l.logger.Error(fmt.Sprintf(msg, args...))
+}

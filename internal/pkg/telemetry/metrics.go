@@ -10,10 +10,6 @@ import (
 )
 
 type Metrics struct {
-	// --- RPC Metrics ---
-	grpcRequestCount *prometheus.CounterVec   // Labels: method, status_code
-	grpcLatency      *prometheus.HistogramVec // Labels: method
-
 	// --- Resiliency & Stability ---
 	circuitBreakerState  *prometheus.GaugeVec   // Labels: method
 	circuitBreakerErrors *prometheus.CounterVec // Labels: method, error_type
@@ -27,27 +23,15 @@ type Metrics struct {
 	// --- Retry Metrics ---
 	retryCounter        *prometheus.CounterVec   // Labels: attempt
 	retryDelayHistogram *prometheus.HistogramVec // Labels: attempt
+
+	// --- Dependency Metrics ---
+	dependencyFailures *prometheus.CounterVec // Labels: dependency, operation, error_type
 }
 
 func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *Metrics {
 	factory := promauto.With(reg)
 
 	prometheusMetrics := &Metrics{
-		grpcRequestCount: factory.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: subSystem,
-			Name:      "grpc_requests_total",
-			Help:      "Total number of gRPC requests.",
-		}, []string{"method", "status_code"}),
-
-		grpcLatency: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subSystem,
-			Name:      "grpc_latency_seconds",
-			Help:      "Latency of gRPC requests.",
-			Buckets:   prometheus.DefBuckets,
-		}, []string{"method"}),
-
 		circuitBreakerState: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subSystem,
@@ -110,17 +94,16 @@ func NewMetrics(namespace string, subSystem string, reg prometheus.Registerer) *
 			},
 			[]string{"service", "attempt"},
 		),
+
+		dependencyFailures: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subSystem,
+			Name:      "dependency_errors_total",
+			Help:      "Total number of failed calls to external dependencies (db, redis, kafka)",
+		}, []string{"dependency", "operation", "error_type"}),
 	}
 
 	return prometheusMetrics
-}
-
-func (m *Metrics) GRPCRequestCount(method string, statusCode string) {
-	m.grpcRequestCount.WithLabelValues(method, statusCode).Inc()
-}
-
-func (m *Metrics) GRPCLatency(method string, durationSeconds float64) {
-	m.grpcLatency.WithLabelValues(method).Observe(durationSeconds)
 }
 
 func (m *Metrics) CircuitBreakerState(method string, state int) {
@@ -153,6 +136,10 @@ func (m *Metrics) ObserveRetry(service string, attempt int, err error, delay tim
 	// This is a simple example that just logs the retry attempt. You can expand this as needed.
 	m.retryCounter.WithLabelValues(service, strconv.Itoa(attempt)).Inc()
 	m.retryDelayHistogram.WithLabelValues(service, strconv.Itoa(attempt)).Observe(delay.Seconds())
+}
+
+func (m *Metrics) DependencyFailure(dependency string, operation string, errorType string) {
+	m.dependencyFailures.WithLabelValues(dependency, operation, errorType).Inc()
 }
 
 var _ ports.Metrics = (*Metrics)(nil)

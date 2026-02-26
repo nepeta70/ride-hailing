@@ -3,7 +3,8 @@ package domain
 import (
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/actor/grain"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/shopspring/decimal"
 )
@@ -25,13 +26,13 @@ const (
 
 // RideCore represents the immutable "contract" of the ride
 type RideCore struct {
-	RequestID       uuid.UUID       `json:"request_id"`
-	RiderID         uuid.UUID       `json:"rider_id"`
-	PickupLocation  string          `json:"pickup_location"`
-	DropoffLocation string          `json:"dropoff_location"`
-	ServiceType     string          `json:"service_type"`
-	Fare            decimal.Decimal `json:"fare"`
-	Currency        string          `json:"currency"`
+	RequestID       uuid.UUID         `json:"request_id"`
+	RiderID         uuid.UUID         `json:"rider_id"`
+	PickupLocation  *core.Coordinates `json:"pickup_location"`
+	DropoffLocation *core.Coordinates `json:"dropoff_location"`
+	ServiceType     string            `json:"service_type"`
+	Fare            decimal.Decimal   `json:"fare"`
+	Currency        string            `json:"currency"`
 }
 
 // RideStatusState represents the mutable lifecycle of the ride

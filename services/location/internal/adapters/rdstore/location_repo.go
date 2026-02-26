@@ -7,7 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
+	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
@@ -17,63 +18,69 @@ import (
 )
 
 const (
-	locationIndexKeyPrefix = "locations:index"
-	userLocationKeyPrefix  = "locations:user-location:"
+	indexKey                = "locations:index"
+	driverLocationKeyPrefix = "locations:driver:"
 )
 
-type RedisRepository struct {
-	client *redis.Client
-	cfg    *config.Config
-	logger pkgPorts.Logger
+type LocationRepository struct {
+	client    *redis.Client
+	cfg       *config.Config
+	telemetry pkgPorts.TelemetryProvider
 }
 
-func NewRedisRepository(cfg *config.Config, client *rdstore.RedisClient, logger pkgPorts.Logger) *RedisRepository {
-	return &RedisRepository{client: client.Rdb, cfg: cfg, logger: logger}
+func NewLocationRepository(cfg *config.Config, client *rdstore.RedisClient, telemetry pkgPorts.TelemetryProvider) *LocationRepository {
+	return &LocationRepository{client: client.Rdb, cfg: cfg, telemetry: telemetry}
 }
 
-func userLocationKey(userID uuid.UUID) string {
-	return userLocationKeyPrefix + userID.String()
+func driverLocationKey(userID uuid.UUID) string {
+	return driverLocationKeyPrefix + userID.String()
 }
 
 // Save implements the ports.LocationRepository interface
-func (r *RedisRepository) Save(ctx context.Context, loc *domain.UserLocation) error {
+func (r *LocationRepository) Save(ctx context.Context, loc *domain.DriverLocation) error {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Specific metadata for this entity (HASH)
-	userLocationKey := userLocationKey(loc.UserID)
+	driverLocationKey := driverLocationKey(loc.UserID)
 
 	data, err := json.Marshal(loc)
 	if err != nil {
 		return errors.NewErrJSONMarshal(err)
 	}
 
+	userID := loc.UserID.String()
+
 	pipe := r.client.Pipeline()
 
-	if loc.UserType == enums.UserTypeDriver {
-		// 1. Add to Geospatial Index for Drivers
-		pipe.GeoAdd(ctx, locationIndexKeyPrefix, &redis.GeoLocation{
+	// Save Metadata in a Hash
+	pipe.HSet(ctx, driverLocationKey, "data", data, "status", string(loc.Status))
+
+	// Add to Geospatial Index for Drivers if available
+	if loc.Status == contracts.DriverStatusAvailable {
+		pipe.GeoAdd(ctx, indexKey, &redis.GeoLocation{
 			Longitude: loc.Coordinates.Longitude,
 			Latitude:  loc.Coordinates.Latitude,
-			Name:      loc.UserID.String(),
+			Name:      userID,
 		})
+	} else {
+		// If not available, remove from geospatial index to prevent showing in nearby searches
+		pipe.ZRem(ctx, indexKey, userID)
 	}
 
-	// 3. Save Metadata in a Hash
-	pipe.HSet(ctx, userLocationKey, "data", data)
-
 	// Set TTL so we don't leak memory for offline users
-	pipe.Expire(ctx, userLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
+	pipe.Expire(ctx, driverLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
 
 	if _, err = pipe.Exec(ctx); err != nil {
+		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
 		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
 	}
 	return nil
 }
 
-func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.UserLocation, error) {
+func (r *LocationRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
-	key := userLocationKey(userID)
+	key := driverLocationKey(userID)
 
 	data, err := r.client.HGet(ctx, key, "data").Bytes()
 	if err == redis.Nil {
@@ -81,10 +88,11 @@ func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.Us
 		return nil, errors.NewErrNotFound("location data for userID " + userID.String())
 	}
 	if err != nil {
+		r.telemetry.Metrics().DependencyFailure("redis", "hget", "get_location")
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
 	}
 
-	var loc domain.UserLocation
+	var loc domain.DriverLocation
 	if err := json.Unmarshal(data, &loc); err != nil {
 		return nil, errors.NewErrJSONUnmarshal(err)
 	}
@@ -92,71 +100,115 @@ func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.Us
 	return &loc, nil
 }
 
-func (r *RedisRepository) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
+func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Remove metadata
-	userLocationKey := userLocationKey(userID)
-	if err := r.client.Del(ctx, userLocationKey).Err(); err != nil {
+	if err := r.client.Del(ctx, driverLocationKey(userID)).Err(); err != nil {
+		r.telemetry.Metrics().DependencyFailure("redis", "del", "remove_user_location")
 		return errors.NewTransientErrorf("failed to delete location metadata: %w", err)
 	}
 
 	// Remove from geospatial index (ZSET)
-	if err := r.client.ZRem(ctx, locationIndexKeyPrefix, userID).Err(); err != nil {
+	if err := r.client.ZRem(ctx, indexKey, userID.String()).Err(); err != nil {
+		r.telemetry.Metrics().DependencyFailure("redis", "zrem", "remove_user_location")
 		return errors.NewTransientErrorf("failed to remove from geospatial index: %w", err)
 	}
 
 	return nil
 }
 
-func (r *RedisRepository) SearchNearby(ctx context.Context, coordinates domain.Coordinates, radiusKm float32) ([]*domain.UserLocation, error) {
+func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index
-	query := &redis.GeoSearchQuery{
-		Radius:     float64(radiusKm),
-		Longitude:  coordinates.Longitude,
-		Latitude:   coordinates.Latitude,
-		RadiusUnit: "km",
-		Count:      r.cfg.Logic.TopKNearby,
-		Sort:       "ASC",
+	query := &redis.GeoSearchLocationQuery{
+		GeoSearchQuery: redis.GeoSearchQuery{
+			Radius:     float64(radiusKm),
+			Longitude:  coordinates.Longitude,
+			Latitude:   coordinates.Latitude,
+			RadiusUnit: "km",
+			Count:      r.cfg.Logic.TopKNearby,
+			Sort:       "ASC",
+		},
+		WithDist:  true,
+		WithCoord: true,
 	}
-	geoResults, err := r.client.GeoSearch(ctx, locationIndexKeyPrefix, query).Result()
+	r.telemetry.Logger().DebugContext(ctx, "Executing GeoSearch with query", "query", query)
+	geoResults, err := r.client.GeoSearchLocation(ctx, indexKey, query).Result()
 
 	if err != nil {
+		r.telemetry.Logger().ErrorContext(ctx, "GeoSearch query failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "geosearch", "search_nearby")
 		return nil, errors.NewTransientErrorf("redis georadius query failed: %w", err)
 	}
-	var results []*domain.UserLocation
-	for _, geoLocation := range geoResults {
-		loc, err := r.Get(ctx, uuid.MustParse(geoLocation))
-		if err != nil {
-			if errors.IsNotFound(err) {
-				r.asyncRemoveFromIndex(geoLocation)
-				continue // Skip missing entries
-			}
-			return nil, errors.NewTransientErrorf("get user location failed: %w", err)
+
+	if len(geoResults) == 0 {
+		return []*domain.DriverLocation{}, nil
+	}
+
+	pipe := r.client.Pipeline()
+	geoMap := make(map[string]*redis.GeoLocation)
+	cmds := make(map[string]*redis.SliceCmd)
+	for _, location := range geoResults {
+		driverID := location.Name
+		geoMap[driverID] = &location
+		cmds[driverID] = pipe.HMGet(ctx, driverLocationKeyPrefix+driverID, "status", "data")
+	}
+
+	_, err = pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		r.telemetry.Logger().ErrorContext(ctx, "Pipeline execution failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "pipeline", "search_nearby")
+		return nil, errors.NewTransientErrorf("pipeline execution failed: %w", err)
+	}
+
+	var results []*domain.DriverLocation
+	for locationKey, cmd := range cmds {
+		parts, err := cmd.Result()
+		if err != nil || len(parts) < 2 || parts[0] == nil {
+			continue
 		}
-		results = append(results, loc)
+
+		status := parts[0].(string)
+
+		if !contracts.DriverStatusAvailable.Equals(status) {
+			r.asyncRemoveFromIndex(locationKey)
+			continue
+		}
+		var loc domain.DriverLocation
+		if err := json.Unmarshal([]byte(parts[1].(string)), &loc); err != nil {
+			r.telemetry.Logger().ErrorContext(ctx, "Failed to unmarshal driver location", "error", err)
+			continue
+		}
+		loc.DistanceKm = float32(geoMap[locationKey].Dist) // Distance in kilometers
+
+		results = append(results, &loc)
 	}
 	return results, nil
 }
 
-func (r *RedisRepository) asyncRemoveFromIndex(userID string) {
+func (r *LocationRepository) asyncRemoveFromIndex(userID string) {
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), r.cfg.Timeouts.RequestTimeout)
 		defer cancel()
-		r.client.ZRem(bgCtx, locationIndexKeyPrefix, userID)
+		if err := r.client.ZRem(bgCtx, indexKey, userID).Err(); err != nil {
+			r.telemetry.Logger().ErrorContext(bgCtx, "Failed to remove from geospatial index", "error", err)
+			r.telemetry.Metrics().DependencyFailure("redis", "zrem", "async_remove_from_index")
+		}
 	}()
 }
 
-func (r *RedisRepository) HealthCheck(ctx context.Context) error {
+func (r *LocationRepository) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	_, err := r.client.Ping(ctx).Result()
 	if err != nil {
+		r.telemetry.Logger().ErrorContext(ctx, "Redis ping failed", "error", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "ping", "health_check")
 		return errors.NewTransientErrorf("redis ping failed: %w", err)
 	}
 	return nil
 }
 
-var _ ports.LocationRepository = (*RedisRepository)(nil)
+var _ ports.LocationRepository = (*LocationRepository)(nil)

@@ -1,16 +1,42 @@
 package contracts
 
-import (
-	"time"
-)
+import "maps"
 
-type EventMessage struct {
-	ID        string    `json:"id"`
-	EventType string    `json:"eventType"`
-	Timestamp time.Time `json:"timestamp"`
-	Payload   any       `json:"message"`
+type EventType string
+
+func (e EventType) String() string {
+	return string(e)
 }
 
 type Event interface {
-	EventType() string
+	EventType() EventType
+}
+
+type EventMessage struct {
+	EventType EventType         `json:"event-type"`
+	Payload   any               `json:"message"`
+	Headers   map[string]string `json:"-"`
+}
+
+func NewEventMessage(event Event) *EventMessage {
+	return &EventMessage{
+		EventType: event.EventType(),
+		Payload:   event,
+		Headers:   map[string]string{"event-type": event.EventType().String()},
+	}
+}
+
+func (e *EventMessage) AddHeader(key string, value string) {
+	if e.Headers == nil {
+		e.Headers = make(map[string]string)
+	}
+	e.Headers[key] = value
+}
+
+func (e *EventMessage) AddHeaders(headers map[string]string) {
+	if e.Headers == nil {
+		e.Headers = headers
+	} else {
+		maps.Copy(e.Headers, headers)
+	}
 }

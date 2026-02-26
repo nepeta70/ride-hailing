@@ -16,10 +16,11 @@ type RedisClient struct {
 	config  *RedisConfig
 	logger  ports.Logger
 	retrier ports.RetrierInterface
+	metrics ports.Metrics
 }
 
 // NewClient returns our wrapped client
-func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, logger ports.Logger) (*RedisClient, error) {
+func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, logger ports.Logger, metrics ports.Metrics) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,
@@ -50,7 +51,7 @@ func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, l
 		return nil, errors.NewPermanentErrorf("redis initialization exhausted: %w", err)
 	}
 
-	return &RedisClient{Rdb: rdb, config: cfg, logger: logger, retrier: retrier}, nil
+	return &RedisClient{Rdb: rdb, config: cfg, logger: logger, retrier: retrier, metrics: metrics}, nil
 }
 
 func (c *RedisClient) HealthCheck(ctx context.Context) error {
@@ -58,6 +59,7 @@ func (c *RedisClient) HealthCheck(ctx context.Context) error {
 	defer cancel()
 
 	if err := c.Rdb.Ping(ctx).Err(); err != nil {
+		c.metrics.DependencyFailure(c.ServiceName(), "health_check", "error")
 		return errors.NewTransientErrorf("redis healthcheck failed: %w", err)
 	}
 	return nil

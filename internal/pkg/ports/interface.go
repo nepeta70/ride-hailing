@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
-	"github.com/nepeta70/ride-hailing/internal/pkg/domain/enums"
+	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
 
 type Logger interface {
@@ -13,6 +13,10 @@ type Logger interface {
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
+	ErrorContext(ctx context.Context, msg string, args ...any)
+	InfoContext(ctx context.Context, msg string, args ...any)
+	DebugContext(ctx context.Context, msg string, args ...any)
+	WarnContext(ctx context.Context, msg string, args ...any)
 }
 
 type HealthProvider interface {
@@ -25,11 +29,11 @@ type CacheService interface {
 	GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error
 }
 
-type MessageHandler func(ctx context.Context, msg []byte) error
+type MessageHandler func(ctx context.Context, headers map[string]string, msg []byte) error
 
 type EventPublisher interface {
+	HealthProvider
 	Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error
-	IsHealthy(ctx context.Context) bool
 	Close() error
 	TopicProvider() TopicProvider
 }
