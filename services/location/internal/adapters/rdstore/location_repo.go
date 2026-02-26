@@ -9,12 +9,14 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -25,11 +27,12 @@ const (
 type LocationRepository struct {
 	client    *rdstore.RedisClient
 	cfg       *config.Config
+	ctxMgr    *ctxmgr.ContextManager
 	telemetry pkgPorts.TelemetryProvider
 }
 
-func NewLocationRepository(cfg *config.Config, client *rdstore.RedisClient, telemetry pkgPorts.TelemetryProvider) *LocationRepository {
-	return &LocationRepository{client: client, cfg: cfg, telemetry: telemetry}
+func NewLocationRepository(cfg *config.Config, client *rdstore.RedisClient, ctxMgr *ctxmgr.ContextManager, telemetry pkgPorts.TelemetryProvider) *LocationRepository {
+	return &LocationRepository{client: client, cfg: cfg, ctxMgr: ctxMgr, telemetry: telemetry}
 }
 
 func driverLocationKey(userID uuid.UUID) string {
@@ -128,8 +131,18 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 }
 
 func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
+	reqInfo, _ := r.ctxMgr.Extract(ctx)
+
 	ctx, span := r.client.TraceSpan(ctx, "GEORADIUS", "read", indexKey)
 	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("request.id", reqInfo.Trace.RequestID.String()),
+		attribute.String("rider.id", reqInfo.Sender.ID.String()),
+		attribute.Float64("search.lat", coordinates.Latitude),
+		attribute.Float64("search.lon", coordinates.Longitude),
+		attribute.Float64("search.radius_km", float64(radiusKm)),
+	)
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index

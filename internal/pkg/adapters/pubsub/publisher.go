@@ -3,7 +3,6 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
@@ -106,9 +105,7 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 		return errors.NewErrJSONMarshal(err)
 	}
 
-	carrier := propagation.MapCarrier{}
-	maps.Copy(carrier, message.Headers)
-	k.telemetry.Propagator().Inject(ctx, carrier)
+	k.telemetry.Propagator().Inject(ctx, propagation.MapCarrier(message.Headers))
 
 	k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
 	k.telemetry.Logger().Debug("message headers", "headers", message.Headers)

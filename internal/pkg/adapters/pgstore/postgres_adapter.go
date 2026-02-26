@@ -138,6 +138,15 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 
 // ExecContext follows the same pattern for INSERT/UPDATE/DELETE
 func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	tracer := db.telemetry.Tracer()
+	ctx, span := tracer.Start(ctx, "DB Exec",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("db.system", "postgres"),
+			attribute.String("db.statement", query),
+		),
+	)
+	defer span.End()
 	var res sql.Result
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
