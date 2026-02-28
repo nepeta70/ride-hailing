@@ -110,7 +110,6 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 		return uuid.Nil, err
 	}
 
-	// Implement matching logic here
 	return driverID, nil
 }
 
