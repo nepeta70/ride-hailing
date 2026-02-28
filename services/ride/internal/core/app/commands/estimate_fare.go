@@ -11,6 +11,8 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type EstimateFareCommand struct {
@@ -46,20 +48,34 @@ type EstimateFareHandler struct {
 	countryCache      ports.CountryCacheInterface
 	directionsService ports.DirectionsService
 	storage           ports.StorageBundle
-	logger            pkgPorts.Logger
+	telemetry         pkgPorts.TelemetryProvider
 }
 
-func NewEstimateFareHandler(config *config.Config, logger pkgPorts.Logger, storage ports.StorageBundle, directionsService ports.DirectionsService) *EstimateFareHandler {
+func NewEstimateFareHandler(config *config.Config, telemetry pkgPorts.TelemetryProvider, storage ports.StorageBundle, directionsService ports.DirectionsService) *EstimateFareHandler {
 	return &EstimateFareHandler{
 		config:            config,
 		countryCache:      storage.CountryCache(),
 		directionsService: directionsService,
 		storage:           storage,
-		logger:            logger,
+		telemetry:         telemetry,
 	}
 }
 
 func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareCommand) (*domain.Fares, error) {
+	ctx, span := h.telemetry.Tracer().Start(ctx, "EstimateFareHandler.Handle",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("handler", "EstimateFareHandler"),
+			attribute.String("method", "Handle"),
+			attribute.String("request.id", query.RequestID.String()),
+			attribute.String("country.code", query.CountryCode),
+			attribute.String("dropoff.location", query.DropoffLocation.String()),
+			attribute.String("pickup.location", query.PickupLocation.String()),
+			attribute.String("rider.id", query.RiderID.String()),
+		),
+	)
+	defer span.End()
+
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
@@ -77,7 +93,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	country, exists := h.countryCache.GetCountryByCode(ctx, query.CountryCode)
 	if !exists {
-		h.logger.Error("country not found", "country_code", query.CountryCode)
+		h.telemetry.Logger().ErrorContext(ctx, "country not found", "country_code", query.CountryCode)
 		return nil, errors.NewErrNotFound("country not found")
 	}
 
@@ -88,13 +104,13 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	n := len(fareRates)
 	if n == 0 {
-		h.logger.Error("no fare rates found for country", "country_code", query.CountryCode)
+		h.telemetry.Logger().ErrorContext(ctx, "no fare rates found for country", "country_code", query.CountryCode)
 		return nil, errors.NewErrNotFound("no fare rates found for country")
 	}
 
 	directions, err := h.directionsService.GetDirections(ctx, query.PickupLocation, query.DropoffLocation)
 	if err != nil {
-		h.logger.Error("failed to get directions", "error", err)
+		h.telemetry.Logger().ErrorContext(ctx, "failed to get directions", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to get directions: %w", err)
 	}
 
@@ -119,7 +135,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 
 	err = h.storage.FareWriteRepo().Save(ctx, record)
 	if err != nil {
-		h.logger.Error("failed to save fare estimate", "error", err)
+		h.telemetry.Logger().ErrorContext(ctx, "failed to save fare estimate", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to save fare estimate: %w", err)
 	}
 	return record, nil

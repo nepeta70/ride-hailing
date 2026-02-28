@@ -90,6 +90,10 @@ func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	// cacheService, err := rd.NewCacheService(opts.RdClient.Rdb)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	countryRepo := pgstore.NewCountryReadRepo(opts.Config, opts.PgDB)
 	countryCache := cache.NewCountryCache(countryRepo, opts.Logger)
 	fareRepo := rdstore.NewFareRepository(opts.Config, opts.RdClient, opts.Logger)
@@ -97,9 +101,10 @@ func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
 	serviceTypeCache := cache.NewServiceTypeCache(serviceTypeRepo)
 
 	return &StorageBundle{
-		fareReadRepo:       fareRepo,
-		fareWriteRepo:      fareRepo,
-		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
+		fareReadRepo:      fareRepo,
+		fareWriteRepo:     fareRepo,
+		fareRatesReadRepo: mock.NewMockFareRatesRepo(), // TODO: replace by pgstore implementation
+		//fareRatesReadRepo:  pgstore.NewFareRatesRepo(opts.Config, opts.PgDB, cacheService),
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,
 		grainStorage:       pgstore.NewGrainStorage(opts.PgDB),
