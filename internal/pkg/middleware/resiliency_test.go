@@ -27,7 +27,7 @@ func TestNewResiliencyInterceptor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := mocks.NewMockMetrics()
+			m := mocks.NewMockTelemetryProvider()
 			interceptor, err := NewResiliencyInterceptor(tt.rateLimit, tt.rateBurst, m)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -41,7 +41,7 @@ func TestNewResiliencyInterceptor(t *testing.T) {
 }
 
 func TestResiliencyInterceptor_Unary_RateLimit(t *testing.T) {
-	m := mocks.NewMockMetrics()
+	m := mocks.NewMockTelemetryProvider()
 	interceptor, err := NewResiliencyInterceptor(1, 1, m)
 	assert.NoError(t, err)
 	unary := interceptor.Unary()
@@ -59,12 +59,12 @@ func TestResiliencyInterceptor_Unary_RateLimit(t *testing.T) {
 	_, err2 := unary(ctx, nil, info, handler)
 	assert.Error(t, err2)
 	assert.Equal(t, codes.ResourceExhausted, status.Code(err2))
-	assert.True(t, m.Calls["RateLimitDrop"] > 0)
-	assert.Equal(t, info.FullMethod, m.Args["RateLimitDrop"][0])
+	assert.True(t, m.MetricsCalls()["RateLimitDrop"] > 0)
+	assert.Equal(t, info.FullMethod, m.MetricsArgs()["RateLimitDrop"][0])
 }
 
 func TestResiliencyInterceptor_Unary_CircuitBreaker(t *testing.T) {
-	m := mocks.NewMockMetrics()
+	m := mocks.NewMockTelemetryProvider()
 
 	// Using your constructor with high rate limit to test CB
 	interceptor, err := NewResiliencyInterceptor(100, 100, m)
@@ -86,8 +86,8 @@ func TestResiliencyInterceptor_Unary_CircuitBreaker(t *testing.T) {
 	// Call again, should see CB error in metrics
 	_, _ = unary(context.Background(), nil, info, okHandler)
 
-	if m.Calls["CircuitBreakerError"] > 0 {
-		assert.Equal(t, info.FullMethod, m.Args["CircuitBreakerError"][0])
-		assert.Equal(t, "circuit_open", m.Args["CircuitBreakerError"][1])
+	if m.MetricsCalls()["CircuitBreakerError"] > 0 {
+		assert.Equal(t, info.FullMethod, m.MetricsArgs()["CircuitBreakerError"][0])
+		assert.Equal(t, "circuit_open", m.MetricsArgs()["CircuitBreakerError"][1])
 	}
 }

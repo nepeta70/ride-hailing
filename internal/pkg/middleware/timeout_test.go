@@ -60,7 +60,7 @@ func TestUnaryTimeout_Table(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Initialize metrics with maps to avoid nil assignment panics
-			metrics := mocks.NewMockMetrics()
+			metrics := mocks.NewMockTelemetryProvider()
 
 			mw := NewTimeoutInterceptor(tc.timeout, metrics).Unary()
 			resp, err := mw(context.Background(), nil, info, tc.handler)
@@ -73,8 +73,8 @@ func TestUnaryTimeout_Table(t *testing.T) {
 
 				// Verify metric was called on timeout
 				if tc.wantCode == codes.DeadlineExceeded {
-					assert.True(t, metrics.Calls["RequestTimeout"] > 0)
-					assert.Equal(t, info.FullMethod, metrics.Args["RequestTimeout"][0])
+					assert.True(t, metrics.MetricsCalls()["RequestTimeout"] > 0)
+					assert.Equal(t, info.FullMethod, metrics.MetricsArgs()["RequestTimeout"][0])
 				}
 			} else {
 				assert.NoError(t, err)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -47,13 +48,19 @@ func (r *baseRetrier) shouldRetry(err error, attempt int) bool {
 
 func (r *baseRetrier) DoWithResult(ctx context.Context, op func(ctx context.Context) (any, error)) (any, error) {
 	ctx, span := r.telemetry.Tracer().Start(ctx, "Retry Loop: "+r.serviceName,
-		trace.WithSpanKind(trace.SpanKindInternal))
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("retry.service", r.serviceName),
+		),
+	)
 	defer span.End()
 
 	var result any
 	var lastErr error
 
 	for attempt := 1; ; attempt++ {
+		span.SetAttributes(attribute.Int("retry.attempt", attempt))
+
 		r.telemetry.Logger().DebugContext(ctx, "Attempt for operation", "attempt", attempt)
 		result, lastErr = op(ctx)
 		if lastErr == nil {
@@ -80,6 +87,7 @@ func (r *baseRetrier) DoWithResult(ctx context.Context, op func(ctx context.Cont
 		case <-timer.C:
 		case <-ctx.Done():
 			timer.Stop()
+			span.SetAttributes(attribute.Int("retry.cancelled_attempt", attempt))
 			return result, errors.NewTransientErrorf("retry cancelled: %w", ctx.Err())
 		}
 	}

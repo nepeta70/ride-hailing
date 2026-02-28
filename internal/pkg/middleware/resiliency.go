@@ -5,19 +5,23 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 // ResiliencyInterceptor handles rate limiting and circuit breaking.
 type ResiliencyInterceptor struct {
 	circuitBreaker *circuitbreaker.CircuitBreaker
-	metrics        ports.Metrics
+	telemetry      ports.TelemetryProvider
 	limiter        *rate.Limiter
 }
 
 // NewResiliencyInterceptor initializes the interceptor with resiliency dependencies.
-func NewResiliencyInterceptor(rateLimit float64, rateBurst int, m ports.Metrics) (*ResiliencyInterceptor, error) {
+func NewResiliencyInterceptor(rateLimit float64, rateBurst int, telemetry ports.TelemetryProvider) (*ResiliencyInterceptor, error) {
 	limiter := rate.NewLimiter(rate.Limit(rateLimit), rateBurst)
 	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig())
 	if err != nil {
@@ -25,13 +29,15 @@ func NewResiliencyInterceptor(rateLimit float64, rateBurst int, m ports.Metrics)
 	}
 	return &ResiliencyInterceptor{
 		circuitBreaker: cb,
-		metrics:        m,
+		telemetry:      telemetry,
 		limiter:        limiter,
 	}, nil
 }
 
 // Unary provides the gRPC interceptor logic for rate limiting and circuit breaking.
 func (i *ResiliencyInterceptor) Unary() grpc.UnaryServerInterceptor {
+	tr := i.telemetry.Tracer()
+	pr := i.telemetry.Propagator()
 	return func(
 		ctx context.Context,
 		req any,
@@ -39,9 +45,17 @@ func (i *ResiliencyInterceptor) Unary() grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (any, error) {
 
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			ctx = pr.Extract(ctx, propagation.HeaderCarrier(md))
+		}
+
+		ctx, span := tr.Start(ctx, info.FullMethod, trace.WithSpanKind(trace.SpanKindServer))
+		defer span.End()
+
 		// 1. Rate Limiting
 		if !i.limiter.Allow() {
-			i.metrics.RateLimitDrop(info.FullMethod)
+			span.SetStatus(codes.Error, "rate limit exceeded")
+			i.telemetry.Metrics().RateLimitDrop(info.FullMethod)
 			return nil, errResourceExhausted
 		}
 
@@ -59,13 +73,16 @@ func (i *ResiliencyInterceptor) Unary() grpc.UnaryServerInterceptor {
 		if err != nil {
 			switch err {
 			case circuitbreaker.ErrCircuitOpen:
-				i.metrics.CircuitBreakerError(info.FullMethod, "circuit_open")
+				i.telemetry.Metrics().CircuitBreakerError(info.FullMethod, "circuit_open")
+				span.SetStatus(codes.Error, "circuit open")
 
 			case circuitbreaker.ErrTooManyRequests:
-				i.metrics.CircuitBreakerError(info.FullMethod, "half_open_limit")
+				i.telemetry.Metrics().CircuitBreakerError(info.FullMethod, "half_open_limit")
+				span.SetStatus(codes.Error, "too many requests")
 
 			case circuitbreaker.ErrPanicRecovered:
-				i.metrics.CircuitBreakerError(info.FullMethod, "panic_recovered")
+				i.telemetry.Metrics().CircuitBreakerError(info.FullMethod, "panic_recovered")
+				span.SetStatus(codes.Error, "panic recovered")
 			}
 		}
 

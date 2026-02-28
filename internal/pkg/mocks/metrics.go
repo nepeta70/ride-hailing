@@ -70,7 +70,7 @@ var _ ports.Metrics = (*MockMetrics)(nil)
 
 type MockTelemetryProvider struct {
 	metrics *MockMetrics
-	logger  ports.Logger
+	logger  *MockLogger
 }
 
 func NewMockTelemetryProvider() *MockTelemetryProvider {
@@ -98,6 +98,18 @@ func (m *MockTelemetryProvider) Propagator() propagation.TextMapPropagator {
 
 func (m *MockTelemetryProvider) Shutdown(ctx context.Context) error {
 	return nil
+}
+
+func (m *MockTelemetryProvider) LogEntries() []string {
+	return m.logger.Entries
+}
+
+func (m *MockTelemetryProvider) MetricsCalls() map[string]int {
+	return m.metrics.Calls
+}
+
+func (m *MockTelemetryProvider) MetricsArgs() map[string][]any {
+	return m.metrics.Args
 }
 
 var _ ports.TelemetryProvider = (*MockTelemetryProvider)(nil)

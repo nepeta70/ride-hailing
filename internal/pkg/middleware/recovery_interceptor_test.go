@@ -64,8 +64,9 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			logger := &mocks.MockLogger{}
-			serverInterceptor := NewRecoveryInterceptor(logger)
+
+			telemetry := mocks.NewMockTelemetryProvider()
+			serverInterceptor := NewRecoveryInterceptor(telemetry)
 			mw := serverInterceptor.Unary()
 			resp, err := mw(context.Background(), nil, tc.args.info, tc.args.handler)
 			if tc.wantErr {
@@ -77,22 +78,22 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 			assert.Equal(t, tc.wantResp, resp)
 			if tc.wantError {
 				foundError := false
-				for _, entry := range logger.Entries {
+				for _, entry := range telemetry.LogEntries() {
 					if len(entry) >= 6 && entry[:6] == "ERROR:" {
 						foundError = true
 					}
 				}
-				assert.True(t, foundError, "expected error log, got %v", logger.Entries)
+				assert.True(t, foundError, "expected error log, got %v", telemetry.LogEntries())
 			}
 			// Always expect an info log
-			assert.NotEmpty(t, logger.Entries)
+			assert.NotEmpty(t, telemetry.LogEntries())
 			foundInfo := false
-			for _, entry := range logger.Entries {
+			for _, entry := range telemetry.LogEntries() {
 				if len(entry) >= 5 && entry[:5] == "INFO:" {
 					foundInfo = true
 				}
 			}
-			assert.True(t, foundInfo, "expected info log, got %v", logger.Entries)
+			assert.True(t, foundInfo, "expected info log, got %v", telemetry.LogEntries())
 		})
 	}
 }

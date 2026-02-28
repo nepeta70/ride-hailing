@@ -12,6 +12,9 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -46,8 +49,7 @@ type MatchingService struct {
 	config         *config.Config
 	client         ports.GetCandidates
 	publisher      pkgPorts.EventPublisher
-	logger         pkgPorts.Logger
-	metrics        pkgPorts.Metrics
+	telemetry      pkgPorts.TelemetryProvider
 	contextManager *ctxmgr.ContextManager
 }
 
@@ -59,24 +61,34 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 		config:         opts.Config,
 		client:         opts.Client,
 		publisher:      opts.Publisher,
-		logger:         opts.Telemetry.Logger(),
-		metrics:        opts.Telemetry.Metrics(),
+		telemetry:      opts.Telemetry,
 		contextManager: opts.ContextManager,
 	}, nil
 }
 
 func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[string]string, request *contracts.RideRequestedEvent) (uuid.UUID, error) {
 	md := metadata.New(headers)
+	ctx = s.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
+	ctx, span := s.telemetry.Tracer().Start(ctx, "Matching Service: MatchRiderToDriver",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("ride_id", request.RideID.String()),
+			attribute.String("pickup_location", request.PickupLocation.String()),
+			attribute.String("dropoff_location", request.DropoffLocation.String()),
+		),
+	)
+
+	defer span.End()
 	md.Append("api-key", s.config.LocationService.APIKey)
 	ctx = metadata.NewOutgoingContext(ctx, md)
-	s.logger.DebugContext(ctx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
+	s.telemetry.Logger().DebugContext(ctx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
 	candidates, err := s.client.GetCandidates(ctx, request.PickupLocation)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
 	if len(candidates) == 0 {
-		s.logger.WarnContext(ctx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
+		s.telemetry.Logger().WarnContext(ctx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
 		return uuid.Nil, nil // No candidates found, return nil UUID and no error
 	}
 
@@ -103,10 +115,10 @@ func (s *MatchingService) MatchRiderToDriver(ctx context.Context, headers map[st
 	message := contracts.NewEventMessage(event)
 	message.AddHeaders(headers)
 	err = s.publisher.Publish(ctx, contracts.TopicMatching, message)
-	s.logger.DebugContext(ctx, "MatchingService: Published RideMatchedEvent", "ride_id", request.RideID.String(), "driver_id", driverID.String())
+	s.telemetry.Logger().DebugContext(ctx, "MatchingService: Published RideMatchedEvent", "ride_id", request.RideID.String(), "driver_id", driverID.String())
 	if err != nil {
-		s.logger.ErrorContext(ctx, "MatchingService: Failed to publish RideMatchedEvent", "error", err)
-		s.metrics.DependencyFailure("EventPublisher", "Publish", err.Error())
+		s.telemetry.Logger().ErrorContext(ctx, "MatchingService: Failed to publish RideMatchedEvent", "error", err)
+		s.telemetry.Metrics().DependencyFailure("EventPublisher", "Publish", err.Error())
 		return uuid.Nil, err
 	}
 
