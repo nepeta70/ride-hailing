@@ -86,13 +86,13 @@ func NewApplication(opts *ApplicationOptions) (*Application, error) {
 
 	app := &Application{
 		Commands: &Commands{
-			EstimateFare:   commands.NewEstimateFareHandler(opts.Config, opts.Telemetry.Logger(), opts.Storage, opts.DirectionsService),
+			EstimateFare:   commands.NewEstimateFareHandler(opts.Config, opts.Telemetry, opts.Storage, opts.DirectionsService),
 			CreateFareRate: commands.NewCreateFareRateHandler(opts.Storage.FareRatesWriteRepo()),
 			UpdateFareRate: commands.NewUpdateFareRateHandler(opts.Storage.FareRatesWriteRepo()),
-			RequestRide:    commands.NewRequestRideHandler(opts.Config, opts.Storage, opts.GrainSystem, opts.Telemetry.Logger()),
+			RequestRide:    commands.NewRequestRideHandler(opts.Config, opts.Storage, opts.GrainSystem, opts.Telemetry),
 		},
 		Queries: &Queries{
-			FareRates: queries.NewGetFareRatesHandler(nil), // TODO
+			FareRates: queries.NewGetFareRatesHandler(opts.Storage.FareRatesReadRepo()),
 		},
 
 		ContextManager:    opts.ContextManager,
@@ -148,14 +148,14 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 		rideEvent := &payload
 
-		cmd := &grains.CompleteRideCommand{
+		ev := &grains.RideMatchedEvent{
 			RideID:    rideEvent.RideID,
 			DriverID:  rideEvent.DriverID,
 			RequestID: info.Trace.RequestID,
 		}
-		identity := grain.NewGrainIdentity(domain.RideGrainKind, cmd.RideID)
+		identity := grain.NewGrainIdentity(domain.RideGrainKind, ev.RideID)
 
-		_, err := a.grainSystem.Silo().Ask(ctx, identity, cmd)
+		_, err := a.grainSystem.Silo().Ask(ctx, identity, ev)
 		if err != nil {
 			return err
 		}
