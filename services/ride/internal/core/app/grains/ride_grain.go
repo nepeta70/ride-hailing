@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -89,7 +88,7 @@ func (g *RideGrain) GetIdentity() *grain.GrainIdentity {
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
 	g.identity = identity
 
-	ctx, span := g.TraceSpan(ctx, "OnActivate")
+	ctx, span := g.traceSpan(ctx, "OnActivate")
 	defer span.End()
 
 	// Try to load existing state from storage
@@ -128,7 +127,7 @@ func (g *RideGrain) OnDeactivate(ctx context.Context) error {
 
 func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPorts.Message, error) {
 	messageType := fmt.Sprintf("%T", msg)
-	ctx, span := g.TraceSpan(ctx, "OnReceive")
+	ctx, span := g.traceSpan(ctx, "OnReceive")
 	span.SetAttributes(attribute.String("message.type", messageType))
 	defer span.End()
 
@@ -141,284 +140,224 @@ func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPor
 	}
 
 	g.telemetry.Logger().DebugContext(ctx, "Receiving message", "type", messageType)
+	var err error
+	var response pkgPorts.Message
+
 	switch message := msg.(type) {
 	case *RequestRideCommand:
-		return g.handleRequestRide(ctx, message)
+		response, err = g.handleRequestRide(ctx, message)
 	case *CancelRideCommand:
-		return g.handleCancelRide(ctx, message)
+		response, err = g.handleCancelRide(ctx, message)
 	case *RideMatchedEvent:
-		return g.handleRideMatched(ctx, message)
+		response, err = g.handleRideMatched(ctx, message)
 	case *AcceptRideCommand:
-		return g.handleAcceptRide(ctx, message)
+		response, err = g.handleAcceptRide(ctx, message)
 	case *RejectRideCommand:
-		return g.handleRejectRide(ctx, message)
+		response, err = g.handleRejectRide(ctx, message)
 	case *CompleteRideCommand:
-		return g.handleCompleteRide(ctx, message)
+		response, err = g.handleCompleteRide(ctx, message)
 	case *StartRideCommand:
-		return g.handleStartRide(ctx, message)
+		response, err = g.handleStartRide(ctx, message)
 
 	default:
 		return nil, errors.NewPermanentErrorf("unhandled message type: %T", msg)
 	}
+
+	return response, err
 }
 
 func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:RequestRide")
 
-	if g.state.Status != domain.RideStatusNew {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusRequested)
-	}
-
-	g.core = &domain.RideCore{
-		RequestID:       cmd.RequestID,
-		RiderID:         cmd.RiderID,
-		PickupLocation:  cmd.PickupLocation,
-		DropoffLocation: cmd.DropoffLocation,
-		ServiceType:     cmd.ServiceType,
-		Fare:            decimal.NewFromFloat(cmd.Fare),
-		Currency:        cmd.Currency,
-	}
-	g.state.Status = domain.RideStatusRequested
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  cmd,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	event := &contracts.RideRequestedEvent{
-		RideID:          g.identity.EntityID,
-		RequestID:       cmd.RequestID,
-		RiderID:         cmd.RiderID,
-		PickupLocation:  cmd.PickupLocation,
-		DropoffLocation: cmd.DropoffLocation,
-		ServiceType:     cmd.ServiceType,
-		Fare:            cmd.Fare,
-		Currency:        cmd.Currency,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-
-	return &RequestRideResponse{RideID: g.identity.EntityID}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusNew {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusRequested)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusRequested
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, cmd) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideRequestedEvent{
+				RideID:          g.identity.EntityID,
+				RequestID:       cmd.RequestID,
+				RiderID:         cmd.RiderID,
+				PickupLocation:  cmd.PickupLocation,
+				DropoffLocation: cmd.DropoffLocation,
+				ServiceType:     cmd.ServiceType,
+				Fare:            cmd.Fare,
+				Currency:        cmd.Currency,
+			})
+		}).
+		End(&RequestRideResponse{RideID: g.identity.EntityID})
 }
 
 func (g *RideGrain) handleCancelRide(ctx context.Context, cmd *CancelRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:CancelRide")
 
-	if g.core.RiderID != cmd.RiderID {
-		return nil, errors.NewBusinessErrorf("only the rider can cancel the ride")
-	}
-	if g.state.Status != domain.RideStatusRequested && g.state.Status != domain.RideStatusAccepted {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusCancelled)
-	}
-
-	g.state.Status = domain.RideStatusCancelled
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  cmd,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	event := &contracts.RideCanceledEvent{
-		RequestID: cmd.RequestID,
-		RiderID:   cmd.RiderID,
-		RideID:    cmd.RideID,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.core.RiderID != cmd.RiderID {
+				return errors.NewBusinessErrorf("only the rider can cancel the ride")
+			}
+			if g.state.Status != domain.RideStatusRequested && g.state.Status != domain.RideStatusAccepted {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusCancelled)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusCancelled
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, cmd) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideCanceledEvent{
+				RequestID: cmd.RequestID,
+				RiderID:   cmd.RiderID,
+				RideID:    cmd.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) handleAcceptRide(ctx context.Context, cmd *AcceptRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:AcceptRide")
 
-	if g.state.Status != domain.RideStatusRequested {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusAccepted)
-	}
-
-	g.state.Status = domain.RideStatusAccepted
-	g.state.DriverID = &cmd.DriverID
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  cmd,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	event := &contracts.RideAcceptedEvent{
-		RequestID: cmd.RequestID,
-		DriverID:  cmd.DriverID,
-		RideID:    cmd.RideID,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusRequested {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusAccepted)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusAccepted
+			g.state.DriverID = &cmd.DriverID
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, cmd) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideAcceptedEvent{
+				RequestID: cmd.RequestID,
+				DriverID:  cmd.DriverID,
+				RideID:    cmd.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) handleRejectRide(ctx context.Context, cmd *RejectRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:RejectRide")
 
-	if g.state.Status != domain.RideStatusRequested {
-		return nil, errors.NewBusinessErrorf("Cannot reject a ride with state %s", g.state.Status)
-	}
-
-	event := &contracts.RideRejectedEvent{
-		RequestID: cmd.RequestID,
-		DriverID:  cmd.DriverID,
-		RideID:    cmd.RideID,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusMatched {
+				return errors.NewBusinessErrorf("Cannot reject a ride with state %s", g.state.Status)
+			}
+			return nil
+		}).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideRejectedEvent{
+				RequestID: cmd.RequestID,
+				DriverID:  cmd.DriverID,
+				RideID:    cmd.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) handleStartRide(ctx context.Context, cmd *StartRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:StartRide")
 
-	if g.state.Status != domain.RideStatusAccepted {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusStarted)
-	}
-
-	g.state.Status = domain.RideStatusStarted
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  cmd,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	event := &contracts.RideStartedEvent{
-		RequestID: cmd.RequestID,
-		DriverID:  cmd.DriverID,
-		RideID:    cmd.RideID,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusAccepted {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusStarted)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusStarted
+			g.state.DriverID = &cmd.DriverID
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, cmd) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideStartedEvent{
+				RequestID: cmd.RequestID,
+				DriverID:  cmd.DriverID,
+				RideID:    cmd.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCommand) (pkgPorts.Message, error) {
-	if err := cmd.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:CompleteRide")
 
-	if g.state.Status != domain.RideStatusStarted {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusCompleted)
-	}
-
-	g.state.Status = domain.RideStatusCompleted
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  cmd,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	event := &contracts.RideCompletedEvent{
-		RequestID: cmd.RequestID,
-		DriverID:  cmd.DriverID,
-		RideID:    cmd.RideID,
-	}
-	err := g.publishEvent(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusStarted {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusCompleted)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusCompleted
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, cmd) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideCompletedEvent{
+				RequestID: cmd.RequestID,
+				DriverID:  cmd.DriverID,
+				RideID:    cmd.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) handleRideMatched(ctx context.Context, event *RideMatchedEvent) (pkgPorts.Message, error) {
-	if err := event.Validate(); err != nil {
-		return nil, err
-	}
+	p := g.Start(ctx, "Handle:RideMatched")
 
-	if g.state.Status != domain.RideStatusRequested {
-		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusMatched)
-	}
-
-	g.state.Status = domain.RideStatusMatched
-	g.state.DriverID = &event.DriverID
-	g.version++
-
-	// Persist state and publish event
-	data := &domain.GrainData{
-		Message:  event,
-		Identity: g.identity,
-		Core:     g.core,
-		State:    g.state,
-		Version:  g.version,
-	}
-	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
-		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
-	}
-
-	ev := &contracts.RideMatchedEvent{
-		RequestID: event.RequestID,
-		DriverID:  event.DriverID,
-		RideID:    event.RideID,
-	}
-	err := g.publishEvent(ctx, ev)
-	if err != nil {
-		return nil, err
-	}
-	return &SuccessResponse{}, nil
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return event.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusRequested {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusMatched)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusMatched
+			g.state.DriverID = &event.DriverID
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, event) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideMatchedEvent{
+				RequestID: event.RequestID,
+				DriverID:  event.DriverID,
+				RideID:    event.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
 }
 
 func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) error {
@@ -441,7 +380,7 @@ func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) err
 	return nil
 }
 
-func (g *RideGrain) TraceSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+func (g *RideGrain) traceSpan(ctx context.Context, method string) (context.Context, trace.Span) {
 	ctx, span := g.telemetry.Tracer().Start(ctx, rideGrain+"."+method,
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
@@ -452,4 +391,19 @@ func (g *RideGrain) TraceSpan(ctx context.Context, method string) (context.Conte
 		),
 	)
 	return ctx, span
+}
+
+func (g *RideGrain) persist(ctx context.Context, msg pkgPorts.MessageInterface) error {
+	// Persist state and publish event
+	data := &domain.GrainData{
+		Message:  msg,
+		Identity: g.identity,
+		Core:     g.core,
+		State:    g.state,
+		Version:  g.version,
+	}
+	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
+		return errors.NewTransientErrorf("failed to save ride state: %w", err)
+	}
+	return nil
 }

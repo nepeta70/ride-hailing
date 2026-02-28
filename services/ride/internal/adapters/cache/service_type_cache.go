@@ -36,15 +36,9 @@ func (c *ServiceTypeCache) GetServiceTypeByCode(ctx context.Context, code string
 }
 
 func (c *ServiceTypeCache) Refresh(ctx context.Context) error {
-	// store, err := c.readRepo.GetAllEnabled(ctx) // TDOO: Implement this method to fetch data from the repository
-	// if err != nil {
-	// 	return err
-	// }
-	store := make(map[string]*domain.ServiceType, 1)
-	store["STANDARD"] = &domain.ServiceType{
-		Code:          "STANDARD",
-		Name:          "Standard ride",
-		MaxPassengers: 3,
+	store, err := c.readRepo.GetAllEnabled(ctx) 
+	if err != nil {
+		return err
 	}
 
 	c.store.Store(&store)
