@@ -78,7 +78,7 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 	}
 
 	if opts.Config.AutoCreate {
-		err := kp.initializeTopics(opts.TopicProvider.AllTopics())
+		err := kp.initializeTopics(opts.TopicProvider.AllTopics(), opts.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -92,12 +92,11 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 	ctx, span := tracer.Start(ctx, "Kafka Publish",
 		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(
-			attribute.String("topic", topic.String()),
-			attribute.String("operation", "publish"),
-			attribute.String("message_type", message.EventType.String()),
+			attribute.String("kafka.topic", topic.String()),
+			attribute.String("kafka.operation", "publish"),
+			attribute.String("kafka.message.type", message.EventType.String()),
 		),
 	)
-
 	defer span.End()
 
 	data, err := json.Marshal(message)
@@ -166,9 +165,15 @@ func (k *KafkaPublisher) ServiceName() string {
 	return "kafka-publisher"
 }
 
-func (k *KafkaPublisher) initializeTopics(required []string) error {
-	retrier := k.retrierFactory.NewExponentialBackoffRetrier(k.ServiceName(), 30*time.Second)
-	err := retrier.Do(context.Background(), func() error {
+func (k *KafkaPublisher) initializeTopics(required []string, config *KafkaConfig) error {
+	ctx, span := k.telemetry.Tracer().Start(context.Background(), "Publisher:Initialize",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Bool("service.init", true)),
+	)
+	defer span.End()
+
+	retrier := k.retrierFactory.NewExponentialBackoffRetrier(k.ServiceName(), config.RebalanceTimeout)
+	err := retrier.Do(ctx, func(ctx context.Context) error {
 		if err := k.EnsureTopics(required...); err != nil {
 			k.telemetry.Logger().Error("Failed to create Kafka topics, will retry", "topics", required, "error", err)
 		} else if k.verify(required) {

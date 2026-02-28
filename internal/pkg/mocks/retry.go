@@ -9,12 +9,12 @@ import (
 
 type NoOpRetrier struct{}
 
-func (r *NoOpRetrier) Do(ctx context.Context, op func() error) error {
-	return op()
+func (r *NoOpRetrier) Do(ctx context.Context, op func(ctx context.Context) error) error {
+	return op(ctx)
 }
 
-func (r *NoOpRetrier) DoWithResult(ctx context.Context, op func() (any, error)) (any, error) {
-	return op()
+func (r *NoOpRetrier) DoWithResult(ctx context.Context, op func(ctx context.Context) (any, error)) (any, error) {
+	return op(ctx)
 }
 
 var _ ports.RetrierInterface = (*NoOpRetrier)(nil)

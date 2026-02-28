@@ -6,28 +6,28 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
-type AcceptRideCommand struct {
+type RideMatchedEvent struct {
 	RequestID uuid.UUID
 	DriverID  uuid.UUID
 	RideID    uuid.UUID
 }
 
-func (c *AcceptRideCommand) MessageName() string {
-	return "AcceptRide"
+func (e *RideMatchedEvent) MessageName() string {
+	return "RideMatched"
 }
 
-func (c *AcceptRideCommand) Validate() error {
-	if c.RequestID == uuid.Nil {
+func (e *RideMatchedEvent) Validate() error {
+	if e.RequestID == uuid.Nil {
 		return errors.NewValidationErrorf("RequestID cannot be empty")
 	}
-	if c.DriverID == uuid.Nil {
+	if e.DriverID == uuid.Nil {
 		return errors.NewValidationErrorf("DriverID cannot be empty")
 	}
-	if c.RideID == uuid.Nil {
+	if e.RideID == uuid.Nil {
 		return errors.NewValidationErrorf("RideID cannot be empty")
 	}
 
 	return nil
 }
 
-var _ ports.MessageInterface = (*AcceptRideCommand)(nil)
+var _ ports.MessageInterface = (*RideMatchedEvent)(nil)

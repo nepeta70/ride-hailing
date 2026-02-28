@@ -7,14 +7,12 @@ import (
 )
 
 type RetrierFactory struct {
-	Logger  ports.Logger
-	Metrics ports.RetryObserver
+	Telemetry ports.TelemetryProvider
 }
 
-func NewRetrierFactory(logger ports.Logger, metrics ports.RetryObserver) *RetrierFactory {
+func NewRetrierFactory(telemetry ports.TelemetryProvider) *RetrierFactory {
 	return &RetrierFactory{
-		Logger:  logger,
-		Metrics: metrics,
+		Telemetry: telemetry,
 	}
 }
 
@@ -23,9 +21,8 @@ func (f *RetrierFactory) NewExponentialBackoffRetrier(serviceName string, timeou
 	opts := &RetryOptions{
 		Config:      cfg,
 		Strategy:    NewExponentialBackoff(cfg),
-		Logger:      f.Logger,
+		Telemetry:   f.Telemetry,
 		ServiceName: serviceName,
-		Metrics:     f.Metrics,
 	}
 
 	return NewRetrier(opts)

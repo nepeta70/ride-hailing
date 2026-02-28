@@ -37,7 +37,7 @@ func main() {
 
 	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+	retrierFactory := retry.NewRetrierFactory(tel)
 
 	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, tel)
 	if err != nil {

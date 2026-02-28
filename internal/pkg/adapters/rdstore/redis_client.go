@@ -22,6 +22,12 @@ type RedisClient struct {
 
 // NewClient returns our wrapped client
 func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, telemetry ports.TelemetryProvider) (*RedisClient, error) {
+	ctx, span := telemetry.Tracer().Start(context.Background(), "Redis:Initialize",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Bool("service.init", true)),
+	)
+	defer span.End()
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Password:     cfg.Password,
@@ -36,11 +42,11 @@ func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, t
 	})
 
 	// Initial check
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
+	ctx, cancel := context.WithTimeout(ctx, cfg.DialTimeout)
 	defer cancel()
 
 	retrier := retrierFactory.NewExponentialBackoffRetrier(redisServiceName, cfg.DialTimeout)
-	err := retrier.Do(ctx, func() error {
+	err := retrier.Do(ctx, func(ctx context.Context) error {
 		err := rdb.Ping(ctx).Err()
 		if err != nil {
 			telemetry.Metrics().DependencyFailure(redisServiceName, "initial_check", "error")

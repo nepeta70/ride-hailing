@@ -14,16 +14,16 @@ type Retrier struct {
 func NewRetrier(opts *RetryOptions) *Retrier {
 	return &Retrier{
 		baseRetrier: baseRetrier{
-			config:   opts.Config,
-			strategy: opts.Strategy,
-			logger:   opts.Logger,
+			config:    opts.Config,
+			strategy:  opts.Strategy,
+			telemetry: opts.Telemetry,
 		},
 	}
 }
 
-func (r *Retrier) Do(ctx context.Context, op func() error) error {
-	_, err := r.DoWithResult(ctx, func() (any, error) {
-		return nil, op()
+func (r *Retrier) Do(ctx context.Context, op func(ctx context.Context) error) error {
+	_, err := r.DoWithResult(ctx, func(ctx context.Context) (any, error) {
+		return nil, op(ctx)
 	})
 	return err
 }

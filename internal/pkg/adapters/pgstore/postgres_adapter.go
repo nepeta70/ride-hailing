@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
@@ -18,6 +19,7 @@ type PostgresOpts struct {
 	Config         *PostgresConfig
 	RetrierFactory ports.RetrierFactoryInterface
 	Telemetry      ports.TelemetryProvider
+	ContextManager *ctxmgr.ContextManager
 }
 
 func (o *PostgresOpts) Validate() error {
@@ -30,6 +32,9 @@ func (o *PostgresOpts) Validate() error {
 	if o.RetrierFactory == nil {
 		return errors.NewValidationErrorf("RetrierFactory is required")
 	}
+	if o.ContextManager == nil {
+		return errors.NewValidationErrorf("ContextManager is required")
+	}
 	return nil
 }
 
@@ -37,6 +42,7 @@ type PostgresDB struct {
 	config       *PostgresConfig
 	retryFactory ports.RetrierFactoryInterface
 	telemetry    ports.TelemetryProvider
+	ctxManager   *ctxmgr.ContextManager
 	*sql.DB
 }
 
@@ -45,23 +51,29 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 		return nil, err
 	}
 
+	ctx, span := opts.Telemetry.Tracer().Start(context.Background(), "Postgres:Initialize",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Bool("service.init", true)),
+	)
+	defer span.End()
+
 	dbConn, err := sql.Open("postgres", opts.Config.DSN())
 	if err != nil {
 		// If the driver name or DSN format is wrong, it's a permanent code/config bug
-		opts.Telemetry.Logger().Error("Failed to open postgres connection", "error", err)
+		opts.Telemetry.Logger().ErrorContext(ctx, "Failed to open postgres connection", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to open postgres connection: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), opts.Config.PingTimeout)
+	ctx, cancel := context.WithTimeout(ctx, opts.Config.PingTimeout)
 	defer cancel()
 
 	retrier := opts.RetrierFactory.NewExponentialBackoffRetrier(postgresServiceName, opts.Config.PingTimeout)
-	err = retrier.Do(ctx, func() error {
+	err = retrier.Do(ctx, func(ctx context.Context) error {
 		return dbConn.PingContext(ctx)
 	})
 
 	if err != nil {
-		opts.Telemetry.Logger().Error("Failed to ping postgres after retries", "error", err)
+		opts.Telemetry.Logger().ErrorContext(ctx, "Failed to ping postgres after retries", "error", err)
 		return nil, errors.NewPermanentErrorf("failed to ping postgres: %w", err)
 	}
 
@@ -69,6 +81,7 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 		config:       opts.Config,
 		telemetry:    opts.Telemetry,
 		retryFactory: opts.RetrierFactory,
+		ctxManager:   opts.ContextManager,
 		DB:           dbConn,
 	}
 	return db, nil
@@ -79,7 +92,7 @@ func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.T
 	defer cancel()
 	tx, err := db.DB.BeginTx(beginCtx, opts)
 	if err != nil {
-		db.telemetry.Logger().Error("Failed to begin postgres transaction", "error", err)
+		db.telemetry.Logger().ErrorContext(ctx, "Failed to begin postgres transaction", "error", err)
 		return nil, errors.NewTransientErrorf("failed to begin postgres transaction: %w", err)
 	}
 	return &PostgresTx{tx}, nil
@@ -107,21 +120,14 @@ func (db *PostgresDB) Close() error {
 
 // QueryContext wraps the standard sql.DB QueryContext with retries and timeouts
 func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	tracer := db.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, "DB Query",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("db.system", "postgres"),
-			attribute.String("db.statement", query),
-		),
-	)
-	defer span.End()
+	traceSpan := db.TraceSpan(ctx, "DB Query", query)
+	defer traceSpan.End()
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
 
-	db.telemetry.Logger().Debug("Executing query with retry", "query", query)
+	db.telemetry.Logger().DebugContext(ctx, "Executing query with retry", "query", query)
 	var rows *sql.Rows
-	err := strategy.Do(ctx, func() error {
+	err := strategy.Do(ctx, func(ctx context.Context) error {
 		var err error
 		rows, err = db.DB.QueryContext(ctx, query, args...)
 		if err != nil {
@@ -132,26 +138,19 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 		}
 		return nil
 	})
-	db.telemetry.Logger().Debug("Query returned rows", "rows", rows, "error", err)
+	db.telemetry.Logger().DebugContext(ctx, "Query returned rows", "rows", rows, "error", err)
 	return rows, err
 }
 
 // ExecContext follows the same pattern for INSERT/UPDATE/DELETE
 func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	tracer := db.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, "DB Exec",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("db.system", "postgres"),
-			attribute.String("db.statement", query),
-		),
-	)
-	defer span.End()
+	traceSpan := db.TraceSpan(ctx, "DB Exec", query)
+	defer traceSpan.End()
 	var res sql.Result
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
 
-	err := strategy.Do(ctx, func() error {
+	err := strategy.Do(ctx, func(ctx context.Context) error {
 		var err error
 		res, err = db.DB.ExecContext(ctx, query, args...)
 		if err != nil {
@@ -163,6 +162,22 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 	})
 
 	return res, err
+}
+
+func (db *PostgresDB) TraceSpan(ctx context.Context, spanName string, query string) trace.Span {
+	info, _ := db.ctxManager.Extract(ctx)
+
+	tracer := db.telemetry.Tracer()
+	ctx, span := tracer.Start(ctx, spanName,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("db.system", "postgres"),
+			attribute.String("db.statement", query),
+			attribute.String("sender.id", info.Sender.ID.String()),
+			attribute.String("request.id", info.Trace.RequestID.String()),
+		),
+	)
+	return span
 }
 
 // PostgresTx wraps *sql.Tx to satisfy ports.Transaction

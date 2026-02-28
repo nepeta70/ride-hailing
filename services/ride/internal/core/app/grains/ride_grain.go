@@ -19,6 +19,10 @@ import (
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
 )
 
+const (
+	rideGrain = "RideGrain"
+)
+
 type RideGrainOptions struct {
 	Storage        ports.GrainStorage
 	EventPub       pkgPorts.EventPublisher
@@ -85,14 +89,7 @@ func (g *RideGrain) GetIdentity() *grain.GrainIdentity {
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
 	g.identity = identity
 
-	ctx, span := g.telemetry.Tracer().Start(ctx, "Ride Grain",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("system", "grain"),
-			attribute.String("operation", "Activate"),
-			attribute.String("identity", identity.String()),
-		),
-	)
+	ctx, span := g.TraceSpan(ctx, "OnActivate")
 	defer span.End()
 
 	// Try to load existing state from storage
@@ -131,16 +128,8 @@ func (g *RideGrain) OnDeactivate(ctx context.Context) error {
 
 func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPorts.Message, error) {
 	messageType := fmt.Sprintf("%T", msg)
-	ctx, span := g.telemetry.Tracer().Start(ctx, "Ride Grain",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("system", "grain"),
-			attribute.String("operation", "Receive"),
-			attribute.String("identity", g.identity.String()),
-			attribute.String("message_type", messageType),
-			attribute.String("status", g.state.Status.String()),
-		),
-	)
+	ctx, span := g.TraceSpan(ctx, "OnReceive")
+	span.SetAttributes(attribute.String("message.type", messageType))
 	defer span.End()
 
 	if slices.Contains(terminalStates, g.state.Status) {
@@ -152,19 +141,21 @@ func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPor
 	}
 
 	g.telemetry.Logger().DebugContext(ctx, "Receiving message", "type", messageType)
-	switch cmd := msg.(type) {
+	switch message := msg.(type) {
 	case *RequestRideCommand:
-		return g.handleRequestRide(ctx, cmd)
+		return g.handleRequestRide(ctx, message)
 	case *CancelRideCommand:
-		return g.handleCancelRide(ctx, cmd)
+		return g.handleCancelRide(ctx, message)
+	case *RideMatchedEvent:
+		return g.handleRideMatched(ctx, message)
 	case *AcceptRideCommand:
-		return g.handleAcceptRide(ctx, cmd)
+		return g.handleAcceptRide(ctx, message)
 	case *RejectRideCommand:
-		return g.handleRejectRide(ctx, cmd)
+		return g.handleRejectRide(ctx, message)
 	case *CompleteRideCommand:
-		return g.handleCompleteRide(ctx, cmd)
+		return g.handleCompleteRide(ctx, message)
 	case *StartRideCommand:
-		return g.handleStartRide(ctx, cmd)
+		return g.handleStartRide(ctx, message)
 
 	default:
 		return nil, errors.NewPermanentErrorf("unhandled message type: %T", msg)
@@ -194,7 +185,7 @@ func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideComma
 
 	// Persist state and publish event
 	data := &domain.GrainData{
-		Command:  cmd,
+		Message:  cmd,
 		Identity: g.identity,
 		Core:     g.core,
 		State:    g.state,
@@ -239,7 +230,7 @@ func (g *RideGrain) handleCancelRide(ctx context.Context, cmd *CancelRideCommand
 
 	// Persist state and publish event
 	data := &domain.GrainData{
-		Command:  cmd,
+		Message:  cmd,
 		Identity: g.identity,
 		Core:     g.core,
 		State:    g.state,
@@ -276,7 +267,7 @@ func (g *RideGrain) handleAcceptRide(ctx context.Context, cmd *AcceptRideCommand
 
 	// Persist state and publish event
 	data := &domain.GrainData{
-		Command:  cmd,
+		Message:  cmd,
 		Identity: g.identity,
 		Core:     g.core,
 		State:    g.state,
@@ -334,7 +325,7 @@ func (g *RideGrain) handleStartRide(ctx context.Context, cmd *StartRideCommand) 
 
 	// Persist state and publish event
 	data := &domain.GrainData{
-		Command:  cmd,
+		Message:  cmd,
 		Identity: g.identity,
 		Core:     g.core,
 		State:    g.state,
@@ -371,7 +362,7 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 
 	// Persist state and publish event
 	data := &domain.GrainData{
-		Command:  cmd,
+		Message:  cmd,
 		Identity: g.identity,
 		Core:     g.core,
 		State:    g.state,
@@ -387,6 +378,43 @@ func (g *RideGrain) handleCompleteRide(ctx context.Context, cmd *CompleteRideCom
 		RideID:    cmd.RideID,
 	}
 	err := g.publishEvent(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	return &SuccessResponse{}, nil
+}
+
+func (g *RideGrain) handleRideMatched(ctx context.Context, event *RideMatchedEvent) (pkgPorts.Message, error) {
+	if err := event.Validate(); err != nil {
+		return nil, err
+	}
+
+	if g.state.Status != domain.RideStatusRequested {
+		return nil, errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusMatched)
+	}
+
+	g.state.Status = domain.RideStatusMatched
+	g.state.DriverID = &event.DriverID
+	g.version++
+
+	// Persist state and publish event
+	data := &domain.GrainData{
+		Message:  event,
+		Identity: g.identity,
+		Core:     g.core,
+		State:    g.state,
+		Version:  g.version,
+	}
+	if err := g.storage.Persist(ctx, g.identity, data); err != nil {
+		return nil, errors.NewTransientErrorf("failed to save ride state: %w", err)
+	}
+
+	ev := &contracts.RideMatchedEvent{
+		RequestID: event.RequestID,
+		DriverID:  event.DriverID,
+		RideID:    event.RideID,
+	}
+	err := g.publishEvent(ctx, ev)
 	if err != nil {
 		return nil, err
 	}
@@ -411,4 +439,17 @@ func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) err
 		return errors.NewTransientErrorf("failed to publish event %s: %w", event.EventType(), err)
 	}
 	return nil
+}
+
+func (g *RideGrain) TraceSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+	ctx, span := g.telemetry.Tracer().Start(ctx, rideGrain+"."+method,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("grain.kind", g.identity.Kind.String()),
+			attribute.String("grain.identity", g.identity.EntityID.String()),
+			attribute.String("grain.status", g.state.Status.String()),
+			attribute.Int("grain.version", g.version),
+		),
+	)
+	return ctx, span
 }

@@ -77,9 +77,8 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Ride Event",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
-			attribute.String("topic", contracts.TopicRide.String()),
-			attribute.String("operation", "consume"),
-			attribute.String("message_type", "RideEvent"),
+			attribute.String("kafka.topic", contracts.TopicRide.String()),
+			attribute.String("kafka.operation", "consume"),
 		),
 	)
 
@@ -90,6 +89,7 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		a.telemetry.Logger().ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
+	span.SetAttributes(attribute.String("message.type", event.EventType.String()))
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {
@@ -99,6 +99,7 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 	a.contextManager.Inject(ctx, info)
 	switch event.EventType {
 	case contracts.EventTypeRideRequested:
+		span.SetAttributes(attribute.Bool("consumed", true))
 		var payload contracts.RideRequestedEvent
 		payloadBytes, _ := json.Marshal(event.Payload)
 		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
@@ -114,6 +115,7 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 
 	default:
+		span.SetAttributes(attribute.Bool("skipped", true))
 	}
 
 	return nil

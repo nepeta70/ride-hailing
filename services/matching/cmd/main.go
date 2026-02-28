@@ -37,7 +37,7 @@ func main() {
 
 	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+	retrierFactory := retry.NewRetrierFactory(tel)
 
 	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
@@ -118,7 +118,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&matchingv1.MatchingService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, publisher)
+	grpcServer.MonitorHealth(ctx, publisher, subscriber)
 
 	grpcServer.Run(ctx)
 }

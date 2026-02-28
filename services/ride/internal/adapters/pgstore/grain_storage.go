@@ -32,7 +32,7 @@ func (s *GrainStorage) Persist(ctx context.Context, identity *grain.GrainIdentit
 		return errors.NewErrJSONMarshal(err)
 	}
 
-	commandJSON, err := json.Marshal(data.Command)
+	commandJSON, err := json.Marshal(data.Message)
 	if err != nil {
 		return errors.NewErrJSONMarshal(err)
 	}
@@ -57,7 +57,7 @@ func (s *GrainStorage) Persist(ctx context.Context, identity *grain.GrainIdentit
 		identity.Kind,
 		identity.EntityID,
 		data.Version,
-		data.Command.CommandName(),
+		data.Message.MessageName(),
 		commandJSON,
 		coreJSON,
 		stateJSON,

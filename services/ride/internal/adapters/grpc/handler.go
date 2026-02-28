@@ -26,10 +26,11 @@ type RideHandler struct {
 	application   *app.Application
 	storageBundle ports.StorageBundle
 	grainSystem   *app.GrainSystem
+	telemetry     pkgPorts.TelemetryProvider
 }
 
-func NewRideHandler(application *app.Application, storageBundle ports.StorageBundle, grainSystem *app.GrainSystem) *RideHandler {
-	return &RideHandler{application: application, storageBundle: storageBundle, grainSystem: grainSystem}
+func NewRideHandler(application *app.Application, storageBundle ports.StorageBundle, grainSystem *app.GrainSystem, telemetry pkgPorts.TelemetryProvider) *RideHandler {
+	return &RideHandler{application: application, storageBundle: storageBundle, grainSystem: grainSystem, telemetry: telemetry}
 }
 
 func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimateRequest) (*ridev1.FareEstimateResponse, error) {
@@ -146,7 +147,7 @@ func (h *RideHandler) AcceptOrRejectRide(ctx context.Context, req *ridev1.Accept
 
 	rideID := uuid.MustParse(req.GetRideId())
 
-	var cmd pkgPorts.Command
+	var cmd pkgPorts.MessageInterface
 	if req.GetAccept() {
 		cmd = &grains.AcceptRideCommand{
 			RequestID: info.Trace.RequestID,
@@ -262,7 +263,7 @@ func (h *RideHandler) getInfoFromMetadata(ctx context.Context) (*ctxmgr.RequestI
 
 	if !ok {
 		e := "no metadata found in context"
-		h.application.Logger.Error(e)
+		h.telemetry.Logger().ErrorContext(ctx, e)
 		return nil, errors.NewPermanentError(e)
 	}
 	return info, nil
