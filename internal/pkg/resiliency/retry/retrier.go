@@ -17,6 +17,7 @@ func NewRetrier(opts *RetryOptions) *Retrier {
 			config:    opts.Config,
 			strategy:  opts.Strategy,
 			telemetry: opts.Telemetry,
+			serviceName: opts.ServiceName,
 		},
 	}
 }
