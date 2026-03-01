@@ -207,7 +207,7 @@ func (g *RideGrain) handleCancelRide(ctx context.Context, cmd *CancelRideCommand
 			if g.core.RiderID != cmd.RiderID {
 				return errors.NewBusinessErrorf("only the rider can cancel the ride")
 			}
-			if g.state.Status != domain.RideStatusRequested && g.state.Status != domain.RideStatusAccepted {
+			if g.state.Status != domain.RideStatusRequested && g.state.Status != domain.RideStatusMatched && g.state.Status != domain.RideStatusAccepted {
 				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusCancelled)
 			}
 			return nil
@@ -234,7 +234,7 @@ func (g *RideGrain) handleAcceptRide(ctx context.Context, cmd *AcceptRideCommand
 	return p.
 		Step("ValidateMessage", func(_ context.Context) error { return cmd.Validate() }).
 		Step("ValidateTransition", func(ctx context.Context) error {
-			if g.state.Status != domain.RideStatusRequested {
+			if g.state.Status != domain.RideStatusMatched {
 				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusAccepted)
 			}
 			return nil
@@ -368,7 +368,10 @@ func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) err
 			"ride_id", g.identity.EntityID)
 	}
 	message := contracts.NewEventMessage(event)
-	message.AddHeaders(info.ToByteMap())
+	if ok {
+		message.AddHeaders(info.ToByteMap())
+	}
+
 	err := g.eventPub.Publish(ctx, contracts.TopicRide, message)
 	if err != nil {
 		g.telemetry.Logger().ErrorContext(ctx, "Failed to publish event",

@@ -79,19 +79,23 @@ func (g *GoogleMapsAdapter) ServiceName() string {
 }
 
 func (g *GoogleMapsAdapter) GetDirections(ctx context.Context, origin, destination *core.Coordinates) (*domain.DirectionsResponse, error) {
-	info, _ := g.ctxManager.Extract(ctx)
-
 	tracer := g.telemetry.Tracer()
 	ctx, span := tracer.Start(ctx, "Google Maps GetDirections",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
-			attribute.String("sender.id", info.Sender.ID.String()),
-			attribute.String("request.id", info.Trace.RequestID.String()),
 			attribute.String("origin", origin.String()),
 			attribute.String("destination", destination.String()),
 		),
 	)
 	defer span.End()
+
+	info, ok := g.ctxManager.Extract(ctx)
+	if ok {
+		span.SetAttributes(
+			attribute.String("sender.id", info.Sender.ID.String()),
+			attribute.String("request.id", info.Trace.RequestID.String()),
+		)
+	}
 
 	routes, _, err := g.client.Directions(ctx, &maps.DirectionsRequest{
 		Origin:        origin.String(),

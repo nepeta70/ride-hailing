@@ -84,31 +84,38 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 
 	defer span.End()
 
-	var event contracts.EventMessage
-	if err := json.Unmarshal(msg, &event); err != nil {
+	var envelope struct {
+		Payload json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(msg, &envelope); err != nil {
 		a.telemetry.Logger().ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
-	span.SetAttributes(attribute.String("message.type", event.EventType.String()))
+
+	// Read event type from headers
+	eventType, ok := headers["event-type"]
+	if !ok || eventType == "" {
+		return errors.NewValidationErrorf("missing event-type header")
+	}
+	evt := contracts.EventType(eventType)
+	span.SetAttributes(attribute.String("message.type", evt.String()))
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {
 		a.telemetry.Logger().ErrorContext(ctx, "Failed to create RequestInfo from headers")
 		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
 	}
-	a.contextManager.Inject(ctx, info)
-	switch event.EventType {
+	ctx = a.contextManager.Inject(ctx, info)
+	switch evt {
 	case contracts.EventTypeRideRequested:
 		span.SetAttributes(attribute.Bool("consumed", true))
 		var payload contracts.RideRequestedEvent
-		payloadBytes, _ := json.Marshal(event.Payload)
-		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			return errors.NewErrJSONUnmarshal(err)
 		}
-		rideEvent := &payload
 
-		a.telemetry.Logger().DebugContext(ctx, "Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
-		_, err := a.service.MatchRiderToDriver(ctx, headers, rideEvent)
+		a.telemetry.Logger().DebugContext(ctx, "Received RideRequestedEvent", "ride_id", payload.RideID.String())
+		_, err := a.service.MatchRiderToDriver(ctx, headers, &payload)
 		if err != nil {
 			a.telemetry.Logger().ErrorContext(ctx, "Error matching rider to driver", "error", err)
 			return err

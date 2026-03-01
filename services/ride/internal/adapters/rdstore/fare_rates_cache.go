@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
-	rd "github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
@@ -28,7 +27,7 @@ type FareRatesCache struct {
 }
 
 func NewFareRatesCache(config *config.Config, repo ports.FareRatesReadRepository, redis *rdstore.RedisClient) (*FareRatesCache, error) {
-	fareRatesCache, err := rd.NewGenericCache[[]*domain.FareRate](redis)
+	fareRatesCache, err := rdstore.NewGenericCache[[]*domain.FareRate](redis)
 	if err != nil {
 		return nil, err
 	}

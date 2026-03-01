@@ -131,18 +131,24 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 }
 
 func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
-	reqInfo, _ := r.ctxMgr.Extract(ctx)
 
 	ctx, span := r.client.TraceSpan(ctx, "GEORADIUS", "read", indexKey)
 	defer span.End()
 
+	reqInfo, ok := r.ctxMgr.Extract(ctx)
+
+	if ok {
+		span.SetAttributes(
+			attribute.String("request.id", reqInfo.Trace.RequestID.String()),
+			attribute.String("rider.id", reqInfo.Sender.ID.String()),
+		)
+	}
 	span.SetAttributes(
-		attribute.String("request.id", reqInfo.Trace.RequestID.String()),
-		attribute.String("rider.id", reqInfo.Sender.ID.String()),
 		attribute.Float64("search.lat", coordinates.Latitude),
 		attribute.Float64("search.lon", coordinates.Longitude),
 		attribute.Float64("search.radius_km", float64(radiusKm)),
 	)
+
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// 1. Query Geospatial Index

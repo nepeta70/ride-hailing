@@ -86,13 +86,13 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 
 	maxMsgSize := int(opts.Config.Security.MaxBodyBytes)
 	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(maxMsgSize),
-		grpc.MaxSendMsgSize(maxMsgSize),
 		grpc.StatsHandler(otelgrpc.NewServerHandler(
 			otelgrpc.WithTracerProvider(opts.Telemetry.TracerProvider()),
 			otelgrpc.WithMeterProvider(opts.Telemetry.MeterProvider()),
 			otelgrpc.WithPropagators(opts.Telemetry.Propagator()),
 		)),
+		grpc.MaxRecvMsgSize(maxMsgSize),
+		grpc.MaxSendMsgSize(maxMsgSize),
 		grpc.ChainUnaryInterceptor(filteredChain.FilteredChain()),
 	)
 

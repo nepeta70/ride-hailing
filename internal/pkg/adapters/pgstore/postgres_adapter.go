@@ -91,17 +91,7 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 }
 
 func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.Transaction, error) {
-	info, _ := db.ctxManager.Extract(ctx)
-
-	tracer := db.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, "DB BeginTx",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("db.system", "postgres"),
-			attribute.String("sender.id", info.Sender.ID.String()),
-			attribute.String("request.id", info.Trace.RequestID.String()),
-		),
-	)
+	span := db.TraceSpan(ctx, "Begin Postgres Transaction")
 	defer span.End()
 
 	beginCtx, cancel := context.WithTimeout(ctx, db.config.QueryTimeout)
@@ -120,7 +110,6 @@ func (db *PostgresDB) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, db.config.PingTimeout)
 	defer cancel()
 	if err := db.DB.PingContext(ctx); err != nil {
-		// Database being unreachable is a transient infrastructure issue
 		db.telemetry.Logger().DebugContext(ctx, "Postgres health check failed", "error", err)
 		db.telemetry.Metrics().DependencyFailure(db.ServiceName(), "health_check", "error")
 
@@ -139,8 +128,12 @@ func (db *PostgresDB) Close() error {
 
 // QueryContext wraps the standard sql.DB QueryContext with retries and timeouts
 func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	span := db.TraceSpan(ctx, "DB Query", query)
+	span := db.TraceSpan(ctx, "DB Query")
 	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("query", query),
+	)
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
 
@@ -164,8 +157,12 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 
 // ExecContext follows the same pattern for INSERT/UPDATE/DELETE
 func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	span := db.TraceSpan(ctx, "DB Exec", query)
+	span := db.TraceSpan(ctx, "DB Exec")
 	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("query", query),
+	)
 	var res sql.Result
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
@@ -185,19 +182,22 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 	return res, err
 }
 
-func (db *PostgresDB) TraceSpan(ctx context.Context, spanName string, query string) trace.Span {
-	info, _ := db.ctxManager.Extract(ctx)
-
+func (db *PostgresDB) TraceSpan(ctx context.Context, spanName string) trace.Span {
 	tracer := db.telemetry.Tracer()
 	ctx, span := tracer.Start(ctx, spanName,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("db.system", "postgres"),
-			attribute.String("db.statement", query),
-			attribute.String("sender.id", info.Sender.ID.String()),
-			attribute.String("request.id", info.Trace.RequestID.String()),
 		),
 	)
+
+	info, ok := db.ctxManager.Extract(ctx)
+	if ok {
+		span.SetAttributes(
+			attribute.String("sender.id", info.Sender.ID.String()),
+			attribute.String("request.id", info.Trace.RequestID.String()),
+		)
+	}
 	return span
 }
 

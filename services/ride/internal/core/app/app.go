@@ -126,31 +126,42 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 	)
 	defer span.End()
 
-	var event contracts.EventMessage
-	if err := json.Unmarshal(msg, &event); err != nil {
+	var envelope struct {
+		Payload json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(msg, &envelope); err != nil {
 		a.telemetry.Logger().ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
-	span.SetAttributes(attribute.String("message.type", event.EventType.String()))
+	// Read event type from headers
+	eventType, ok := headers["event-type"]
+	if !ok || eventType == "" {
+		span.SetAttributes(attribute.String("error", "missing event-type header"))
+		a.telemetry.Logger().ErrorContext(ctx, "Missing event-type header in message")
+		return errors.NewValidationErrorf("missing event-type header")
+	}
+	evt := contracts.EventType(eventType)
+	span.SetAttributes(attribute.String("message.type", evt.String()))
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
-	if !ok {
+	if ok {
+		ctx = a.ContextManager.Inject(ctx, info)
+	} else {
+		span.SetAttributes(attribute.String("error", "failed to create RequestInfo from headers"))
 		a.telemetry.Logger().ErrorContext(ctx, "Failed to create RequestInfo from headers")
 		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
 	}
-	a.ContextManager.Inject(ctx, info)
-	switch event.EventType {
+
+	switch evt {
 	case contracts.EventTypeRideMatched:
 		var payload contracts.RideMatchedEvent
-		payloadBytes, _ := json.Marshal(event.Payload)
-		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			return errors.NewErrJSONUnmarshal(err)
 		}
-		rideEvent := &payload
 
 		ev := &grains.RideMatchedEvent{
-			RideID:    rideEvent.RideID,
-			DriverID:  rideEvent.DriverID,
+			RideID:    payload.RideID,
+			DriverID:  payload.DriverID,
 			RequestID: info.Trace.RequestID,
 		}
 		identity := grain.NewGrainIdentity(domain.RideGrainKind, ev.RideID)
