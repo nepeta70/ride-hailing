@@ -118,7 +118,7 @@ func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareComm
 	distanceInKm := directions.DistanceMeters / 1000.0
 	for _, rate := range fareRates {
 		fareAmount := rate.BaseFare + (rate.FarePerKm * distanceInKm) + (rate.FarePerMinute * directions.DurationMinutes.Minutes())
-		fares[rate.ServiceType] = math.Max(rate.MinimumFare, fareAmount)
+		fares[rate.ServiceType] = math.Round(math.Max(rate.MinimumFare, fareAmount))
 	}
 
 	record := &domain.Fares{

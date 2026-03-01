@@ -25,8 +25,7 @@ ON fare_rates (country_code, is_active);
 CREATE TABLE fare_rates_audit (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fare_rate_id UUID NOT NULL, 
-    version INT NOT NULL,       -- 1 = Created, 2+ = Updated
-    
+    version INT NOT NULL,       -- 1 = Created, 2+ = Updated   
     -- Snapshot of the data at that version
     base_fare NUMERIC(12, 2) NOT NULL,
     cost_per_km NUMERIC(12, 2) NOT NULL,
@@ -45,7 +44,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- If it's an UPDATE, increment the version in the main table record
     IF (TG_OP = 'UPDATE') THEN
-        NEW.current_version = OLD.current_version + 1;
+        NEW.version = OLD.version + 1;
     END IF;
 
     -- Insert the snapshot into the audit table
@@ -56,16 +55,14 @@ BEGIN
         cost_per_km,
         cost_per_minute,
         minimum_fare,
-        is_active,
         version_by
     ) VALUES (
         NEW.id,
-        NEW.current_version,
+        NEW.version,
         NEW.base_fare,
         NEW.cost_per_km,
         NEW.cost_per_minute,
         NEW.minimum_fare,
-        NEW.is_active,
         NEW.version_by
     );
 

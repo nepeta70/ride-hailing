@@ -21,7 +21,7 @@ func NewCacheService(client *redis.Client) (ports.CacheService, error) {
 	return &redisCache{client: client}, nil
 }
 
-func (s *redisCache) GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error {
+func (s *redisCache) GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func(ctx context.Context) (any, error)) error {
 	// 1. Try Cache
 	val, err := s.client.Get(ctx, key).Result()
 	if err == nil {
@@ -29,7 +29,7 @@ func (s *redisCache) GetOrSet(ctx context.Context, key string, ttl time.Duration
 	}
 
 	// 2. Cache Miss - Fetch from source
-	data, err := fetch()
+	data, err := fetch(ctx)
 	if err != nil {
 		return err
 	}
@@ -43,3 +43,51 @@ func (s *redisCache) GetOrSet(ctx context.Context, key string, ttl time.Duration
 	// 4. Backfill Redis
 	return s.client.Set(ctx, key, bytes, ttl).Err()
 }
+
+var _ ports.CacheService = (*redisCache)(nil)
+
+type genericCache[T any] struct {
+	client *RedisClient
+}
+
+func NewGenericCache[T any](client *RedisClient) (*genericCache[T], error) {
+	if client == nil {
+		return nil, errors.NewValidationErrorf("redis client is required")
+	}
+	return &genericCache[T]{client: client}, nil
+}
+
+func (c *genericCache[T]) GetOrSet(
+    ctx context.Context,
+    key string,
+    ttl time.Duration,
+    fetch func(context.Context) (T, error),
+) (T, error) {
+    var zero T
+
+    val, err := c.client.Rdb.Get(ctx, key).Result()
+    if err == nil {
+        var out T
+        if err := json.Unmarshal([]byte(val), &out); err != nil {
+            return zero, err
+        }
+        return out, nil
+    }
+    if err != redis.Nil {
+        return zero, err
+    }
+
+    out, err := fetch(ctx)
+    if err != nil {
+        return zero, err
+    }
+
+    b, err := json.Marshal(out)
+    if err == nil {
+        _ = c.client.Rdb.Set(ctx, key, b, ttl).Err() // don't fail main flow on cache write
+    }
+
+    return out, nil
+}
+
+var _ ports.GenericCache[any] = (*genericCache[any])(nil)

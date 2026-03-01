@@ -26,7 +26,16 @@ type HealthProvider interface {
 
 type CacheService interface {
 	// GetOrSet handles the lookup, miss, and backfill logic
-	GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func() (any, error)) error
+	GetOrSet(ctx context.Context, key string, ttl time.Duration, dest any, fetch func(ctx context.Context) (any, error)) error
+}
+
+type GenericCache[T any] interface {
+	GetOrSet(
+		ctx context.Context,
+		key string,
+		ttl time.Duration,
+		fetch func(context.Context) (T, error),
+	) (T, error)
 }
 
 type MessageHandler func(ctx context.Context, headers map[string]string, msg []byte) error
