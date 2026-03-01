@@ -103,7 +103,7 @@ func TestNewSilo(t *testing.T) {
 			name: "creates silo with valid options",
 			opts: &SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			},
 			wantNil: false,
@@ -112,7 +112,7 @@ func TestNewSilo(t *testing.T) {
 			name: "creates silo with minimal timeout",
 			opts: &SiloOptions{
 				Timeout:        1 * time.Millisecond,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			},
 			wantNil: false,
@@ -164,7 +164,7 @@ func TestSilo_RegisterFactory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -229,7 +229,7 @@ func TestSilo_GetOrActivate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -317,7 +317,7 @@ func TestSilo_Tell(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -415,7 +415,7 @@ func TestSilo_Ask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -489,7 +489,7 @@ func TestSilo_Deactivate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -581,7 +581,7 @@ func TestSilo_Reset(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			silo, _ := NewSilo(&SiloOptions{
 				Timeout:        5 * time.Second,
-				Telemetry:      &mocks.MockTelemetryProvider{},
+				Telemetry:      mocks.NewMockTelemetryProvider(),
 				RetrierFactory: retryFactory,
 			})
 
@@ -627,7 +627,7 @@ func TestSilo_Concurrency(t *testing.T) {
 	t.Run("concurrent activations of same grain", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
 			Timeout:        5 * time.Second,
-			Telemetry:      &mocks.MockTelemetryProvider{},
+			Telemetry:      mocks.NewMockTelemetryProvider(),
 			RetrierFactory: retryFactory,
 		})
 
@@ -669,7 +669,7 @@ func TestSilo_Concurrency(t *testing.T) {
 	t.Run("concurrent tell operations", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
 			Timeout:        5 * time.Second,
-			Telemetry:      &mocks.MockTelemetryProvider{},
+			Telemetry:      mocks.NewMockTelemetryProvider(),
 			RetrierFactory: retryFactory,
 		})
 
@@ -719,7 +719,7 @@ func TestSilo_ContextTimeout(t *testing.T) {
 	t.Run("tell respects context timeout", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
 			Timeout:        1 * time.Millisecond,
-			Telemetry:      &mocks.MockTelemetryProvider{},
+			Telemetry:      mocks.NewMockTelemetryProvider(),
 			RetrierFactory: retryFactory,
 		})
 
@@ -753,7 +753,7 @@ func TestSilo_ContextTimeout(t *testing.T) {
 	t.Run("ask respects context timeout", func(t *testing.T) {
 		silo, _ := NewSilo(&SiloOptions{
 			Timeout:        1 * time.Millisecond,
-			Telemetry:      &mocks.MockTelemetryProvider{},
+			Telemetry:      mocks.NewMockTelemetryProvider(),
 			RetrierFactory: retryFactory,
 		})
 

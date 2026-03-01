@@ -80,7 +80,7 @@ type MockTracer struct {
 }
 
 func (m *MockTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	s := &MockSpan{name: spanName}
+	s := &MockSpan{name: spanName, Span: trace.SpanFromContext(ctx)}
 	return ctx, s
 }
 

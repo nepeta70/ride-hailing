@@ -397,7 +397,6 @@ func (g *RideGrain) traceSpan(ctx context.Context, method string) (context.Conte
 }
 
 func (g *RideGrain) persist(ctx context.Context, msg pkgPorts.MessageInterface) error {
-	// Persist state and publish event
 	data := &domain.GrainData{
 		Message:  msg,
 		Identity: g.identity,
