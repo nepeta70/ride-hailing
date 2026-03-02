@@ -43,27 +43,27 @@ func main() {
 
 	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+	retrierFactory := retry.NewRetrierFactory(tel)
 
-	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, logger, tel.Metrics())
+	redisClient, err := rd.NewClient(&cfg.Redis, retrierFactory, tel)
 	if err != nil {
 		logger.Error("Failed to init Redis:", "error", err)
 		return
 	}
 	defer redisClient.Close()
 
+	contextManager := ctxmgr.NewContextManager()
 	pg, err := pgstore.NewPostgresDB(&pgstore.PostgresOpts{
 		Config:         &cfg.Postgres,
-		Logger:         logger,
 		RetrierFactory: retrierFactory,
-		Metrics:        tel.Metrics(),
+		Telemetry:      tel,
+		ContextManager: contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create Postgres DB:", "error", err)
 		return
 	}
 
-	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
 	eventPublisher, err := pubsub.NewEventPublisher(&pubsub.KafkaPublisherOptions{
 		Config:         cfg.Kafka,
@@ -77,6 +77,18 @@ func main() {
 		return
 	}
 	defer eventPublisher.Close()
+
+	subscriber, err := pubsub.NewKafkaSubscriber(&pubsub.KafkaSubscriberOptions{
+		Config:         cfg.Kafka,
+		GroupID:        cfg.ServiceName,
+		RetrierFactory: retrierFactory,
+		Telemetry:      tel,
+	})
+	if err != nil {
+		logger.Error("Failed to create event subscriber:", "error", err)
+		return
+	}
+	defer subscriber.Close()
 
 	storage, err := adapters.NewRedisStorageBundle(&adapters.StorageBundleOptions{
 		Config:   cfg,
@@ -93,7 +105,8 @@ func main() {
 	googleMaps, err := googlemaps.NewGoogleMapsAdapter(&googlemaps.GoogleMapsAdapterOptions{
 		APIKey:          cfg.KeysConfig.GoogleMapsAPIKey,
 		FallBackService: service.NewDirectionsEstimator(),
-		Logger:          logger,
+		Telemetry:       tel,
+		ContextManager:  contextManager,
 	})
 	if err != nil {
 		logger.Error("Failed to create Google Maps adapter:", "error", err)
@@ -105,7 +118,7 @@ func main() {
 		GrainTimeout:   cfg.Timeouts.RequestTimeout,
 		Storage:        storage.GrainStorage(),
 		EventPublisher: eventPublisher,
-		Logger:         logger,
+		Telemetry:      tel,
 		RetrierFactory: retrierFactory,
 		ContextManager: contextManager,
 	})
@@ -115,23 +128,29 @@ func main() {
 	}
 	application, err := app.NewApplication(&app.ApplicationOptions{
 		Config:            cfg,
-		Logger:            logger,
+		Telemetry:         tel,
 		DirectionsService: googleMaps,
 		Storage:           storage,
 		GrainSystem:       grainSystem,
-		ContextManager:    ctxmgr.NewContextManager(),
+		ContextManager:    contextManager,
+		Subscriber:        subscriber,
 	})
 	if err != nil {
 		logger.Error("Failed to create application:", "error", err)
 		return
 	}
+	err = application.Start(ctx)
+	if err != nil {
+		logger.Error("Failed to start application:", "error", err)
+		return
+	}
 
-	handler := grpcHandler.NewRideHandler(application, storage, grainSystem)
+	handler := grpcHandler.NewRideHandler(application, storage, grainSystem, tel)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
 		Config:            &cfg.BaseConfig,
 		Logger:            logger,
-		ContextManager:    ctxmgr.NewContextManager(),
+		ContextManager:    contextManager,
 		AuthConfiguration: grpcHandler.NewEndpointRoles(&cfg.BaseConfig),
 		Telemetry:         tel,
 	}
@@ -142,7 +161,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&ridev1.RideService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, redisClient, pg, eventPublisher)
+	grpcServer.MonitorHealth(ctx, redisClient, pg, eventPublisher, subscriber)
 
 	grpcServer.Run(ctx)
 }

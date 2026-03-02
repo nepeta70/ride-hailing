@@ -14,5 +14,6 @@ message MatchingRequest {
   string ride_id = 1;
 }
 message MatchingResponse {
-  string driver_id = 1;
+  string ride_id = 1;
+  string driver_id = 2;
 }

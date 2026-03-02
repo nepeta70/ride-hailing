@@ -68,7 +68,8 @@ func (x *MatchingRequest) GetRideId() string {
 
 type MatchingResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	DriverId      string                 `protobuf:"bytes,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	RideId        string                 `protobuf:"bytes,1,opt,name=ride_id,json=rideId,proto3" json:"ride_id,omitempty"`
+	DriverId      string                 `protobuf:"bytes,2,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -103,6 +104,13 @@ func (*MatchingResponse) Descriptor() ([]byte, []int) {
 	return file_matching_v1_matching_proto_rawDescGZIP(), []int{1}
 }
 
+func (x *MatchingResponse) GetRideId() string {
+	if x != nil {
+		return x.RideId
+	}
+	return ""
+}
+
 func (x *MatchingResponse) GetDriverId() string {
 	if x != nil {
 		return x.DriverId
@@ -116,9 +124,10 @@ const file_matching_v1_matching_proto_rawDesc = "" +
 	"\n" +
 	"\x1amatching/v1/matching.proto\x12\vmatching.v1\x1a\x1bgoogle/protobuf/empty.proto\"*\n" +
 	"\x0fMatchingRequest\x12\x17\n" +
-	"\aride_id\x18\x01 \x01(\tR\x06rideId\"/\n" +
-	"\x10MatchingResponse\x12\x1b\n" +
-	"\tdriver_id\x18\x01 \x01(\tR\bdriverId2e\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\"H\n" +
+	"\x10MatchingResponse\x12\x17\n" +
+	"\aride_id\x18\x01 \x01(\tR\x06rideId\x12\x1b\n" +
+	"\tdriver_id\x18\x02 \x01(\tR\bdriverId2e\n" +
 	"\x0fMatchingService\x12R\n" +
 	"\x13FindMatchingDrivers\x12\x1c.matching.v1.MatchingRequest\x1a\x1d.matching.v1.MatchingResponseB\xb0\x01\n" +
 	"\x0fcom.matching.v1B\rMatchingProtoP\x01ZAgithub.com/nepeta70/ride-hailing/gen/proto/matching/v1;matchingv1\xa2\x02\x03MXX\xaa\x02\vMatching.V1\xca\x02\vMatching\\V1\xe2\x02\x17Matching\\V1\\GPBMetadata\xea\x02\fMatching::V1b\x06proto3"

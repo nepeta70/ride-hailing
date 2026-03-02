@@ -10,8 +10,8 @@ type RetryObserver interface {
 }
 
 type RetrierInterface interface {
-	Do(ctx context.Context, op func() error) error
-	DoWithResult(ctx context.Context, op func() (any, error)) (any, error)
+	Do(ctx context.Context, op func(ctx context.Context) error) error
+	DoWithResult(ctx context.Context, op func(ctx context.Context) (any, error)) (any, error)
 }
 
 type RetrierFactoryInterface interface {

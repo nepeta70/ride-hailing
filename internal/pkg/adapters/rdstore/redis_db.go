@@ -12,24 +12,29 @@ import (
 )
 
 type RedisDb[T any] struct {
-	client *redis.Client
+	client *RedisClient
+	rdb    *redis.Client
 	cfg    *config.BaseConfig
 	logger ports.Logger
 }
 
 func NewRedisStorage[T any](cfg *config.BaseConfig, client *RedisClient, logger ports.Logger) *RedisDb[T] {
 	return &RedisDb[T]{
+		client: client,
 		cfg:    cfg,
-		client: client.Rdb,
+		rdb:    client.Rdb,
 		logger: logger,
 	}
 }
 
 func (r *RedisDb[T]) Get(ctx context.Context, key string) (*T, error) {
+	ctx, span := r.client.TraceSpan(ctx, "GET", "read", key)
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 
-	data, err := r.client.Get(ctx, key).Result()
+	data, err := r.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, errors.NewErrNotFound("Fare not found")
@@ -47,6 +52,9 @@ func (r *RedisDb[T]) Get(ctx context.Context, key string) (*T, error) {
 }
 
 func (r *RedisDb[T]) Save(ctx context.Context, key string, value *T, ttl time.Duration) error {
+	ctx, span := r.client.TraceSpan(ctx, "SET", "write", key)
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 
@@ -55,7 +63,7 @@ func (r *RedisDb[T]) Save(ctx context.Context, key string, value *T, ttl time.Du
 		return errors.NewErrJSONMarshal(err)
 	}
 
-	err = r.client.Set(ctx, key, data, ttl).Err()
+	err = r.rdb.Set(ctx, key, data, ttl).Err()
 	if err != nil {
 		return err
 	}

@@ -7,14 +7,15 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type baseRetrier struct {
 	serviceName string
 	strategy    RetryStrategy
 	config      *RetryConfig
-	logger      ports.Logger
-	observer    ports.RetryObserver
+	telemetry   ports.TelemetryProvider
 }
 
 // ShouldRetry determines if an error is retryable
@@ -45,39 +46,48 @@ func (r *baseRetrier) shouldRetry(err error, attempt int) bool {
 	return false
 }
 
-func (r *baseRetrier) DoWithResult(ctx context.Context, op func() (any, error)) (any, error) {
+func (r *baseRetrier) DoWithResult(ctx context.Context, op func(ctx context.Context) (any, error)) (any, error) {
+	ctx, span := r.telemetry.Tracer().Start(ctx, "Retry Loop: "+r.serviceName,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("retry.service", r.serviceName),
+		),
+	)
+	defer span.End()
+
 	var result any
 	var lastErr error
 
 	for attempt := 1; ; attempt++ {
-		r.logger.Debug("Attempt for operation", "attempt", attempt)
-		result, lastErr = op()
+		span.SetAttributes(attribute.Int("retry.attempt", attempt))
+
+		r.telemetry.Logger().DebugContext(ctx, "Attempt for operation", "attempt", attempt)
+		result, lastErr = op(ctx)
 		if lastErr == nil {
 			if attempt > 1 {
-				r.logger.Debug("operation succeeded after", "attempts", attempt)
+				r.telemetry.Logger().DebugContext(ctx, "operation succeeded after", "attempts", attempt)
 			}
 			return result, nil
 		}
 
 		if !r.shouldRetry(lastErr, attempt) {
 			if attempt > 1 {
-				r.logger.Warn("operation failed after", "attempts", attempt, "error", lastErr)
+				r.telemetry.Logger().WarnContext(ctx, "operation failed after", "attempts", attempt, "error", lastErr)
 			}
 			return result, lastErr
 		}
 
 		delay := r.strategy.NextDelay(attempt)
 
-		r.logger.Warn("operation failed on attempt", "attempt", attempt, "error", lastErr, "retry_in", delay)
-		if r.observer != nil {
-			r.observer.ObserveRetry(r.serviceName, attempt, lastErr, delay)
-		}
+		r.telemetry.Logger().WarnContext(ctx, "operation failed on attempt", "attempt", attempt, "error", lastErr, "retry_in", delay)
+		r.telemetry.Metrics().ObserveRetry(r.serviceName, attempt, lastErr, delay)
 
 		timer := time.NewTimer(delay)
 		select {
 		case <-timer.C:
 		case <-ctx.Done():
 			timer.Stop()
+			span.SetAttributes(attribute.Int("retry.cancelled_attempt", attempt))
 			return result, errors.NewTransientErrorf("retry cancelled: %w", ctx.Err())
 		}
 	}

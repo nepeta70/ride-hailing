@@ -9,7 +9,6 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/cache"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/inmemory"
-	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/mock"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/pgstore"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
@@ -90,6 +89,11 @@ func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	fareRatesReadRepo := pgstore.NewFareRatesRepo(opts.Config, opts.PgDB)
+	fareRatesCache, err := rdstore.NewFareRatesCache(opts.Config, fareRatesReadRepo, opts.RdClient)
+	if err != nil {
+		return nil, err
+	}
 	countryRepo := pgstore.NewCountryReadRepo(opts.Config, opts.PgDB)
 	countryCache := cache.NewCountryCache(countryRepo, opts.Logger)
 	fareRepo := rdstore.NewFareRepository(opts.Config, opts.RdClient, opts.Logger)
@@ -99,7 +103,7 @@ func NewRedisStorageBundle(opts *StorageBundleOptions) (*StorageBundle, error) {
 	return &StorageBundle{
 		fareReadRepo:       fareRepo,
 		fareWriteRepo:      fareRepo,
-		fareRatesReadRepo:  mock.NewMockFareRatesRepo(),
+		fareRatesReadRepo:  fareRatesCache,
 		fareRatesWriteRepo: inmemory.NewInMemoryFareRateRepo(),
 		countryCache:       countryCache,
 		grainStorage:       pgstore.NewGrainStorage(opts.PgDB),

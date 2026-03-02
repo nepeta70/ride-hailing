@@ -9,23 +9,22 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/core/service"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AppOptions struct {
-	Logger         ports.Logger
-	Metrics        ports.Metrics
 	Service        *service.MatchingService
 	Subscriber     ports.EventSubscriber
 	EventPublisher ports.EventPublisher
 	ContextManager *ctxmgr.ContextManager
+	Telemetry      ports.TelemetryProvider
 }
 
 func (o *AppOptions) Validate() error {
-	if o.Logger == nil {
-		return errors.NewValidationErrorf("Logger is required")
-	}
-	if o.Metrics == nil {
-		return errors.NewValidationErrorf("Metrics is required")
+	if o.Telemetry == nil {
+		return errors.NewValidationErrorf("TelemetryProvider is required")
 	}
 	if o.Service == nil {
 		return errors.NewValidationErrorf("MatchingService is required")
@@ -43,12 +42,11 @@ func (o *AppOptions) Validate() error {
 }
 
 type Application struct {
-	logger         ports.Logger
-	metrics        ports.Metrics
 	service        *service.MatchingService
 	subscriber     ports.EventSubscriber
 	publisher      ports.EventPublisher
 	contextManager *ctxmgr.ContextManager
+	telemetry      ports.TelemetryProvider
 }
 
 func NewApplication(options *AppOptions) (*Application, error) {
@@ -57,8 +55,7 @@ func NewApplication(options *AppOptions) (*Application, error) {
 	}
 
 	return &Application{
-		logger:         options.Logger,
-		metrics:        options.Metrics,
+		telemetry:      options.Telemetry,
 		service:        options.Service,
 		subscriber:     options.Subscriber,
 		publisher:      options.EventPublisher,
@@ -76,35 +73,56 @@ func (a *Application) Start(ctx context.Context) error {
 }
 
 func (a *Application) handleRideEvent(ctx context.Context, headers map[string]string, msg []byte) error {
-	var event contracts.EventMessage
-	if err := json.Unmarshal(msg, &event); err != nil {
-		a.logger.ErrorContext(ctx, "Poison message received", "error", err)
+	ctx = a.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
+	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Ride Event",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("kafka.topic", contracts.TopicRide.String()),
+			attribute.String("kafka.operation", "consume"),
+		),
+	)
+
+	defer span.End()
+
+	var envelope struct {
+		Payload json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(msg, &envelope); err != nil {
+		a.telemetry.Logger().ErrorContext(ctx, "Poison message received", "error", err)
 		return errors.NewErrJSONUnmarshal(err)
 	}
 
+	// Read event type from headers
+	eventType, ok := headers["event-type"]
+	if !ok || eventType == "" {
+		return errors.NewValidationErrorf("missing event-type header")
+	}
+	evt := contracts.EventType(eventType)
+	span.SetAttributes(attribute.String("message.type", evt.String()))
+
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {
-		a.logger.ErrorContext(ctx, "Failed to create RequestInfo from headers")
+		a.telemetry.Logger().ErrorContext(ctx, "Failed to create RequestInfo from headers")
 		return errors.NewValidationErrorf("Failed to create RequestInfo from headers")
 	}
-	a.contextManager.Inject(ctx, info)
-	switch event.EventType {
+	ctx = a.contextManager.Inject(ctx, info)
+	switch evt {
 	case contracts.EventTypeRideRequested:
+		span.SetAttributes(attribute.Bool("consumed", true))
 		var payload contracts.RideRequestedEvent
-		payloadBytes, _ := json.Marshal(event.Payload)
-		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			return errors.NewErrJSONUnmarshal(err)
 		}
-		rideEvent := &payload
 
-		a.logger.DebugContext(ctx, "Received RideRequestedEvent", "ride_id", rideEvent.RideID.String())
-		_, err := a.service.MatchRiderToDriver(ctx, headers, rideEvent)
+		a.telemetry.Logger().DebugContext(ctx, "Received RideRequestedEvent", "ride_id", payload.RideID.String())
+		_, err := a.service.MatchRiderToDriver(ctx, headers, &payload)
 		if err != nil {
-			a.logger.ErrorContext(ctx, "Error matching rider to driver", "error", err)
+			a.telemetry.Logger().ErrorContext(ctx, "Error matching rider to driver", "error", err)
 			return err
 		}
 
 	default:
+		span.SetAttributes(attribute.Bool("skipped", true))
 	}
 
 	return nil

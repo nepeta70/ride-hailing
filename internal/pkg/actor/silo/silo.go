@@ -9,6 +9,8 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const siloServiceName = "GrainSilo"
@@ -22,7 +24,7 @@ type GrainActivation struct {
 
 type SiloOptions struct {
 	Timeout        time.Duration
-	Logger         ports.Logger
+	Telemetry      ports.TelemetryProvider
 	RetrierFactory ports.RetrierFactoryInterface
 }
 
@@ -30,8 +32,8 @@ func (opts *SiloOptions) Validate() error {
 	if opts.Timeout <= 0 {
 		return errors.NewValidationErrorf("timeout must be greater than zero")
 	}
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
 	}
 	if opts.RetrierFactory == nil {
 		return errors.NewValidationErrorf("retrier factory is required")
@@ -46,18 +48,19 @@ type Silo struct {
 	factories   sync.Map // map[string]ports.GrainFactory
 	timeout     time.Duration
 	retrier     ports.RetrierInterface
-	logger      ports.Logger
+	telemetry   ports.TelemetryProvider
 }
 
 func NewSilo(opts *SiloOptions) (*Silo, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+
 	strategy := opts.RetrierFactory.NewExponentialBackoffRetrier(siloServiceName, opts.Timeout)
 	return &Silo{
-		timeout: opts.Timeout,
-		logger:  opts.Logger,
-		retrier: strategy,
+		timeout:   opts.Timeout,
+		telemetry: opts.Telemetry,
+		retrier:   strategy,
 	}, nil
 }
 
@@ -68,8 +71,10 @@ func (s *Silo) RegisterFactory(kind enums.AggregateType, factory ports.GrainFact
 
 // GetOrActivate retrieves or activates a grain
 func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity) (*GrainActivation, error) {
-	key := identity.String()
+	ctx, span := s.TraceSpan(ctx, "GetOrActivate", identity)
+	defer span.End()
 
+	key := identity.String()
 	// Fast path: already activated
 	if val, ok := s.activations.Load(key); ok {
 		return val.(*GrainActivation), nil
@@ -97,13 +102,13 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 		return actual.(*GrainActivation), nil
 	}
 
-	err := s.retrier.Do(ctx, func() error {
+	err := s.retrier.Do(ctx, func(ctx context.Context) error {
 		return instance.OnActivate(ctx, identity)
 	})
 
 	// Won race, activate (pass identity so grain knows which entity it is)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "grain activation failed after retry strategy",
+		s.telemetry.Logger().ErrorContext(ctx, "grain activation failed after retry strategy",
 			"identity", key,
 			"error", err)
 		s.activations.Delete(key) // Cleanup so next request can try fresh
@@ -115,6 +120,9 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 
 // Tell sends a one-way message to a grain (fire and forget)
 func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) error {
+	ctx, span := s.TraceSpan(ctx, "Tell", identity)
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -132,6 +140,9 @@ func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg port
 
 // Ask sends a request message and waits for a response
 func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) (ports.Message, error) {
+	ctx, span := s.TraceSpan(ctx, "Ask", identity)
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -148,6 +159,9 @@ func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports
 
 // Deactivate removes a grain from memory
 func (s *Silo) Deactivate(ctx context.Context, identity *grain.GrainIdentity) error {
+	ctx, span := s.TraceSpan(ctx, "Deactivate", identity)
+	defer span.End()
+
 	key := identity.String()
 
 	val, ok := s.activations.Load(key)
@@ -169,6 +183,9 @@ func (s *Silo) Deactivate(ctx context.Context, identity *grain.GrainIdentity) er
 
 // Reset clears all activations
 func (s *Silo) Reset(ctx context.Context) error {
+	ctx, span := s.TraceSpan(ctx, "Reset", &grain.GrainIdentity{})
+	defer span.End()
+
 	var firstErr error
 	s.activations.Range(func(key, value any) bool {
 		activation := value.(*GrainActivation)
@@ -180,4 +197,16 @@ func (s *Silo) Reset(ctx context.Context) error {
 
 	s.activations = sync.Map{}
 	return firstErr
+}
+
+func (s *Silo) TraceSpan(ctx context.Context, operation string, identity *grain.GrainIdentity) (context.Context, trace.Span) {
+	tracer := s.telemetry.Tracer()
+	ctx, span := tracer.Start(ctx, siloServiceName+" "+operation,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("grain.identity", identity.EntityID.String()),
+			attribute.String("grain.kind", identity.Kind.String()),
+		),
+	)
+	return ctx, span
 }

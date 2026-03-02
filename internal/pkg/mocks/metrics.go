@@ -1,13 +1,10 @@
 package mocks
 
 import (
-	"context"
 	"sync"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // MockMetrics is a thread-safe mock for MetricsInterface
@@ -67,37 +64,3 @@ func (m *MockMetrics) DependencyFailure(dependency string, operation string, err
 }
 
 var _ ports.Metrics = (*MockMetrics)(nil)
-
-type MockTelemetryProvider struct {
-	metrics *MockMetrics
-	logger  ports.Logger
-}
-
-func NewMockTelemetryProvider() *MockTelemetryProvider {
-	return &MockTelemetryProvider{
-		metrics: NewMockMetrics(),
-		logger:  NewMockLogger(),
-	}
-}
-
-func (m *MockTelemetryProvider) Metrics() ports.Metrics {
-	return m.metrics
-}
-
-func (m *MockTelemetryProvider) Logger() ports.Logger {
-	return m.logger
-}
-
-func (m *MockTelemetryProvider) Tracer() trace.Tracer {
-	return nil
-}
-
-func (m *MockTelemetryProvider) Propagator() propagation.TextMapPropagator {
-	return nil
-}
-
-func (m *MockTelemetryProvider) Shutdown(ctx context.Context) error {
-	return nil
-}
-
-var _ ports.TelemetryProvider = (*MockTelemetryProvider)(nil)

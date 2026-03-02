@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pubsub"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -8,6 +9,7 @@ import (
 
 type Config struct {
 	config.BaseConfig
+	Kafka *pubsub.KafkaConfig `json:"kafka"`
 	Redis rdstore.RedisConfig `json:"redis"`
 	Logic LogicConfig         `json:"logic"`
 }
@@ -50,6 +52,7 @@ func DefaultConfig() *Config {
 			MinRadiusSearchKm:  0.5,
 			MaxRadiusSearchKm:  5.0},
 		Redis: rdstore.DefaultRedisConfig(),
+		Kafka: pubsub.DefaultKafkaConfig(),
 	}
 }
 

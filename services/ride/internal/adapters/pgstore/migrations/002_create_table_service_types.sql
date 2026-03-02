@@ -13,7 +13,7 @@ CREATE TABLE service_types (
 -- 2. Audit Table
 CREATE TABLE service_types_audit (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    service_type_id VARCHAR(20) NOT NULL REFERENCES service_types(id),
+    service_type VARCHAR(20) NOT NULL REFERENCES service_types(id),
     version INT NOT NULL,
     
     display_name VARCHAR(50) NOT NULL,
@@ -24,10 +24,10 @@ CREATE TABLE service_types_audit (
     version_by VARCHAR(50) NOT NULL,
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE(service_type_id, version)
+    UNIQUE(service_type, version)
 );
 
-CREATE INDEX idx_audit_service_type_id ON service_types_audit(service_type_id, version);
+CREATE INDEX idx_audit_service_type_id ON service_types_audit(service_type, version);
 
 CREATE OR REPLACE FUNCTION fn_audit_service_types()
 RETURNS TRIGGER AS $$
@@ -39,7 +39,7 @@ BEGIN
 
     -- Log the snapshot with the version to the audit table
     INSERT INTO service_types_audit (
-        service_type_id,
+        service_type,
         version,
         display_name,
         max_passengers,

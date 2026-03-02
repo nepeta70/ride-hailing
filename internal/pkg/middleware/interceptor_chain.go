@@ -46,7 +46,7 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 		return nil, err
 	}
 
-	recoveryInterceptor := NewRecoveryInterceptor(opts.Telemetry.Logger())
+	recoveryInterceptor := NewRecoveryInterceptor(opts.Telemetry)
 	contextInterceptor, err := NewContextInterceptor(&ContextInterceptorOptions{
 		ContextManager: opts.ContextManager,
 		Config:         opts.Config,
@@ -56,8 +56,8 @@ func NewInterceptorChain(opts *FilteredChainOpts) (*InterceptorChain, error) {
 	if err != nil {
 		return nil, err
 	}
-	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Telemetry.Metrics())
-	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Telemetry.Metrics())
+	timeoutInterceptor := NewTimeoutInterceptor(opts.Config.Server.WriteTimeout, opts.Telemetry)
+	resiliencyInterceptor, err := NewResiliencyInterceptor(opts.Config.Security.RateLimit, opts.Config.Security.RateBurst, opts.Telemetry)
 	if err != nil {
 		return nil, err
 	}

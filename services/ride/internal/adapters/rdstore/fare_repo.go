@@ -32,7 +32,6 @@ func NewFareRepository(cfg *config.Config, client *rdstore.RedisClient, logger p
 }
 
 func (r *FareRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Fares, error) {
-
 	fareKey := fareKey(id)
 	return r.redisDb.Get(ctx, fareKey)
 }

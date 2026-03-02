@@ -3,6 +3,7 @@ package grains
 import (
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type StartRideCommand struct {
@@ -11,7 +12,7 @@ type StartRideCommand struct {
 	RideID    uuid.UUID
 }
 
-func (c *StartRideCommand) CommandName() string {
+func (c *StartRideCommand) MessageName() string {
 	return "StartRide"
 }
 
@@ -28,3 +29,5 @@ func (c *StartRideCommand) Validate() error {
 
 	return nil
 }
+
+var _ ports.MessageInterface = (*StartRideCommand)(nil)

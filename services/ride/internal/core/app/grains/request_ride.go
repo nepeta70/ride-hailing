@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	core "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 )
 
 type RequestRideCommand struct {
@@ -16,7 +17,7 @@ type RequestRideCommand struct {
 	Currency        string
 }
 
-func (c *RequestRideCommand) CommandName() string {
+func (c *RequestRideCommand) MessageName() string {
 	return "RequestRide"
 }
 
@@ -44,6 +45,8 @@ func (c *RequestRideCommand) Validate() error {
 
 	return nil
 }
+
+var _ ports.MessageInterface = (*RequestRideCommand)(nil)
 
 type RequestRideResponse struct {
 	RideID uuid.UUID

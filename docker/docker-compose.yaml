@@ -8,6 +8,19 @@ services:
     volumes:
       - ../services/location/cmd/config.json:/home/appuser/config/config.json:ro
     environment:
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - KAFKA_ADVERTISE_EXTERNAL=${KAFKA_ADVERTISE_EXTERNAL}
+      - KAFKA_ADVERTISE_INTERNAL=${KAFKA_ADVERTISE_INTERNAL}
+      - KAFKA_AUTO_CREATE_TOPICS=${KAFKA_AUTO_CREATE_TOPICS}
+      - KAFKA_BATCH_SIZE=${KAFKA_BATCH_SIZE}
+      - KAFKA_ENABLE_LOGGING=${KAFKA_ENABLE_LOGGING}
+      - KAFKA_EXTERNAL_PORT=${KAFKA_EXTERNAL_PORT}
+      - KAFKA_INTERNAL_PORT=${KAFKA_INTERNAL_PORT}
+      - KAFKA_MEMORY=${KAFKA_MEMORY}
+      - KAFKA_NODE_ID=${KAFKA_NODE_ID}
+      - KAFKA_RESERVE_MEMORY=${KAFKA_RESERVE_MEMORY}
+      - KAFKA_SMP=${KAFKA_SMP}
+      - KAFKA_UI_BROKERS=${KAFKA_UI_BROKERS}
       - REDIS_ADDRESS=${REDIS_ADDRESS}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - SERVER_PORT=${LOCATION_SERVER_PORT}
@@ -20,6 +33,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy    
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "${LOCATION_SERVER_PORT}"]
       interval: 5s

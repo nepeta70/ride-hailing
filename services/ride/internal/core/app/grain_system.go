@@ -20,23 +20,22 @@ import (
 type GrainSystemOptions struct {
 	Storage        ports.GrainStorage
 	EventPublisher pkgPorts.EventPublisher
-	Logger         pkgPorts.Logger
 	Topic          contracts.Topic
 	GrainTimeout   time.Duration
 	RetrierFactory *retry.RetrierFactory
 	ContextManager *ctxmgr.ContextManager
+	Telemetry      pkgPorts.TelemetryProvider
 }
 
 func (opts *GrainSystemOptions) Validate() error {
 	if opts.Storage == nil {
 		return errors.NewValidationErrorf("grain storage is required")
 	}
-	// TODO: uncomment when event publisher is implemented
-	// if opts.EventPublisher == nil {
-	// 	return errors.NewValidationErrorf("event publisher is required")
-	// }
-	if opts.Logger == nil {
-		return errors.NewValidationErrorf("logger is required")
+	if opts.EventPublisher == nil {
+		return errors.NewValidationErrorf("event publisher is required")
+	}
+	if opts.Telemetry == nil {
+		return errors.NewValidationErrorf("telemetry provider is required")
 	}
 	if opts.Topic == "" {
 		return errors.NewValidationErrorf("topic is required")
@@ -58,7 +57,7 @@ type GrainSystem struct {
 	grainIdentityFactory *service.GrainIdentityFactory
 	grainPersistence     ports.GrainStorage
 	eventPub             pkgPorts.EventPublisher
-	logger               pkgPorts.Logger
+	telemetry            pkgPorts.TelemetryProvider
 	topic                contracts.Topic
 	grainTimeout         time.Duration
 	contextManager       *ctxmgr.ContextManager
@@ -70,7 +69,7 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 	}
 	si, err := silo.NewSilo(&silo.SiloOptions{
 		Timeout:        opts.GrainTimeout,
-		Logger:         opts.Logger,
+		Telemetry:      opts.Telemetry,
 		RetrierFactory: opts.RetrierFactory,
 	})
 	if err != nil {
@@ -80,7 +79,7 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 	grainOpts := &grains.RideGrainOptions{
 		Storage:        opts.Storage,
 		EventPub:       opts.EventPublisher,
-		Logger:         opts.Logger,
+		Telemetry:      opts.Telemetry,
 		Topic:          opts.Topic,
 		ContextManager: opts.ContextManager,
 	}
@@ -94,7 +93,7 @@ func NewGrainSystem(opts *GrainSystemOptions) (*GrainSystem, error) {
 	return &GrainSystem{
 		si:                   si,
 		eventPub:             opts.EventPublisher,
-		logger:               opts.Logger,
+		telemetry:            opts.Telemetry,
 		topic:                opts.Topic,
 		grainPersistence:     opts.Storage,
 		grainIdentityFactory: &service.GrainIdentityFactory{},

@@ -25,9 +25,11 @@ services:
       - "9090:9090"
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.0
     container_name: tempo
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command:  
+      - "-config.file=/etc/tempo.yaml"  
+      - "-target=all"                  
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
       - tempo-data:/var/tempo

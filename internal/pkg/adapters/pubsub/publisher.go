@@ -3,7 +3,6 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
@@ -11,6 +10,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -78,7 +78,7 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 	}
 
 	if opts.Config.AutoCreate {
-		err := kp.initializeTopics(opts.TopicProvider.AllTopics())
+		err := kp.initializeTopics(opts.TopicProvider.AllTopics(), opts.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -89,8 +89,14 @@ func NewEventPublisher(opts *KafkaPublisherOptions) (ports.EventPublisher, error
 
 func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, message *contracts.EventMessage) error {
 	tracer := k.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, topic.String()+" publish",
-		trace.WithSpanKind(trace.SpanKindProducer))
+	ctx, span := tracer.Start(ctx, "Kafka Publish",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("kafka.topic", topic.String()),
+			attribute.String("kafka.operation", "publish"),
+			attribute.String("kafka.message.type", message.EventType.String()),
+		),
+	)
 	defer span.End()
 
 	data, err := json.Marshal(message)
@@ -98,9 +104,7 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 		return errors.NewErrJSONMarshal(err)
 	}
 
-	carrier := propagation.MapCarrier{}
-	maps.Copy(carrier, message.Headers)
-	k.telemetry.Propagator().Inject(ctx, carrier)
+	k.telemetry.Propagator().Inject(ctx, propagation.MapCarrier(message.Headers))
 
 	k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
 	k.telemetry.Logger().Debug("message headers", "headers", message.Headers)
@@ -161,9 +165,15 @@ func (k *KafkaPublisher) ServiceName() string {
 	return "kafka-publisher"
 }
 
-func (k *KafkaPublisher) initializeTopics(required []string) error {
-	retrier := k.retrierFactory.NewExponentialBackoffRetrier(k.ServiceName(), 30*time.Second)
-	err := retrier.Do(context.Background(), func() error {
+func (k *KafkaPublisher) initializeTopics(required []string, config *KafkaConfig) error {
+	ctx, span := k.telemetry.Tracer().Start(context.Background(), "Publisher:Initialize",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Bool("service.init", true)),
+	)
+	defer span.End()
+
+	retrier := k.retrierFactory.NewExponentialBackoffRetrier(k.ServiceName(), config.RebalanceTimeout)
+	err := retrier.Do(ctx, func(ctx context.Context) error {
 		if err := k.EnsureTopics(required...); err != nil {
 			k.telemetry.Logger().Error("Failed to create Kafka topics, will retry", "topics", required, "error", err)
 		} else if k.verify(required) {

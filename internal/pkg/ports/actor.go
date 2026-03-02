@@ -44,7 +44,7 @@ type Silo interface {
 // GrainFactory creates new grain instances with their identity injected
 type GrainFactory func(identity *grain.GrainIdentity) Grain
 
-type Command interface {
-	CommandName() string
+type MessageInterface interface {
+	MessageName() string
 	Message
 }

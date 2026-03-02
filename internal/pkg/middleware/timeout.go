@@ -5,20 +5,22 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
 // TimeoutInterceptor manages request deadlines and timeout telemetry.
 type TimeoutInterceptor struct {
-	timeout time.Duration
-	metrics ports.Metrics
+	timeout   time.Duration
+	telemetry ports.TelemetryProvider
 }
 
 // NewTimeoutInterceptor initializes the interceptor struct with dependencies.
-func NewTimeoutInterceptor(timeout time.Duration, m ports.Metrics) *TimeoutInterceptor {
+func NewTimeoutInterceptor(timeout time.Duration, telemetry ports.TelemetryProvider) *TimeoutInterceptor {
 	return &TimeoutInterceptor{
-		timeout: timeout,
-		metrics: m,
+		timeout:   timeout,
+		telemetry: telemetry,
 	}
 }
 
@@ -30,6 +32,8 @@ func (i *TimeoutInterceptor) Unary() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
+		ctx, span := i.telemetry.Tracer().Start(ctx, "Middleware.TimeoutInterceptor", trace.WithSpanKind(trace.SpanKindServer))
+		defer span.End()
 		// Create a new context with the specified timeout
 		ctx, cancel := context.WithTimeout(ctx, i.timeout)
 		defer cancel()
@@ -46,7 +50,8 @@ func (i *TimeoutInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		select {
 		case <-ctx.Done():
-			i.metrics.RequestTimeout(info.FullMethod)
+			span.SetStatus(codes.Error, "Request timed out")
+			i.telemetry.Metrics().RequestTimeout(info.FullMethod)
 			return nil, errDeadlineExceeded
 		case err := <-errChan:
 			return <-respChan, err

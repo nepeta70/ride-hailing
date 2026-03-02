@@ -7,6 +7,8 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/grains"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/service"
@@ -36,20 +38,32 @@ type RequestRideHandler struct {
 	serviceTypeCache     ports.ServiceTypeCacheInterface
 	silo                 pkgPorts.Silo
 	grainIdentityFactory *service.GrainIdentityFactory
-	logger               pkgPorts.Logger
+	telemetry            pkgPorts.TelemetryProvider
 }
 
-func NewRequestRideHandler(config *config.Config, storage ports.StorageBundle, grainSystem ports.GrainSystemInterface, logger pkgPorts.Logger) *RequestRideHandler {
+func NewRequestRideHandler(config *config.Config, storage ports.StorageBundle, grainSystem ports.GrainSystemInterface, telemetry pkgPorts.TelemetryProvider) *RequestRideHandler {
 	return &RequestRideHandler{
 		fareReadRepo:         storage.FareReadRepo(),
 		silo:                 grainSystem.Silo(),
 		grainIdentityFactory: grainSystem.GrainIdentityFactory(),
 		serviceTypeCache:     storage.ServiceTypeCache(),
-		logger:               logger,
+		telemetry:            telemetry,
 	}
 }
 
 func (h *RequestRideHandler) Handle(ctx context.Context, cmd RequestRide) (*grains.RequestRideResponse, error) {
+	ctx, span := h.telemetry.Tracer().Start(ctx, "RequestRideHandler.Handle",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("handler", "RequestRideHandler"),
+			attribute.String("method", "Handle"),
+			attribute.String("request.id", cmd.RequestID.String()),
+			attribute.String("fare.id", cmd.FareID.String()),
+			attribute.String("service.type", cmd.ServiceType),
+			attribute.String("rider.id", cmd.RiderID.String()),
+		),
+	)
+	defer span.End()
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}

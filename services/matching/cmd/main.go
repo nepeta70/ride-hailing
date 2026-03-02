@@ -37,7 +37,7 @@ func main() {
 
 	logger := tel.Logger()
 
-	retrierFactory := retry.NewRetrierFactory(logger, tel.Metrics())
+	retrierFactory := retry.NewRetrierFactory(tel)
 
 	contextManager := ctxmgr.NewContextManager()
 	topicProvider := service.NewTopicProvider()
@@ -87,12 +87,11 @@ func main() {
 	}
 
 	application, err := app.NewApplication(&app.AppOptions{
-		Logger:         logger,
-		Metrics:        tel.Metrics(),
 		Service:        matchingService,
 		Subscriber:     subscriber,
 		EventPublisher: publisher,
 		ContextManager: contextManager,
+		Telemetry:      tel,
 	})
 	if err != nil {
 		logger.Error("Failed to create application:", "error", err)
@@ -119,7 +118,7 @@ func main() {
 	}
 	grpcServer.RegisterService(&matchingv1.MatchingService_ServiceDesc, handler)
 
-	grpcServer.MonitorHealth(ctx, publisher)
+	grpcServer.MonitorHealth(ctx, publisher, subscriber)
 
 	grpcServer.Run(ctx)
 }
