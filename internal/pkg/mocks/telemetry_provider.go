@@ -20,8 +20,8 @@ func NewMockTelemetryProvider() *MockTelemetryProvider {
 	return &MockTelemetryProvider{
 		metrics:    NewMockMetrics(),
 		logger:     NewMockLogger(),
-		propagator: &MockPropagator{},
-		tracer:     &MockTracer{},
+		propagator: NewMockPropagator(),
+		tracer:     NewMockTracer(),
 	}
 }
 
@@ -61,6 +61,10 @@ var _ ports.TelemetryProvider = (*MockTelemetryProvider)(nil)
 
 type MockPropagator struct{}
 
+func NewMockPropagator() *MockPropagator {
+	return &MockPropagator{}
+}
+
 func (m *MockPropagator) Inject(ctx context.Context, carrier propagation.TextMapCarrier) {
 }
 
@@ -77,6 +81,12 @@ var _ propagation.TextMapPropagator = (*MockPropagator)(nil)
 type MockTracer struct {
 	embedded.Tracer
 	FinishedSpans []*MockSpan
+}
+
+func NewMockTracer() *MockTracer {
+	return &MockTracer{
+		FinishedSpans: []*MockSpan{},
+	}
 }
 
 func (m *MockTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {

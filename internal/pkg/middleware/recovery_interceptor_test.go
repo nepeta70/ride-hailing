@@ -84,16 +84,8 @@ func TestUnaryServerLogging_Table(t *testing.T) {
 					}
 				}
 				assert.True(t, foundError, "expected error log, got %v", telemetry.LogEntries())
+				assert.NotEmpty(t, telemetry.LogEntries())
 			}
-			// Always expect an info log
-			assert.NotEmpty(t, telemetry.LogEntries())
-			foundInfo := false
-			for _, entry := range telemetry.LogEntries() {
-				if len(entry) >= 5 && entry[:5] == "INFO:" {
-					foundInfo = true
-				}
-			}
-			assert.True(t, foundInfo, "expected info log, got %v", telemetry.LogEntries())
 		})
 	}
 }

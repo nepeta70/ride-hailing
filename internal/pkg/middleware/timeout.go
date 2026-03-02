@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
@@ -30,6 +32,8 @@ func (i *TimeoutInterceptor) Unary() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
+		ctx, span := i.telemetry.Tracer().Start(ctx, "Middleware.TimeoutInterceptor", trace.WithSpanKind(trace.SpanKindServer))
+		defer span.End()
 		// Create a new context with the specified timeout
 		ctx, cancel := context.WithTimeout(ctx, i.timeout)
 		defer cancel()
@@ -46,6 +50,7 @@ func (i *TimeoutInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		select {
 		case <-ctx.Done():
+			span.SetStatus(codes.Error, "Request timed out")
 			i.telemetry.Metrics().RequestTimeout(info.FullMethod)
 			return nil, errDeadlineExceeded
 		case err := <-errChan:

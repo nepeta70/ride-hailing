@@ -6,11 +6,9 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 // ResiliencyInterceptor handles rate limiting and circuit breaking.
@@ -36,20 +34,13 @@ func NewResiliencyInterceptor(rateLimit float64, rateBurst int, telemetry ports.
 
 // Unary provides the gRPC interceptor logic for rate limiting and circuit breaking.
 func (i *ResiliencyInterceptor) Unary() grpc.UnaryServerInterceptor {
-	tr := i.telemetry.Tracer()
-	pr := i.telemetry.Propagator()
 	return func(
 		ctx context.Context,
 		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-
-		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			ctx = pr.Extract(ctx, propagation.HeaderCarrier(md))
-		}
-
-		ctx, span := tr.Start(ctx, info.FullMethod, trace.WithSpanKind(trace.SpanKindServer))
+		ctx, span := i.telemetry.Tracer().Start(ctx, "Middleware.ResiliencyInterceptor", trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()
 
 		// 1. Rate Limiting

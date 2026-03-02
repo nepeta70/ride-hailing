@@ -68,7 +68,7 @@ func NewContextInterceptor(options *ContextInterceptorOptions) (*ContextIntercep
 func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		tr := i.telemetry.Tracer()
-		ctx, span := tr.Start(ctx, "Middleware.ContextInterceptor", trace.WithSpanKind(trace.SpanKindInternal))
+		ctx, span := tr.Start(ctx, "Middleware.ContextInterceptor", trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()
 
 		i.telemetry.Logger().Debug("gRPC request received", "method", info.FullMethod, "payload", req, "timestamp", time.Now().Format(time.RFC3339))
