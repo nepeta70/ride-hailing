@@ -14,7 +14,7 @@ type Event interface {
 
 type EventMessage struct {
 	EventType EventType         `json:"event-type"`
-	Payload   any               `json:"message"`
+	Payload   Event             `json:"message"`
 	Headers   map[string]string `json:"-"`
 }
 

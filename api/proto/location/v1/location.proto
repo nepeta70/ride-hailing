@@ -9,9 +9,10 @@ option go_package = "github.com/nepeta70/ride-hailing/gen/pb/location/v1";
 
 service LocationService {
   rpc UpdateDriverLocation(DriverLocation) returns (google.protobuf.Empty);
-  rpc GetDriverLocation(UserID) returns (DriverLocation);
+  rpc GetDriverLocation(UserID) returns (DriverLocationWithStatus);
   rpc DeleteDriverLocation(UserID) returns (google.protobuf.Empty);
   rpc SearchNearbyDrivers(SearchNearbyDriversRequest) returns (SearchNearbyDriversResponse);
+  rpc UpdateDriverStatus(DriverStatus) returns (google.protobuf.Empty);
 }
 
 message DriverLocation {
@@ -33,6 +34,19 @@ message DriverLocation {
   string status = 6;
 
   google.protobuf.Timestamp status_updated_at = 7;
+}
+
+message DriverLocationWithStatus {
+  DriverLocation location = 1;
+
+  string status = 2;
+
+  google.protobuf.Timestamp status_updated_at = 3;
+}
+
+message DriverStatus {
+  string driver_id = 1;
+  string status = 2;
 }
 
 message UserID {

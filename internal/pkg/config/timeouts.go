@@ -16,6 +16,7 @@ type TimeoutsConfig struct {
 	ShutdownTimeout     time.Duration `json:"-"`
 	RequestTimeout      time.Duration `json:"-"`
 	HealthCheckInterval time.Duration `json:"-"`
+	MaxClockDrift       time.Duration `json:"-"`
 }
 
 func DefaultTimeoutsConfig() TimeoutsConfig {
@@ -48,6 +49,7 @@ func (c *TimeoutsConfig) Init() error {
 	c.ShutdownTimeout = time.Duration(c.ShutdownDelayInSeconds) * time.Second
 	c.RequestTimeout = time.Duration(c.RequestTimeoutSeconds) * time.Second
 	c.HealthCheckInterval = time.Duration(c.HealthCheckIntervalSeconds) * time.Second
+	c.MaxClockDrift = time.Duration(c.MaxClockDriftSeconds) * time.Second
 	return nil
 }
 

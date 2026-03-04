@@ -41,6 +41,9 @@ func (i *ServerInterceptor) Unary() grpc.UnaryServerInterceptor {
 			}
 		}()
 
+		if err == nil {
+			span.SetStatus(otelcodes.Ok, "gRPC handler executed successfully")
+		}
 		return handler(ctx, req)
 	}
 }

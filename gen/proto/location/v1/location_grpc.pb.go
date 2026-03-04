@@ -24,6 +24,7 @@ const (
 	LocationService_GetDriverLocation_FullMethodName    = "/location.v1.LocationService/GetDriverLocation"
 	LocationService_DeleteDriverLocation_FullMethodName = "/location.v1.LocationService/DeleteDriverLocation"
 	LocationService_SearchNearbyDrivers_FullMethodName  = "/location.v1.LocationService/SearchNearbyDrivers"
+	LocationService_UpdateDriverStatus_FullMethodName   = "/location.v1.LocationService/UpdateDriverStatus"
 )
 
 // LocationServiceClient is the client API for LocationService service.
@@ -31,9 +32,10 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LocationServiceClient interface {
 	UpdateDriverLocation(ctx context.Context, in *DriverLocation, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetDriverLocation(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*DriverLocation, error)
+	GetDriverLocation(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*DriverLocationWithStatus, error)
 	DeleteDriverLocation(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SearchNearbyDrivers(ctx context.Context, in *SearchNearbyDriversRequest, opts ...grpc.CallOption) (*SearchNearbyDriversResponse, error)
+	UpdateDriverStatus(ctx context.Context, in *DriverStatus, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type locationServiceClient struct {
@@ -54,9 +56,9 @@ func (c *locationServiceClient) UpdateDriverLocation(ctx context.Context, in *Dr
 	return out, nil
 }
 
-func (c *locationServiceClient) GetDriverLocation(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*DriverLocation, error) {
+func (c *locationServiceClient) GetDriverLocation(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*DriverLocationWithStatus, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DriverLocation)
+	out := new(DriverLocationWithStatus)
 	err := c.cc.Invoke(ctx, LocationService_GetDriverLocation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -84,14 +86,25 @@ func (c *locationServiceClient) SearchNearbyDrivers(ctx context.Context, in *Sea
 	return out, nil
 }
 
+func (c *locationServiceClient) UpdateDriverStatus(ctx context.Context, in *DriverStatus, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, LocationService_UpdateDriverStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LocationServiceServer is the server API for LocationService service.
 // All implementations should embed UnimplementedLocationServiceServer
 // for forward compatibility.
 type LocationServiceServer interface {
 	UpdateDriverLocation(context.Context, *DriverLocation) (*emptypb.Empty, error)
-	GetDriverLocation(context.Context, *UserID) (*DriverLocation, error)
+	GetDriverLocation(context.Context, *UserID) (*DriverLocationWithStatus, error)
 	DeleteDriverLocation(context.Context, *UserID) (*emptypb.Empty, error)
 	SearchNearbyDrivers(context.Context, *SearchNearbyDriversRequest) (*SearchNearbyDriversResponse, error)
+	UpdateDriverStatus(context.Context, *DriverStatus) (*emptypb.Empty, error)
 }
 
 // UnimplementedLocationServiceServer should be embedded to have
@@ -104,7 +117,7 @@ type UnimplementedLocationServiceServer struct{}
 func (UnimplementedLocationServiceServer) UpdateDriverLocation(context.Context, *DriverLocation) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateDriverLocation not implemented")
 }
-func (UnimplementedLocationServiceServer) GetDriverLocation(context.Context, *UserID) (*DriverLocation, error) {
+func (UnimplementedLocationServiceServer) GetDriverLocation(context.Context, *UserID) (*DriverLocationWithStatus, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverLocation not implemented")
 }
 func (UnimplementedLocationServiceServer) DeleteDriverLocation(context.Context, *UserID) (*emptypb.Empty, error) {
@@ -112,6 +125,9 @@ func (UnimplementedLocationServiceServer) DeleteDriverLocation(context.Context, 
 }
 func (UnimplementedLocationServiceServer) SearchNearbyDrivers(context.Context, *SearchNearbyDriversRequest) (*SearchNearbyDriversResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchNearbyDrivers not implemented")
+}
+func (UnimplementedLocationServiceServer) UpdateDriverStatus(context.Context, *DriverStatus) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateDriverStatus not implemented")
 }
 func (UnimplementedLocationServiceServer) testEmbeddedByValue() {}
 
@@ -205,6 +221,24 @@ func _LocationService_SearchNearbyDrivers_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LocationService_UpdateDriverStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DriverStatus)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LocationServiceServer).UpdateDriverStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LocationService_UpdateDriverStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LocationServiceServer).UpdateDriverStatus(ctx, req.(*DriverStatus))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LocationService_ServiceDesc is the grpc.ServiceDesc for LocationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -227,6 +261,10 @@ var LocationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchNearbyDrivers",
 			Handler:    _LocationService_SearchNearbyDrivers_Handler,
+		},
+		{
+			MethodName: "UpdateDriverStatus",
+			Handler:    _LocationService_UpdateDriverStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

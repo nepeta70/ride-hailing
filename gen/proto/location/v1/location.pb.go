@@ -121,6 +121,118 @@ func (x *DriverLocation) GetStatusUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type DriverLocationWithStatus struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Location        *DriverLocation        `protobuf:"bytes,1,opt,name=location,proto3" json:"location,omitempty"`
+	Status          string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	StatusUpdatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=status_updated_at,json=statusUpdatedAt,proto3" json:"status_updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DriverLocationWithStatus) Reset() {
+	*x = DriverLocationWithStatus{}
+	mi := &file_location_v1_location_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriverLocationWithStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriverLocationWithStatus) ProtoMessage() {}
+
+func (x *DriverLocationWithStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_location_v1_location_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriverLocationWithStatus.ProtoReflect.Descriptor instead.
+func (*DriverLocationWithStatus) Descriptor() ([]byte, []int) {
+	return file_location_v1_location_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DriverLocationWithStatus) GetLocation() *DriverLocation {
+	if x != nil {
+		return x.Location
+	}
+	return nil
+}
+
+func (x *DriverLocationWithStatus) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *DriverLocationWithStatus) GetStatusUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StatusUpdatedAt
+	}
+	return nil
+}
+
+type DriverStatus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DriverId      string                 `protobuf:"bytes,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DriverStatus) Reset() {
+	*x = DriverStatus{}
+	mi := &file_location_v1_location_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriverStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriverStatus) ProtoMessage() {}
+
+func (x *DriverStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_location_v1_location_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriverStatus.ProtoReflect.Descriptor instead.
+func (*DriverStatus) Descriptor() ([]byte, []int) {
+	return file_location_v1_location_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DriverStatus) GetDriverId() string {
+	if x != nil {
+		return x.DriverId
+	}
+	return ""
+}
+
+func (x *DriverStatus) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 type UserID struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique identifier for the user (e.g., driver_id or user_id)
@@ -131,7 +243,7 @@ type UserID struct {
 
 func (x *UserID) Reset() {
 	*x = UserID{}
-	mi := &file_location_v1_location_proto_msgTypes[1]
+	mi := &file_location_v1_location_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +255,7 @@ func (x *UserID) String() string {
 func (*UserID) ProtoMessage() {}
 
 func (x *UserID) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[1]
+	mi := &file_location_v1_location_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +268,7 @@ func (x *UserID) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserID.ProtoReflect.Descriptor instead.
 func (*UserID) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{1}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UserID) GetUserId() string {
@@ -178,7 +290,7 @@ type SearchNearbyDriversRequest struct {
 
 func (x *SearchNearbyDriversRequest) Reset() {
 	*x = SearchNearbyDriversRequest{}
-	mi := &file_location_v1_location_proto_msgTypes[2]
+	mi := &file_location_v1_location_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -190,7 +302,7 @@ func (x *SearchNearbyDriversRequest) String() string {
 func (*SearchNearbyDriversRequest) ProtoMessage() {}
 
 func (x *SearchNearbyDriversRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[2]
+	mi := &file_location_v1_location_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -203,7 +315,7 @@ func (x *SearchNearbyDriversRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchNearbyDriversRequest.ProtoReflect.Descriptor instead.
 func (*SearchNearbyDriversRequest) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{2}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SearchNearbyDriversRequest) GetLatitude() float64 {
@@ -229,7 +341,7 @@ type SearchNearbyDriversResponse struct {
 
 func (x *SearchNearbyDriversResponse) Reset() {
 	*x = SearchNearbyDriversResponse{}
-	mi := &file_location_v1_location_proto_msgTypes[3]
+	mi := &file_location_v1_location_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -241,7 +353,7 @@ func (x *SearchNearbyDriversResponse) String() string {
 func (*SearchNearbyDriversResponse) ProtoMessage() {}
 
 func (x *SearchNearbyDriversResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[3]
+	mi := &file_location_v1_location_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -254,7 +366,7 @@ func (x *SearchNearbyDriversResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchNearbyDriversResponse.ProtoReflect.Descriptor instead.
 func (*SearchNearbyDriversResponse) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{3}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SearchNearbyDriversResponse) GetDrivers() []*SearchNearbyDriversResponse_Driver {
@@ -277,7 +389,7 @@ type SearchNearbyDriversResponse_Driver struct {
 
 func (x *SearchNearbyDriversResponse_Driver) Reset() {
 	*x = SearchNearbyDriversResponse_Driver{}
-	mi := &file_location_v1_location_proto_msgTypes[4]
+	mi := &file_location_v1_location_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +401,7 @@ func (x *SearchNearbyDriversResponse_Driver) String() string {
 func (*SearchNearbyDriversResponse_Driver) ProtoMessage() {}
 
 func (x *SearchNearbyDriversResponse_Driver) ProtoReflect() protoreflect.Message {
-	mi := &file_location_v1_location_proto_msgTypes[4]
+	mi := &file_location_v1_location_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +414,7 @@ func (x *SearchNearbyDriversResponse_Driver) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use SearchNearbyDriversResponse_Driver.ProtoReflect.Descriptor instead.
 func (*SearchNearbyDriversResponse_Driver) Descriptor() ([]byte, []int) {
-	return file_location_v1_location_proto_rawDescGZIP(), []int{3, 0}
+	return file_location_v1_location_proto_rawDescGZIP(), []int{5, 0}
 }
 
 func (x *SearchNearbyDriversResponse_Driver) GetUserId() string {
@@ -352,7 +464,14 @@ const file_location_v1_location_proto_rawDesc = "" +
 	"\aheading\x18\x04 \x01(\x02R\aheading\x12\x14\n" +
 	"\x05speed\x18\x05 \x01(\x02R\x05speed\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12F\n" +
-	"\x11status_updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0fstatusUpdatedAt\"!\n" +
+	"\x11status_updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0fstatusUpdatedAt\"\xb3\x01\n" +
+	"\x18DriverLocationWithStatus\x127\n" +
+	"\blocation\x18\x01 \x01(\v2\x1b.location.v1.DriverLocationR\blocation\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12F\n" +
+	"\x11status_updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x0fstatusUpdatedAt\"C\n" +
+	"\fDriverStatus\x12\x1b\n" +
+	"\tdriver_id\x18\x01 \x01(\tR\bdriverId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"!\n" +
 	"\x06UserID\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"V\n" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
@@ -366,12 +485,13 @@ const file_location_v1_location_proto_rawDesc = "" +
 	"\tlongitude\x18\x03 \x01(\x01R\tlongitude\x12\x1f\n" +
 	"\vdistance_km\x18\x04 \x01(\x02R\n" +
 	"distanceKm\x12C\n" +
-	"\x0favailable_since\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x0eavailableSince2\xd4\x02\n" +
+	"\x0favailable_since\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x0eavailableSince2\xa7\x03\n" +
 	"\x0fLocationService\x12K\n" +
-	"\x14UpdateDriverLocation\x12\x1b.location.v1.DriverLocation\x1a\x16.google.protobuf.Empty\x12E\n" +
-	"\x11GetDriverLocation\x12\x13.location.v1.UserID\x1a\x1b.location.v1.DriverLocation\x12C\n" +
+	"\x14UpdateDriverLocation\x12\x1b.location.v1.DriverLocation\x1a\x16.google.protobuf.Empty\x12O\n" +
+	"\x11GetDriverLocation\x12\x13.location.v1.UserID\x1a%.location.v1.DriverLocationWithStatus\x12C\n" +
 	"\x14DeleteDriverLocation\x12\x13.location.v1.UserID\x1a\x16.google.protobuf.Empty\x12h\n" +
-	"\x13SearchNearbyDrivers\x12'.location.v1.SearchNearbyDriversRequest\x1a(.location.v1.SearchNearbyDriversResponseB\xb0\x01\n" +
+	"\x13SearchNearbyDrivers\x12'.location.v1.SearchNearbyDriversRequest\x1a(.location.v1.SearchNearbyDriversResponse\x12G\n" +
+	"\x12UpdateDriverStatus\x12\x19.location.v1.DriverStatus\x1a\x16.google.protobuf.EmptyB\xb0\x01\n" +
 	"\x0fcom.location.v1B\rLocationProtoP\x01ZAgithub.com/nepeta70/ride-hailing/gen/proto/location/v1;locationv1\xa2\x02\x03LXX\xaa\x02\vLocation.V1\xca\x02\vLocation\\V1\xe2\x02\x17Location\\V1\\GPBMetadata\xea\x02\fLocation::V1b\x06proto3"
 
 var (
@@ -386,33 +506,39 @@ func file_location_v1_location_proto_rawDescGZIP() []byte {
 	return file_location_v1_location_proto_rawDescData
 }
 
-var file_location_v1_location_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_location_v1_location_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_location_v1_location_proto_goTypes = []any{
 	(*DriverLocation)(nil),                     // 0: location.v1.DriverLocation
-	(*UserID)(nil),                             // 1: location.v1.UserID
-	(*SearchNearbyDriversRequest)(nil),         // 2: location.v1.SearchNearbyDriversRequest
-	(*SearchNearbyDriversResponse)(nil),        // 3: location.v1.SearchNearbyDriversResponse
-	(*SearchNearbyDriversResponse_Driver)(nil), // 4: location.v1.SearchNearbyDriversResponse.Driver
-	(*timestamppb.Timestamp)(nil),              // 5: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                      // 6: google.protobuf.Empty
+	(*DriverLocationWithStatus)(nil),           // 1: location.v1.DriverLocationWithStatus
+	(*DriverStatus)(nil),                       // 2: location.v1.DriverStatus
+	(*UserID)(nil),                             // 3: location.v1.UserID
+	(*SearchNearbyDriversRequest)(nil),         // 4: location.v1.SearchNearbyDriversRequest
+	(*SearchNearbyDriversResponse)(nil),        // 5: location.v1.SearchNearbyDriversResponse
+	(*SearchNearbyDriversResponse_Driver)(nil), // 6: location.v1.SearchNearbyDriversResponse.Driver
+	(*timestamppb.Timestamp)(nil),              // 7: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                      // 8: google.protobuf.Empty
 }
 var file_location_v1_location_proto_depIdxs = []int32{
-	5, // 0: location.v1.DriverLocation.status_updated_at:type_name -> google.protobuf.Timestamp
-	4, // 1: location.v1.SearchNearbyDriversResponse.drivers:type_name -> location.v1.SearchNearbyDriversResponse.Driver
-	5, // 2: location.v1.SearchNearbyDriversResponse.Driver.available_since:type_name -> google.protobuf.Timestamp
-	0, // 3: location.v1.LocationService.UpdateDriverLocation:input_type -> location.v1.DriverLocation
-	1, // 4: location.v1.LocationService.GetDriverLocation:input_type -> location.v1.UserID
-	1, // 5: location.v1.LocationService.DeleteDriverLocation:input_type -> location.v1.UserID
-	2, // 6: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
-	6, // 7: location.v1.LocationService.UpdateDriverLocation:output_type -> google.protobuf.Empty
-	0, // 8: location.v1.LocationService.GetDriverLocation:output_type -> location.v1.DriverLocation
-	6, // 9: location.v1.LocationService.DeleteDriverLocation:output_type -> google.protobuf.Empty
-	3, // 10: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7,  // 0: location.v1.DriverLocation.status_updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 1: location.v1.DriverLocationWithStatus.location:type_name -> location.v1.DriverLocation
+	7,  // 2: location.v1.DriverLocationWithStatus.status_updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 3: location.v1.SearchNearbyDriversResponse.drivers:type_name -> location.v1.SearchNearbyDriversResponse.Driver
+	7,  // 4: location.v1.SearchNearbyDriversResponse.Driver.available_since:type_name -> google.protobuf.Timestamp
+	0,  // 5: location.v1.LocationService.UpdateDriverLocation:input_type -> location.v1.DriverLocation
+	3,  // 6: location.v1.LocationService.GetDriverLocation:input_type -> location.v1.UserID
+	3,  // 7: location.v1.LocationService.DeleteDriverLocation:input_type -> location.v1.UserID
+	4,  // 8: location.v1.LocationService.SearchNearbyDrivers:input_type -> location.v1.SearchNearbyDriversRequest
+	2,  // 9: location.v1.LocationService.UpdateDriverStatus:input_type -> location.v1.DriverStatus
+	8,  // 10: location.v1.LocationService.UpdateDriverLocation:output_type -> google.protobuf.Empty
+	1,  // 11: location.v1.LocationService.GetDriverLocation:output_type -> location.v1.DriverLocationWithStatus
+	8,  // 12: location.v1.LocationService.DeleteDriverLocation:output_type -> google.protobuf.Empty
+	5,  // 13: location.v1.LocationService.SearchNearbyDrivers:output_type -> location.v1.SearchNearbyDriversResponse
+	8,  // 14: location.v1.LocationService.UpdateDriverStatus:output_type -> google.protobuf.Empty
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_location_v1_location_proto_init() }
@@ -426,7 +552,7 @@ func file_location_v1_location_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_location_v1_location_proto_rawDesc), len(file_location_v1_location_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -2,6 +2,7 @@ package ctxmgr_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				},
 				Trace: TraceInfo{
 					RequestID:  requestID,
-					Timestamp:  1234567890,
+					Timestamp:  time.Now(),
 					RetryCount: 3,
 				},
 				Location: LocationInfo{
@@ -47,7 +48,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				"sender-type":  "driver",
 				"sender-name":  "John Doe",
 				"request-id":   requestID.String(),
-				"timestamp":    "1234567890",
+				"timestamp":    time.Now().Format(time.RFC3339),
 				"retry-count":  "3",
 				"country-code": "US",
 				"app-version":  "1.2.3",
@@ -66,7 +67,6 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				},
 				Trace: TraceInfo{
 					RequestID:  uuid.Nil,
-					Timestamp:  0,
 					RetryCount: 0,
 				},
 				Location: LocationInfo{
@@ -103,7 +103,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				},
 				Trace: TraceInfo{
 					RequestID:  requestID,
-					Timestamp:  9876543210,
+					Timestamp:  time.Now(),
 					RetryCount: 1,
 				},
 				Location: LocationInfo{
@@ -121,7 +121,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				"sender-type":  "rider",
 				"sender-name":  "Jane Smith",
 				"request-id":   requestID.String(),
-				"timestamp":    "9876543210",
+				"timestamp":    time.Now().Format(time.RFC3339),
 				"retry-count":  "1",
 				"country-code": "CA",
 				"app-version":  "2.0.0",

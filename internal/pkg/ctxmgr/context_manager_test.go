@@ -3,6 +3,7 @@ package ctxmgr_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestContextManager_Extract(t *testing.T) {
 		},
 		Trace: TraceInfo{
 			RequestID:  requestID,
-			Timestamp:  1234567890,
+			Timestamp:  time.Now(),
 			RetryCount: 0,
 		},
 		Location: LocationInfo{
@@ -103,7 +104,7 @@ func TestContextManager_Inject(t *testing.T) {
 		},
 		Trace: TraceInfo{
 			RequestID:  requestID,
-			Timestamp:  9876543210,
+			Timestamp:  time.Now(),
 			RetryCount: 2,
 		},
 		Location: LocationInfo{
