@@ -67,7 +67,7 @@ func main() {
 	}
 	defer subscriber.Close()
 
-	locationClient, err := grpcAdapters.NewLocationClient(cfg.LocationService.LocationServiceAddress, tel)
+	locationClient, err := grpcAdapters.NewLocationClient(cfg, tel)
 	if err != nil {
 		logger.Error("Failed to create location client:", "error", err)
 		return

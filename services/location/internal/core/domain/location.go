@@ -33,3 +33,10 @@ type DirectionsResponse struct {
 	// Duration indicates total time required for this leg.
 	Duration time.Duration `json:"duration"`
 }
+
+type DriverStatusUpdate struct {
+	DriverID        uuid.UUID              `json:"driver_id"`
+	SenderType      enums.SenderType       `json:"sender_type"`
+	Status          contracts.DriverStatus `json:"status"`
+	StatusUpdatedAt time.Time              `json:"status_updated_at"`
+}

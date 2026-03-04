@@ -20,7 +20,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, float32(0.5), cfg.Logic.MinRadiusSearchKm)
 
 	// Ensure defaults pass validation
-	assert.NoError(t, cfg.Validate())
+	assert.NoError(t, cfg.Logic.Validate())
 }
 
 func TestConfig_Validate(t *testing.T) {
@@ -62,11 +62,11 @@ func TestConfig_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := DefaultConfig()
-			cfg.Logic = tt.logic
+			cfg.Logic = &tt.logic
 			if tt.wantErr {
-				assert.Error(t, cfg.Validate())
+				assert.Error(t, cfg.Logic.Validate())
 			} else {
-				assert.NoError(t, cfg.Validate())
+				assert.NoError(t, cfg.Logic.Validate())
 			}
 		})
 	}
