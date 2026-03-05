@@ -1,8 +1,6 @@
 package grain
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 )
@@ -24,5 +22,5 @@ func NewGrainIdentity(kind enums.AggregateType, entityID uuid.UUID) *GrainIdenti
 
 // String returns the composite key "kind:entityID"
 func (g *GrainIdentity) String() string {
-	return fmt.Sprintf("%s:%s", g.Kind, g.EntityID)
+	return g.Kind.String() + ":" + g.EntityID.String()
 }

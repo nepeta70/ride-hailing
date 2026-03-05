@@ -213,7 +213,7 @@ func (k *KafkaPublisher) verify(required []string) bool {
 		return false
 	}
 
-	existing := make(map[string]bool)
+	existing := make(map[string]bool, len(partitions))
 	for _, p := range partitions {
 		existing[p.Topic] = true
 	}

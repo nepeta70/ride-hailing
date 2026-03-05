@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -138,8 +137,8 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 	ctx, span := h.telemetry.Tracer().Start(ctx, "SearchNearbyDrivers",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("latitude", fmt.Sprintf("%f", req.GetLatitude())),
-			attribute.String("longitude", fmt.Sprintf("%f", req.GetLongitude())),
+			attribute.Float64("latitude", req.GetLatitude()),
+			attribute.Float64("longitude", req.GetLongitude()),
 		),
 	)
 	defer span.End()

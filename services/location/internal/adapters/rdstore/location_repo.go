@@ -16,6 +16,7 @@ import (
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -64,10 +65,9 @@ func (r *LocationRepository) SaveDriverLocation(ctx context.Context, loc *domain
 	pipe := r.client.Rdb.Pipeline()
 
 	statusCmd := pipe.HGet(ctx, driverLocationKey, "status")
-	// Save Metadata in a Hash
+
 	pipe.HSet(ctx, driverLocationKey, "data", data)
 	pipe.HSetNX(ctx, driverLocationKey, "status", contracts.DriverStatusAvailable.String()) // Default to Available if not set
-	// Set TTL so we don't leak memory for offline users
 	pipe.Expire(ctx, driverLocationKey, r.cfg.Logic.LocationTTL)
 
 	if _, err = pipe.Exec(ctx); err != nil {
@@ -106,7 +106,7 @@ func (r *LocationRepository) GetDriverLocationAndStatus(ctx context.Context, use
 	if err == redis.Nil {
 		span.AddEvent("Driver location not found")
 		// Not found, return nil, nil
-		return nil, errors.NewErrNotFound("location data for userID " + userID.String())
+		return nil, errors.NewErrNotFoundf("location data for userID %s not found", userID.String())
 	}
 	if err != nil {
 		span.RecordError(err)
@@ -195,8 +195,9 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 	}
 
 	pipe := r.client.Rdb.Pipeline()
-	geoMap := make(map[string]*redis.GeoLocation)
-	cmds := make(map[string]*redis.SliceCmd)
+	n := len(geoResults)
+	geoMap := make(map[string]*redis.GeoLocation, n)
+	cmds := make(map[string]*redis.SliceCmd, n)
 	for _, location := range geoResults {
 		span.AddEvent("Processing GeoSearch result", trace.WithAttributes(
 			attribute.String("driver.id", location.Name),
@@ -243,6 +244,8 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 
 		results = append(results, &loc)
 	}
+
+	span.SetStatus(codes.Ok, "candidates found")
 	return results, nil
 }
 
@@ -263,6 +266,7 @@ func (r *LocationRepository) SaveDriverStatus(ctx context.Context, status *domai
 		return errors.NewTransientErrorf("failed to update driver status: %w", err)
 	}
 
+	span.SetStatus(codes.Ok, "Driver status updated")
 	return nil
 }
 

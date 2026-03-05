@@ -1,18 +1,16 @@
 package validator
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
 type Validator struct {
-	errs []string
+	errs []error
 }
 
 func New() *Validator {
-	return &Validator{errs: []string{}}
+	return &Validator{errs: []error{}}
 }
 
 func (v *Validator) HasErrors() bool {
@@ -51,7 +49,7 @@ type StringFieldValidator struct {
 
 func (fv *StringFieldValidator) Required() *StringFieldValidator {
 	if fv.value == "" {
-		fv.parent.errs = append(fv.parent.errs, fmt.Sprintf("%s is required", fv.name))
+		fv.parent.errs = append(fv.parent.errs, errors.NewValidationErrorf("%s is required", fv.name))
 	}
 
 	return fv
@@ -59,7 +57,7 @@ func (fv *StringFieldValidator) Required() *StringFieldValidator {
 
 func (fv *StringFieldValidator) IsUUID() *StringFieldValidator {
 	if err := uuid.Validate(fv.value); err != nil {
-		fv.parent.errs = append(fv.parent.errs, fmt.Sprintf("%s must be a valid UUID", fv.name))
+		fv.parent.errs = append(fv.parent.errs, errors.NewValidationErrorf("%s must be a valid UUID", fv.name))
 	}
 	return fv
 }
@@ -76,7 +74,7 @@ func (fv *FloatFieldValidator) GreaterThanZero() *FloatFieldValidator {
 
 func (fv *FloatFieldValidator) GreaterThan(min float64) *FloatFieldValidator {
 	if fv.value <= min {
-		fv.parent.errs = append(fv.parent.errs, fmt.Sprintf("%s must be greater than %f", fv.name, min))
+		fv.parent.errs = append(fv.parent.errs, errors.NewValidationErrorf("%s must be greater than %f", fv.name, min))
 	}
 	return fv
 }

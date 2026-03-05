@@ -34,7 +34,7 @@ func (r *RequestInfo) ToByteMap() map[string]string {
 }
 
 func NewInfoFromMap(headers map[string]string) (*RequestInfo, bool) {
-	tmp := make(map[string]any)
+	tmp := make(map[string]any, len(headers))
 	for k, v := range headers {
 		tmp[k] = v
 	}

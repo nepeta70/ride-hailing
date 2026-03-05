@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -127,10 +126,8 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 						"method", info.FullMethod,
 						"required_roles", roles,
 						"provided_role", role)
-
 					span.SetAttributes(
 						attribute.String("auth.reason", "role_mismatch"),
-						attribute.String("auth.role.required", fmt.Sprintf("%v", roles)),
 						attribute.String("auth.role.provided", role.String()),
 					)
 					i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_role")

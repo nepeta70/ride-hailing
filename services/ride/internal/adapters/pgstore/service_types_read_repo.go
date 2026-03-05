@@ -40,7 +40,7 @@ func (r *ServiceTypeReadRepo) GetAllEnabled(ctx context.Context) (map[string]*do
 	}
 	defer rows.Close()
 
-	results := make(map[string]*domain.ServiceType)
+	results := make(map[string]*domain.ServiceType, 10)
 	for rows.Next() {
 		var s ServiceTypeReadEntity
 		err := rows.Scan(

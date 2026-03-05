@@ -228,7 +228,7 @@ func TestCircuitBreaker_StateTransition_HalfOpenToClosed(t *testing.T) {
 	testErr := errors.New("test error")
 
 	// Open the circuit
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		cb.Execute(context.Background(), func() error {
 			return testErr
 		})
@@ -294,7 +294,7 @@ func TestCircuitBreaker_HalfOpen_MaxRequests(t *testing.T) {
 	testErr := errors.New("test error")
 
 	// Open the circuit
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		cb.Execute(context.Background(), func() error {
 			return testErr
 		})
@@ -306,15 +306,13 @@ func TestCircuitBreaker_HalfOpen_MaxRequests(t *testing.T) {
 	// Use a slow request to keep half-open state occupied
 	var wg sync.WaitGroup
 	started := make(chan struct{})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		cb.Execute(context.Background(), func() error {
 			close(started) // Signal that we're executing
 			time.Sleep(50 * time.Millisecond)
 			return nil
 		})
-	}()
+	})
 
 	// Wait for the first request to actually start executing
 	<-started

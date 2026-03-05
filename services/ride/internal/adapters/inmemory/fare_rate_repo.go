@@ -13,7 +13,7 @@ type InMemoryFareRateRepo struct {
 
 func NewInMemoryFareRateRepo() *InMemoryFareRateRepo {
 	return &InMemoryFareRateRepo{
-		data: make(map[string][]*domain.FareRate),
+		data: make(map[string][]*domain.FareRate, 100),
 	}
 }
 

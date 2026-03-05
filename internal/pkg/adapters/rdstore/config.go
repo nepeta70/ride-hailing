@@ -1,7 +1,8 @@
 package rdstore
 
 import (
-	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
@@ -65,7 +66,7 @@ func (c *RedisConfig) Validate() error {
 
 func (c *RedisConfig) Init() error {
 	if c.Address == "" && c.Host != "" {
-		c.Address = fmt.Sprintf("%s:%d", c.Host, c.Port)
+		c.Address = net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 	}
 	c.PoolTimeout = time.Duration(c.PoolSeconds) * time.Second
 	c.ReadTimeout = time.Duration(c.ReadSeconds) * time.Second

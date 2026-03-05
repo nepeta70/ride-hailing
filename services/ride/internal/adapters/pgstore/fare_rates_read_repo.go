@@ -21,7 +21,6 @@ func NewFareRatesRepo(config *config.Config, db *pgstore.PostgresDB) *FareRatesR
 }
 
 func (r *FareRatesReadRepo) GetRatesByCountry(ctx context.Context, country string) ([]*domain.FareRate, error) {
-	fareRates := make([]*domain.FareRate, 0)
 	query := `
             SELECT 
                 id, country_code, service_type, 
@@ -36,6 +35,7 @@ func (r *FareRatesReadRepo) GetRatesByCountry(ctx context.Context, country strin
 	}
 	defer rows.Close()
 
+	fareRates := make([]*domain.FareRate, 0, 10)
 	for rows.Next() {
 		var f FareRateReadEntity
 		err := rows.Scan(

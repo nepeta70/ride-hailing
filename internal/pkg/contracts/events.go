@@ -28,7 +28,7 @@ func NewEventMessage(event Event) *EventMessage {
 
 func (e *EventMessage) AddHeader(key string, value string) {
 	if e.Headers == nil {
-		e.Headers = make(map[string]string)
+		e.Headers = make(map[string]string, 10)
 	}
 	e.Headers[key] = value
 }
