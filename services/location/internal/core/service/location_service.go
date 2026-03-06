@@ -169,7 +169,6 @@ func (s *LocationService) UpdateDriverStatus(ctx context.Context, req *UpdateDri
 
 	status := &domain.DriverStatusUpdate{
 		DriverID:        req.DriverID,
-		SenderType:      req.SenderType,
 		Status:          req.Status,
 		StatusUpdatedAt: req.StatusUpdatedAt,
 	}

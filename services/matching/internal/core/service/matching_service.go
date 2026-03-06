@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/metadata"
 )
 
 type MatchingServiceOpts struct {
@@ -76,27 +76,28 @@ func NewMatchingService(opts *MatchingServiceOpts) (*MatchingService, error) {
 
 func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]string, request *contracts.RideRequestedEvent) {
 	ctx = s.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
-	ctx, parentSpan := s.telemetry.Tracer().Start(ctx, "Matching Service: MatchRiderToDriver",
+	ctx, parentSpan := s.telemetry.Tracer().Start(ctx, "Matching Service: MatchRide",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("ride_id", request.RideID.String()),
-			attribute.String("pickup_location", request.PickupLocation.String()),
-			attribute.String("dropoff_location", request.DropoffLocation.String()),
+			attribute.String("ride.id", request.RideID.String()),
+			attribute.String("pickup.location", request.PickupLocation.String()),
+			attribute.String("dropoff.location", request.DropoffLocation.String()),
 		),
 	)
 
 	defer parentSpan.End()
-	bgCtx := context.WithoutCancel(ctx)
+	bgCtx := context.Background()
 
-	go func(ctx context.Context) {
+	go func(funcCtx context.Context) {
 		s.semaphore <- struct{}{}
 		defer func() { <-s.semaphore }()
 
-		bgCtx, span := s.telemetry.Tracer().Start(bgCtx, "MatchingService.BackgroundMatchingLoop",
+		funcCtx = s.telemetry.Propagator().Extract(funcCtx, propagation.MapCarrier(headers))
+		funcCtx, span := s.telemetry.Tracer().Start(funcCtx, "MatchingService.BackgroundMatchingLoop",
 			trace.WithAttributes(attribute.String("ride.id", request.RideID.String())))
 		defer span.End()
 
-		timeoutCtx, timeoutCancel := context.WithTimeout(bgCtx, s.config.Logic.MatchingTimeout)
+		timeoutCtx, timeoutCancel := context.WithTimeout(funcCtx, s.config.Logic.MatchingTimeout)
 		matchCtx, manualCancel := context.WithCancel(timeoutCtx)
 
 		defer timeoutCancel()
@@ -117,29 +118,24 @@ func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]stri
 		ticker := time.NewTicker(s.config.Logic.MatchingRetryInterval)
 		defer ticker.Stop()
 
-		for {
+		done := false
+
+		for !done {
 			select {
 			case <-matchCtx.Done():
 				// DEADLINE REACHED
-				s.publishEvent(bgCtx, &contracts.MatchingTimeoutEvent{RideID: request.RideID}, headers)
+				s.publishEvent(funcCtx, &contracts.MatchingTimeoutEvent{RideID: request.RideID}, headers)
 				return
 
-			case <-ctx.Done():
+			case <-funcCtx.Done():
 				return
 
 			case <-ticker.C:
-				// TRY TO FIND CANDIDATES
-				md := metadata.New(headers)
-				md.Set("api-key", s.config.LocationService.APIKey)
-				md.Set("timestamp", time.Now().UTC().Format(time.RFC3339))
-
-				// Wrap the background context with the outgoing metadata
-				callCtx := metadata.NewOutgoingContext(bgCtx, md)
-				s.telemetry.Logger().DebugContext(callCtx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
-				candidates, err := s.client.GetCandidates(callCtx, request.PickupLocation, headers)
+				s.telemetry.Logger().DebugContext(funcCtx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
+				candidates, err := s.client.GetCandidates(funcCtx, request.PickupLocation, headers)
 				if err != nil {
 					span.RecordError(err)
-					s.telemetry.Logger().ErrorContext(callCtx, "MatchingService: Failed to get candidates", "ride_id", request.RideID.String(), "error", err)
+					s.telemetry.Logger().ErrorContext(funcCtx, "MatchingService: Failed to get candidates", "ride_id", request.RideID.String(), "error", err)
 					continue
 				}
 
@@ -147,7 +143,7 @@ func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]stri
 					span.AddEvent("No candidates found for ride request", trace.WithAttributes(
 						attribute.String("ride.id", request.RideID.String()),
 					))
-					s.telemetry.Logger().WarnContext(callCtx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
+					s.telemetry.Logger().WarnContext(funcCtx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
 					continue
 				}
 				span.AddEvent("Candidates found for ride request", trace.WithAttributes(
@@ -156,23 +152,37 @@ func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]stri
 				))
 				s.sortCandidates(candidates)
 
-				driverID, err := s.tryToReserveDriver(callCtx, candidates, headers)
+				driverID, err := s.tryToReserveDriver(funcCtx, candidates, headers)
 				if err != nil {
 					span.RecordError(err)
-					s.telemetry.Logger().ErrorContext(callCtx, "MatchingService: Failed to reserve driver", "ride_id", request.RideID.String(), "error", err)
+					s.telemetry.Logger().ErrorContext(funcCtx, "MatchingService: Failed to reserve driver", "ride_id", request.RideID.String(), "error", err)
 					continue
 				}
-				event := &contracts.RideMatchedEvent{
-					RideID:   request.RideID,
-					DriverID: driverID,
+				if driverID == uuid.Nil {
+					span.AddEvent("No candidates could be reserved for ride request", trace.WithAttributes(
+						attribute.String("ride.id", request.RideID.String()),
+					))
+					s.telemetry.Logger().WarnContext(funcCtx, "MatchingService: No drivers could be reserved for ride.", "ride_id", request.RideID.String())
+					continue
 				}
-				s.publishEvent(callCtx, event, headers)
+
+				event := &contracts.RideMatchedEvent{
+					RideID:    request.RideID,
+					DriverID:  driverID,
+					RequestID: uuid.New(),
+				}
+				s.telemetry.Logger().DebugContext(funcCtx, "MatchingService: Match found, publishing event", "ride_id", request.RideID.String(), "driver_id", driverID.String())
+				s.publishEvent(funcCtx, event, headers)
+				s.telemetry.Logger().DebugContext(funcCtx, "MatchingService: Event published", "ride_id", request.RideID.String())
 
 				span.SetAttributes(attribute.String("driver.id", driverID.String()))
+				done = true
+				ticker.Stop()
+				s.telemetry.Logger().DebugContext(funcCtx, "MatchingService: Ticker stopped, goroutine set to done", "ride_id", request.RideID.String())
 				return
 			}
 		}
-	}(ctx)
+	}(bgCtx)
 }
 
 func (s *MatchingService) HandleCancelRide(ctx context.Context, request *contracts.RideCanceledEvent) {
@@ -195,6 +205,7 @@ func (s *MatchingService) tryToReserveDriver(ctx context.Context, candidates []*
 		))
 		err := s.client.UpdateDriverStatus(ctx, uuid.MustParse(candidate.GetUserId()), contracts.DriverStatusReserved, headers)
 		if err == nil {
+			s.telemetry.Logger().DebugContext(ctx, "Successfully reserved driver", "driver_id", candidate.GetUserId())
 			span.AddEvent("Successfully reserved driver", trace.WithAttributes(
 				attribute.String("driver.id", candidate.GetUserId()),
 			))
@@ -237,9 +248,12 @@ func (s *MatchingService) publishEvent(ctx context.Context, event contracts.Even
 		attribute.String("event.type", event.EventType().String()),
 	))
 
+	mHeaders := make(map[string]string, len(headers))
+	maps.Copy(mHeaders, headers)
+
 	message := contracts.NewEventMessage(event)
 	s.telemetry.Logger().DebugContext(ctx, "MatchingService: Publishing Event", "event_type", message.EventType.String(), "payload", message.Payload, "headers", message.Headers)
-	message.AddHeaders(headers)
+	message.AddHeaders(mHeaders)
 	err := s.publisher.Publish(ctx, contracts.TopicMatching, message)
 	s.telemetry.Logger().DebugContext(ctx, "MatchingService: Published Event", "event_type", message.EventType.String())
 	if err != nil {

@@ -107,10 +107,11 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 	}
 
 	k.telemetry.Propagator().Inject(ctx, propagation.MapCarrier(message.Headers))
-
 	k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
 	k.telemetry.Logger().Debug("message headers", "headers", message.Headers)
 
+	message.Headers["event-type"] = message.EventType.String()
+	message.Headers["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 	err = k.writer.WriteMessages(ctx, kafka.Message{
 		Topic:   topic.String(),
 		Value:   data,

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -67,6 +68,7 @@ func NewLocationClient(config *config.Config, telemetryProvider pkgPorts.Telemet
 }
 
 func (lc *LocationClient) GetCandidates(ctx context.Context, coords *domain.Coordinates, headers map[string]string) ([]*locationv1.SearchNearbyDriversResponse_Driver, error) {
+	ctx = lc.telemetryProvider.Propagator().Extract(ctx, propagation.MapCarrier(headers))
 	ctx, span := lc.telemetryProvider.Tracer().Start(ctx, "LocationClient.GetCandidates",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
@@ -104,7 +106,7 @@ func (lc *LocationClient) UpdateDriverStatus(ctx context.Context, driverID uuid.
 	ctx, span := lc.telemetryProvider.Tracer().Start(ctx, "LocationClient.GetCandidates",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
-			attribute.String("driver_id", driverID.String()),
+			attribute.String("driver.id", driverID.String()),
 			attribute.String("status", status.String()),
 		),
 	)

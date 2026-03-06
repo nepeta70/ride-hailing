@@ -73,7 +73,7 @@ func (r *LocationRepository) SaveDriverLocation(ctx context.Context, loc *domain
 	if _, err = pipe.Exec(ctx); err != nil {
 		span.RecordError(err)
 		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
-		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
+		return errors.NewTransientErrorf("Pipeline execution failed: %w", err)
 	}
 
 	currStatus := statusCmd.Val()
@@ -256,14 +256,21 @@ func (r *LocationRepository) SaveDriverStatus(ctx context.Context, status *domai
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	span.SetAttributes(
 		attribute.String("driver.id", status.DriverID.String()),
-		attribute.String("status.updated", status.Status.String()),
+		attribute.String("status.new", status.Status.String()),
 	)
 	defer cancel()
 	// Update status field in the HASH
-	if err := r.client.Rdb.HSet(ctx, key, "status", status.Status.String()).Err(); err != nil {
+	pipe := r.client.Rdb.Pipeline()
+	pipe.HSet(ctx, key, "status", status.Status.String())
+	if status.Status != contracts.DriverStatusAvailable {
+		pipe.ZRem(ctx, indexKey, status.DriverID.String())
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil {
 		span.RecordError(err)
-		r.telemetry.Metrics().DependencyFailure("redis", "hset", "save_driver_status")
-		return errors.NewTransientErrorf("failed to update driver status: %w", err)
+		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "update_driver_status")
+		span.SetStatus(codes.Error, "Failed to update driver status")
+		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
 	}
 
 	span.SetStatus(codes.Ok, "Driver status updated")

@@ -56,7 +56,6 @@ func (r *UpdateDriverLocationRequest) Validate() error {
 
 type UpdateDriverStatusRequest struct {
 	DriverID        uuid.UUID
-	SenderType      enums.SenderType
 	Status          contracts.DriverStatus
 	StatusUpdatedAt time.Time
 }
@@ -65,8 +64,8 @@ func (r *UpdateDriverStatusRequest) Validate() error {
 	if r.DriverID == uuid.Nil {
 		return errors.NewValidationErrorf("user ID cannot be empty")
 	}
-	if r.SenderType != enums.SenderTypeDriver {
-		return errors.NewValidationErrorf("user type must be 'driver'")
+	if !r.Status.IsValid() {
+		return errors.NewValidationErrorf("invalid driver status value")
 	}
 	if r.StatusUpdatedAt.IsZero() {
 		return errors.NewValidationErrorf("status updated at cannot be empty")

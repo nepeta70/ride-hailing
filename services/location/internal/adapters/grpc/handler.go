@@ -3,8 +3,10 @@ package grpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	otelCodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -192,27 +194,39 @@ func (h *LocationHandler) UpdateDriverStatus(ctx context.Context, req *locationv
 		span.RecordError(err)
 		return nil, err
 	}
-	h.telemetry.Logger().DebugContext(ctx, "User updates status.", "user-type", info.Sender.Type, "sender-id", info.Sender.ID, "status", req.GetStatus())
-
+	h.telemetry.Logger().DebugContext(ctx, "Updating driver status.", "driver_id", req.DriverId, "status", req.Status, "sender_id", info.Sender.ID, "sender_type", info.Sender.Type)
 	driverID, err := uuid.Parse(req.GetDriverId())
 	if err != nil {
 		span.RecordError(err)
+		h.telemetry.Logger().ErrorContext(ctx, "Invalid driver ID format", "driver_id", req.DriverId)
 		return nil, mapError(pkgErrors.NewValidationErrorf("invalid driver ID format"))
 	}
+	newStatus := contracts.DriverStatus(req.GetStatus())
+	if !newStatus.IsValid() {
+		span.RecordError(errors.New("invalid driver status value"))
+		h.telemetry.Logger().ErrorContext(ctx, "Invalid driver status value", "driver_id", req.DriverId, "status", req.GetStatus())
+		return nil, mapError(pkgErrors.NewValidationErrorf("invalid driver status value"))
+	}
+
 	updateRequest := &service.UpdateDriverStatusRequest{
-		DriverID: driverID,
-		Status:   contracts.DriverStatus(req.GetStatus()),
+		DriverID:        driverID,
+		Status:          newStatus,
+		StatusUpdatedAt: time.Now().UTC(),
 	}
 	err = updateRequest.Validate()
 	if err != nil {
 		span.RecordError(err)
+		h.telemetry.Logger().ErrorContext(ctx, "Invalid driver status", "driver_id", req.DriverId, "status", req.GetStatus(), "error", err)
 		return nil, mapError(err)
 	}
 	err = h.app.LocationService.UpdateDriverStatus(ctx, updateRequest)
 	if err != nil {
+		h.telemetry.Logger().ErrorContext(ctx, "Failed to update driver status", "driver_id", req.DriverId, "status", req.GetStatus(), "error", err)
 		span.RecordError(err)
 		return nil, mapError(err)
 	}
+
+	span.SetStatus(otelCodes.Ok, "Driver status updated successfully")
 	return &emptypb.Empty{}, nil
 }
 

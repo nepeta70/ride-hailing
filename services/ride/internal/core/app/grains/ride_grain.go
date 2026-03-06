@@ -2,8 +2,9 @@ package grains
 
 import (
 	"context"
-	"fmt"
+	"reflect"
 	"slices"
+	"sync"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -16,10 +17,6 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/ports"
-)
-
-const (
-	rideGrain = "RideGrain"
 )
 
 type RideGrainOptions struct {
@@ -125,17 +122,36 @@ func (g *RideGrain) OnDeactivate(ctx context.Context) error {
 	return nil
 }
 
+var messageTypeCache sync.Map
+
+func getMessageType(v any) string {
+	t := reflect.TypeOf(v)
+	if name, ok := messageTypeCache.Load(t); ok {
+		return name.(string)
+	}
+
+	name := t.String()
+	messageTypeCache.Store(t, name)
+	return name
+}
+
 func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPorts.Message, error) {
-	messageType := fmt.Sprintf("%T", msg)
+	var messageType string
+	if m, ok := msg.(pkgPorts.MessageInterface); ok {
+		messageType = m.MessageName()
+	} else {
+		messageType = getMessageType(msg)
+	}
 	ctx, span := g.traceSpan(ctx, "OnReceive")
 	span.SetAttributes(attribute.String("message.type", messageType))
 	defer span.End()
 
 	if slices.Contains(terminalStates, g.state.Status) {
 		g.telemetry.Logger().WarnContext(ctx, "Received command for ride in terminal state",
-			"ride_id", g.identity.EntityID,
+			"ride.id", g.identity.EntityID,
 			"status", g.state.Status,
-			"command_type", messageType)
+			"command.type", messageType)
+		span.AddEvent("Grain in terminal state received command")
 		return nil, errors.NewBusinessErrorf("cannot process command %T in terminal state %s", msg, g.state.Status)
 	}
 
@@ -383,8 +399,15 @@ func (g *RideGrain) publishEvent(ctx context.Context, event contracts.Event) err
 	return nil
 }
 
+var spanNameCache = sync.Map{}
+
 func (g *RideGrain) traceSpan(ctx context.Context, method string) (context.Context, trace.Span) {
-	ctx, span := g.telemetry.Tracer().Start(ctx, rideGrain+"."+method,
+	name, ok := spanNameCache.Load(method)
+	if !ok {
+		name = "RideGrain." + method
+		spanNameCache.Store(method, name)
+	}
+	ctx, span := g.telemetry.Tracer().Start(ctx, name.(string),
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
 			attribute.String("grain.kind", g.identity.Kind.String()),
