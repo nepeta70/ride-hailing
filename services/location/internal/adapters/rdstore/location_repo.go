@@ -3,7 +3,6 @@ package rdstore
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/rdstore"
@@ -17,6 +16,8 @@ import (
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -39,11 +40,16 @@ func driverLocationKey(userID uuid.UUID) string {
 	return driverLocationKeyPrefix + userID.String()
 }
 
-// Save implements the ports.LocationRepository interface
-func (r *LocationRepository) Save(ctx context.Context, loc *domain.DriverLocation) error {
+// SaveLocation implements the ports.LocationRepository interface
+func (r *LocationRepository) SaveDriverLocation(ctx context.Context, loc *domain.DriverLocation) error {
 	// Specific metadata for this entity (HASH)
 	driverLocationKey := driverLocationKey(loc.UserID)
-	ctx, span := r.client.TraceSpan(ctx, "HSET", "write", driverLocationKey)
+	ctx, span := r.client.TraceSpan(ctx, "SaveDriverLocation", "HSET", driverLocationKey)
+	span.SetAttributes(
+		attribute.String("driver.id", loc.UserID.String()),
+		attribute.Float64("latitude", loc.Coordinates.Latitude),
+		attribute.Float64("longitude", loc.Coordinates.Longitude),
+	)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
@@ -58,34 +64,39 @@ func (r *LocationRepository) Save(ctx context.Context, loc *domain.DriverLocatio
 
 	pipe := r.client.Rdb.Pipeline()
 
-	// Save Metadata in a Hash
-	pipe.HSet(ctx, driverLocationKey, "data", data, "status", loc.Status.String())
+	statusCmd := pipe.HGet(ctx, driverLocationKey, "status")
 
-	// Add to Geospatial Index for Drivers if available
-	if loc.Status == contracts.DriverStatusAvailable {
-		pipe.GeoAdd(ctx, indexKey, &redis.GeoLocation{
+	pipe.HSet(ctx, driverLocationKey, "data", data)
+	pipe.HSetNX(ctx, driverLocationKey, "status", contracts.DriverStatusAvailable.String()) // Default to Available if not set
+	pipe.Expire(ctx, driverLocationKey, r.cfg.Logic.LocationTTL)
+
+	if _, err = pipe.Exec(ctx); err != nil {
+		span.RecordError(err)
+		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
+		return errors.NewTransientErrorf("Pipeline execution failed: %w", err)
+	}
+
+	currStatus := statusCmd.Val()
+	if currStatus == "" {
+		currStatus = contracts.DriverStatusAvailable.String()
+	}
+
+	if currStatus == contracts.DriverStatusAvailable.String() {
+		span.AddEvent("Adding driver to geospatial index")
+		return r.client.Rdb.GeoAdd(ctx, indexKey, &redis.GeoLocation{
 			Longitude: loc.Coordinates.Longitude,
 			Latitude:  loc.Coordinates.Latitude,
 			Name:      userID,
-		})
+		}).Err()
 	} else {
-		// If not available, remove from geospatial index to prevent showing in nearby searches
-		pipe.ZRem(ctx, indexKey, userID)
+		span.AddEvent("Driver not available, removing from geospatial index if exists")
+		return r.client.Rdb.ZRem(ctx, indexKey, userID).Err()
 	}
-
-	// Set TTL so we don't leak memory for offline users
-	pipe.Expire(ctx, driverLocationKey, time.Duration(r.cfg.Logic.LocationTTLSeconds)*time.Second)
-
-	if _, err = pipe.Exec(ctx); err != nil {
-		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
-		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
-	}
-	return nil
 }
 
-func (r *LocationRepository) Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
+func (r *LocationRepository) GetDriverLocationAndStatus(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
 	key := driverLocationKey(userID)
-	ctx, span := r.client.TraceSpan(ctx, "HGET", "read", key)
+	ctx, span := r.client.TraceSpan(ctx, "GetDriverLocationAndStatus", "HGET", key)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
@@ -93,16 +104,19 @@ func (r *LocationRepository) Get(ctx context.Context, userID uuid.UUID) (*domain
 
 	data, err := r.client.Rdb.HGet(ctx, key, "data").Bytes()
 	if err == redis.Nil {
+		span.AddEvent("Driver location not found")
 		// Not found, return nil, nil
-		return nil, errors.NewErrNotFound("location data for userID " + userID.String())
+		return nil, errors.NewErrNotFoundf("location data for userID %s not found", userID.String())
 	}
 	if err != nil {
+		span.RecordError(err)
 		r.telemetry.Metrics().DependencyFailure("redis", "hget", "get_location")
 		return nil, errors.NewTransientErrorf("Redis error: %w", err)
 	}
 
 	var loc domain.DriverLocation
 	if err := json.Unmarshal(data, &loc); err != nil {
+		span.RecordError(err)
 		return nil, errors.NewErrJSONUnmarshal(err)
 	}
 
@@ -111,18 +125,20 @@ func (r *LocationRepository) Get(ctx context.Context, userID uuid.UUID) (*domain
 
 func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
 	key := driverLocationKey(userID)
-	ctx, span := r.client.TraceSpan(ctx, "DEL", "write", key)
+	ctx, span := r.client.TraceSpan(ctx, "RemoveUserLocation", "DEL", key)
 	defer span.End()
 	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
 	defer cancel()
 	// Remove metadata
 	if err := r.client.Rdb.Del(ctx, key).Err(); err != nil {
+		span.RecordError(err)
 		r.telemetry.Metrics().DependencyFailure("redis", "del", "remove_user_location")
 		return errors.NewTransientErrorf("failed to delete location metadata: %w", err)
 	}
 
 	// Remove from geospatial index (ZSET)
 	if err := r.client.Rdb.ZRem(ctx, indexKey, userID.String()).Err(); err != nil {
+		span.RecordError(err)
 		r.telemetry.Metrics().DependencyFailure("redis", "zrem", "remove_user_location")
 		return errors.NewTransientErrorf("failed to remove from geospatial index: %w", err)
 	}
@@ -131,8 +147,7 @@ func (r *LocationRepository) RemoveUserLocation(ctx context.Context, userID uuid
 }
 
 func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core.Coordinates, radiusKm float32) ([]*domain.DriverLocation, error) {
-
-	ctx, span := r.client.TraceSpan(ctx, "GEORADIUS", "read", indexKey)
+	ctx, span := r.client.TraceSpan(ctx, "SearchNearby", "GEORADIUS", indexKey)
 	defer span.End()
 
 	reqInfo, ok := r.ctxMgr.Extract(ctx)
@@ -168,19 +183,26 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 	geoResults, err := r.client.Rdb.GeoSearchLocation(ctx, indexKey, query).Result()
 
 	if err != nil {
+		span.RecordError(err)
 		r.telemetry.Logger().ErrorContext(ctx, "GeoSearch query failed", "error", err)
 		r.telemetry.Metrics().DependencyFailure("redis", "geosearch", "search_nearby")
 		return nil, errors.NewTransientErrorf("redis georadius query failed: %w", err)
 	}
 
 	if len(geoResults) == 0 {
+		span.AddEvent("No nearby drivers found in geospatial index")
 		return []*domain.DriverLocation{}, nil
 	}
 
 	pipe := r.client.Rdb.Pipeline()
-	geoMap := make(map[string]*redis.GeoLocation)
-	cmds := make(map[string]*redis.SliceCmd)
+	n := len(geoResults)
+	geoMap := make(map[string]*redis.GeoLocation, n)
+	cmds := make(map[string]*redis.SliceCmd, n)
 	for _, location := range geoResults {
+		span.AddEvent("Processing GeoSearch result", trace.WithAttributes(
+			attribute.String("driver.id", location.Name),
+			attribute.Float64("distance.km", location.Dist),
+		))
 		driverID := location.Name
 		geoMap[driverID] = &location
 		cmds[driverID] = pipe.HMGet(ctx, driverLocationKeyPrefix+driverID, "status", "data")
@@ -188,6 +210,7 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 
 	_, err = pipe.Exec(ctx)
 	if err != nil && err != redis.Nil {
+		span.RecordError(err)
 		r.telemetry.Logger().ErrorContext(ctx, "Pipeline execution failed", "error", err)
 		r.telemetry.Metrics().DependencyFailure("redis", "pipeline", "search_nearby")
 		return nil, errors.NewTransientErrorf("pipeline execution failed: %w", err)
@@ -203,11 +226,17 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 		status := parts[0].(string)
 
 		if !contracts.DriverStatusAvailable.Equals(status) {
+			span.AddEvent("Driver not available, removing from index", trace.WithAttributes(
+				attribute.String("driver.id", locationKey),
+				attribute.String("status", status),
+			))
+			// Asynchronously remove from geospatial index to prevent showing in future searches
 			r.asyncRemoveFromIndex(locationKey)
 			continue
 		}
 		var loc domain.DriverLocation
 		if err := json.Unmarshal([]byte(parts[1].(string)), &loc); err != nil {
+			span.RecordError(err)
 			r.telemetry.Logger().ErrorContext(ctx, "Failed to unmarshal driver location", "error", err)
 			continue
 		}
@@ -215,7 +244,37 @@ func (r *LocationRepository) SearchNearby(ctx context.Context, coordinates *core
 
 		results = append(results, &loc)
 	}
+
+	span.SetStatus(codes.Ok, "candidates found")
 	return results, nil
+}
+
+func (r *LocationRepository) SaveDriverStatus(ctx context.Context, status *domain.DriverStatusUpdate) error {
+	key := driverLocationKey(status.DriverID)
+	ctx, span := r.client.TraceSpan(ctx, "SaveDriverStatus", "HSET", key)
+	defer span.End()
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeouts.RequestTimeout)
+	span.SetAttributes(
+		attribute.String("driver.id", status.DriverID.String()),
+		attribute.String("status.new", status.Status.String()),
+	)
+	defer cancel()
+	// Update status field in the HASH
+	pipe := r.client.Rdb.Pipeline()
+	pipe.HSet(ctx, key, "status", status.Status.String())
+	if status.Status != contracts.DriverStatusAvailable {
+		pipe.ZRem(ctx, indexKey, status.DriverID.String())
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		span.RecordError(err)
+		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "update_driver_status")
+		span.SetStatus(codes.Error, "Failed to update driver status")
+		return errors.NewTransientErrorf("tx pipelined fleet swap failed: %w", err)
+	}
+
+	span.SetStatus(codes.Ok, "Driver status updated")
+	return nil
 }
 
 func (r *LocationRepository) asyncRemoveFromIndex(userID string) {

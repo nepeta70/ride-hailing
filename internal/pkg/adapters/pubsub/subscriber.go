@@ -97,7 +97,7 @@ func (s *KafkaSubscriber) Subscribe(ctx context.Context, topic contracts.Topic, 
 			// Process message with retry logic
 			retrier := s.retrierFactory.NewExponentialBackoffRetrier(s.ServiceName(), s.config.BatchTimeout)
 			err = retrier.Do(ctx, func(ctx context.Context) error {
-				headers := make(map[string]string)
+				headers := make(map[string]string, len(message.Headers))
 				for _, h := range message.Headers {
 					headers[h.Key] = string(h.Value)
 				}

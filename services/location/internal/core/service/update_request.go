@@ -10,7 +10,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
 
-type UpdateDriverStatusRequest struct {
+type UpdateDriverLocationRequest struct {
 	DriverID        uuid.UUID
 	SenderType      enums.SenderType
 	Coordinates     domain.Coordinates
@@ -23,7 +23,7 @@ type UpdateDriverStatusRequest struct {
 }
 
 // Validate ensures the GPS data is physically valid
-func (r UpdateDriverStatusRequest) Validate() error {
+func (r *UpdateDriverLocationRequest) Validate() error {
 	if err := r.Coordinates.Validate(); err != nil {
 		return errors.NewValidationErrorf("invalid coordinates: %w", err)
 	}
@@ -49,6 +49,26 @@ func (r UpdateDriverStatusRequest) Validate() error {
 
 	if r.SenderType != enums.SenderTypeDriver {
 		return errors.NewValidationErrorf("user type must be 'driver'")
+	}
+
+	return nil
+}
+
+type UpdateDriverStatusRequest struct {
+	DriverID        uuid.UUID
+	Status          contracts.DriverStatus
+	StatusUpdatedAt time.Time
+}
+
+func (r *UpdateDriverStatusRequest) Validate() error {
+	if r.DriverID == uuid.Nil {
+		return errors.NewValidationErrorf("user ID cannot be empty")
+	}
+	if !r.Status.IsValid() {
+		return errors.NewValidationErrorf("invalid driver status value")
+	}
+	if r.StatusUpdatedAt.IsZero() {
+		return errors.NewValidationErrorf("status updated at cannot be empty")
 	}
 
 	return nil

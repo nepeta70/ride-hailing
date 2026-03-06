@@ -75,6 +75,8 @@ func (i *ResiliencyInterceptor) Unary() grpc.UnaryServerInterceptor {
 				i.telemetry.Metrics().CircuitBreakerError(info.FullMethod, "panic_recovered")
 				span.SetStatus(codes.Error, "panic recovered")
 			}
+		} else {
+			span.SetStatus(codes.Ok, "request executed successfully")
 		}
 
 		return resp, err

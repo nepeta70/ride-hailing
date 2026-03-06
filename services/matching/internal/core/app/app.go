@@ -10,6 +10,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/core/service"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -73,7 +74,7 @@ func (a *Application) Start(ctx context.Context) error {
 }
 
 func (a *Application) handleRideEvent(ctx context.Context, headers map[string]string, msg []byte) error {
-	ctx = a.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
+	ctx = a.telemetry.Propagator().Extract(context.Background(), propagation.MapCarrier(headers))
 	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Ride Event",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
@@ -115,15 +116,21 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		}
 
 		a.telemetry.Logger().DebugContext(ctx, "Received RideRequestedEvent", "ride_id", payload.RideID.String())
-		_, err := a.service.MatchRiderToDriver(ctx, headers, &payload)
-		if err != nil {
-			a.telemetry.Logger().ErrorContext(ctx, "Error matching rider to driver", "error", err)
-			return err
+		a.service.MatchRide(ctx, headers, &payload)
+
+	case contracts.EventTypeRideCanceled:
+		span.SetAttributes(attribute.Bool("consumed", true))
+		var payload contracts.RideCanceledEvent
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return errors.NewErrJSONUnmarshal(err)
 		}
+
+		a.telemetry.Logger().DebugContext(ctx, "Received RideCanceledEvent", "ride_id", payload.RideID.String())
+		a.service.HandleCancelRide(ctx, &payload)
 
 	default:
 		span.SetAttributes(attribute.Bool("skipped", true))
 	}
-
+	span.SetStatus(codes.Ok, "message processed successfully")
 	return nil
 }

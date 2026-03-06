@@ -63,7 +63,7 @@ func (dc *DirectionsEstimator) GetDirections(ctx context.Context, origin, destin
 		DistanceMeters:    distance,
 		DurationMinutes:   durationMinutes,
 		DurationInTraffic: durationMinutes,
-		ArrivalTime:       time.Now().Add(durationMinutes),
+		ArrivalTime:       time.Now().UTC().Add(durationMinutes),
 	}, nil
 }
 

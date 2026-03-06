@@ -85,9 +85,9 @@ func (c *RedisClient) ServiceName() string {
 	return redisServiceName
 }
 
-func (c *RedisClient) TraceSpan(ctx context.Context, method string, operation string, key string) (context.Context, trace.Span) {
+func (c *RedisClient) TraceSpan(ctx context.Context, spanName string, operation string, key string) (context.Context, trace.Span) {
 	tracer := c.telemetry.Tracer()
-	ctx, span := tracer.Start(ctx, "Redis "+method,
+	ctx, span := tracer.Start(ctx, spanName,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("db.system", "redis"),

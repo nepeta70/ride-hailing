@@ -3,6 +3,7 @@ package ctxmgr
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
@@ -22,7 +23,7 @@ func (r *RequestInfo) ToByteMap() map[string]string {
 		"sender-type":  r.Sender.Type.String(),
 		"sender-name":  r.Sender.Name,
 		"request-id":   r.Trace.RequestID.String(),
-		"timestamp":    strconv.FormatInt(r.Trace.Timestamp, 10),
+		"timestamp":    r.Trace.Timestamp.Format(time.RFC3339),
 		"retry-count":  strconv.Itoa(r.Trace.RetryCount),
 		"country-code": r.Location.CountryCode,
 		"app-version":  r.Client.AppVersion,
@@ -33,7 +34,7 @@ func (r *RequestInfo) ToByteMap() map[string]string {
 }
 
 func NewInfoFromMap(headers map[string]string) (*RequestInfo, bool) {
-	tmp := make(map[string]any)
+	tmp := make(map[string]any, len(headers))
 	for k, v := range headers {
 		tmp[k] = v
 	}
@@ -53,7 +54,7 @@ type Sender struct {
 
 type TraceInfo struct {
 	RequestID  uuid.UUID `json:"request-id"`
-	Timestamp  int64     `json:"timestamp"`
+	Timestamp  time.Time `json:"timestamp"`
 	RetryCount int       `json:"retry-count"`
 }
 

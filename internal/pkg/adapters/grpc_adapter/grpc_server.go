@@ -2,7 +2,7 @@ package grpc_adapter
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"net"
 	"time"
@@ -64,7 +64,7 @@ func NewGRPCAdapter(opts *GRPGAdapterOptions) (*GRPCAdapter, error) {
 		opts.Logger.Error("FATAL: failed to create GRPC adapter", "error", err)
 		return nil, err
 	}
-	grpcAddr := fmt.Sprintf(":%d", opts.Config.Server.Port)
+	grpcAddr := net.JoinHostPort("", strconv.Itoa(opts.Config.Server.Port))
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		opts.Logger.Error("Failed to listen:", "error", err)

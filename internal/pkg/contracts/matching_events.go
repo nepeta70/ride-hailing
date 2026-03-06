@@ -3,7 +3,8 @@ package contracts
 import "github.com/google/uuid"
 
 const (
-	EventTypeRideMatched EventType = "RideMatched"
+	EventTypeRideMatched     EventType = "RideMatched"
+	EventTypeMatchingTimeout EventType = "MatchingTimeout"
 )
 
 type RideMatchedEvent struct {
@@ -17,3 +18,13 @@ func (e *RideMatchedEvent) EventType() EventType {
 }
 
 var _ Event = (*RideMatchedEvent)(nil)
+
+type MatchingTimeoutEvent struct {
+	RideID uuid.UUID
+}
+
+func (e *MatchingTimeoutEvent) EventType() EventType {
+	return EventTypeMatchingTimeout
+}
+
+var _ Event = (*MatchingTimeoutEvent)(nil)

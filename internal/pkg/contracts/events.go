@@ -14,7 +14,7 @@ type Event interface {
 
 type EventMessage struct {
 	EventType EventType         `json:"event-type"`
-	Payload   any               `json:"message"`
+	Payload   Event             `json:"message"`
 	Headers   map[string]string `json:"-"`
 }
 
@@ -28,7 +28,7 @@ func NewEventMessage(event Event) *EventMessage {
 
 func (e *EventMessage) AddHeader(key string, value string) {
 	if e.Headers == nil {
-		e.Headers = make(map[string]string)
+		e.Headers = make(map[string]string, 10)
 	}
 	e.Headers[key] = value
 }

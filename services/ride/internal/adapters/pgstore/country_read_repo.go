@@ -34,7 +34,7 @@ func (r *CountryReadRepo) GetAllEnabled(ctx context.Context) (map[string]*domain
 	}
 	defer rows.Close()
 
-	results := make(map[string]*domain.Country)
+	results := make(map[string]*domain.Country, 50)
 	for rows.Next() {
 		var c CountryReadEntity
 		err := rows.Scan(&c.Code, &c.CurrencyCode)

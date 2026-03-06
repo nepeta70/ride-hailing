@@ -11,6 +11,8 @@ import (
 	"github.com/nepeta70/ride-hailing/services/location/internal/config"
 	"github.com/nepeta70/ride-hailing/services/location/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/location/internal/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type LocationServiceOpts struct {
@@ -51,11 +53,23 @@ func NewLocationService(opts *LocationServiceOpts) *LocationService {
 	}
 }
 
-func (s *LocationService) Update(ctx context.Context, req *UpdateDriverStatusRequest) error {
+func (s *LocationService) Update(ctx context.Context, req *UpdateDriverLocationRequest) error {
+	ctx, span := s.telemetryProvider.Tracer().Start(ctx, "UpdateDriverLocation",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("driver.id", req.DriverID.String()),
+			attribute.String("sender.type", req.SenderType.String()),
+			attribute.Float64("location.latitude", req.Coordinates.Latitude),
+			attribute.Float64("location.longitude", req.Coordinates.Longitude),
+		),
+	)
+	defer span.End()
 	if err := ctx.Err(); err != nil {
+		span.RecordError(err)
 		return errors.ErrContextError
 	}
 	if err := req.Validate(); err != nil {
+		span.RecordError(err)
 		return err // Returns the validation Error
 	}
 
@@ -74,14 +88,14 @@ func (s *LocationService) Update(ctx context.Context, req *UpdateDriverStatusReq
 		CapturedAt: req.CapturedAt,
 	}
 
-	return s.repo.Save(ctx, loc)
+	return s.repo.SaveDriverLocation(ctx, loc)
 }
 
 func (s *LocationService) Get(ctx context.Context, userID uuid.UUID) (*domain.DriverLocation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errors.ErrContextError
 	}
-	return s.repo.Get(ctx, userID)
+	return s.repo.GetDriverLocationAndStatus(ctx, userID)
 }
 
 func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UUID) error {
@@ -92,7 +106,16 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 }
 
 func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.Coordinates) ([]*domain.DriverLocation, error) {
+	ctx, span := s.telemetryProvider.Tracer().Start(ctx, "UpdateDriverLocation",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.Float64("search.latitude", coordinates.Latitude),
+			attribute.Float64("search.longitude", coordinates.Longitude),
+		),
+	)
+	defer span.End()
 	if err := ctx.Err(); err != nil {
+		span.RecordError(err)
 		return nil, errors.ErrContextError
 	}
 
@@ -101,6 +124,10 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 	var drivers []*domain.DriverLocation
 	var err error
 	for attempt := 1; radius <= s.config.Logic.MaxRadiusSearchKm; attempt++ {
+		span.AddEvent("Searching for nearby drivers", trace.WithAttributes(
+			attribute.Int("attempt", attempt),
+			attribute.Float64("radius_km", float64(radius)),
+		))
 		s.telemetryProvider.Logger().DebugContext(ctx, "Searching for nearby drivers", "radius", radius, "attempt", attempt)
 		drivers, err = s.repo.SearchNearby(ctx, coordinates, radius)
 		if err == nil {
@@ -119,4 +146,32 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 		return nil, errors.NewErrNotFoundf("no drivers found within radius %.2f km", radius)
 	}
 	return drivers, err
+}
+
+func (s *LocationService) UpdateDriverStatus(ctx context.Context, req *UpdateDriverStatusRequest) error {
+	ctx, span := s.telemetryProvider.Tracer().Start(ctx, "UpdateDriverStatus",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("driver.id", req.DriverID.String()),
+			attribute.String("status", req.Status.String()),
+		),
+	)
+	defer span.End()
+
+	if err := ctx.Err(); err != nil {
+		span.RecordError(err)
+		return errors.ErrContextError
+	}
+	if err := req.Validate(); err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	status := &domain.DriverStatusUpdate{
+		DriverID:        req.DriverID,
+		Status:          req.Status,
+		StatusUpdatedAt: req.StatusUpdatedAt,
+	}
+
+	return s.repo.SaveDriverStatus(ctx, status)
 }

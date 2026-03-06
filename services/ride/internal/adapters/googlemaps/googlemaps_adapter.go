@@ -70,7 +70,7 @@ func (g *GoogleMapsAdapter) HealthCheck(ctx context.Context) error {
 	// A simple way to check health is to make a lightweight request.
 	_, err := g.client.Timezone(ctx, &maps.TimezoneRequest{
 		Location:  &maps.LatLng{Lat: 0, Lng: 0},
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UTC(),
 	})
 	return err
 }

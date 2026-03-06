@@ -11,6 +11,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/segmentio/kafka-go"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -101,23 +102,28 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 
 	data, err := json.Marshal(message)
 	if err != nil {
+		span.RecordError(err)
 		return errors.NewErrJSONMarshal(err)
 	}
 
 	k.telemetry.Propagator().Inject(ctx, propagation.MapCarrier(message.Headers))
-
 	k.telemetry.Logger().Debug("publishing message", "message", message.Payload)
 	k.telemetry.Logger().Debug("message headers", "headers", message.Headers)
+
+	message.Headers["event-type"] = message.EventType.String()
+	message.Headers["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 	err = k.writer.WriteMessages(ctx, kafka.Message{
 		Topic:   topic.String(),
 		Value:   data,
-		Headers: k.makeHeader(message),
+		Headers: k.makeHeader(message.Headers),
 		Time:    time.Now().UTC(),
 	})
 	if err != nil {
+		span.RecordError(err)
 		k.telemetry.Metrics().DependencyFailure(k.ServiceName(), "publish", "error")
 		return errors.NewTransientErrorf("failed to publish message: %v", err)
 	}
+	span.SetStatus(codes.Ok, "message published successfully")
 	return nil
 }
 
@@ -187,7 +193,7 @@ func (k *KafkaPublisher) initializeTopics(required []string, config *KafkaConfig
 		k.telemetry.Metrics().DependencyFailure(k.ServiceName(), "initialize_topics", "error")
 		return errors.NewPermanentErrorf("Failed to initialize Kafka topics: %v", err)
 	}
-
+	span.SetStatus(codes.Ok, "Kafka topics initialized successfully")
 	return nil
 }
 
@@ -208,7 +214,7 @@ func (k *KafkaPublisher) verify(required []string) bool {
 		return false
 	}
 
-	existing := make(map[string]bool)
+	existing := make(map[string]bool, len(partitions))
 	for _, p := range partitions {
 		existing[p.Topic] = true
 	}
@@ -221,13 +227,15 @@ func (k *KafkaPublisher) verify(required []string) bool {
 	return true
 }
 
-func (k *KafkaPublisher) makeHeader(message *contracts.EventMessage) []kafka.Header {
-	headers := make([]kafka.Header, 0, len(message.Headers))
-	for k, v := range message.Headers {
-		headers = append(headers, kafka.Header{Key: k, Value: []byte(v)})
+func (k *KafkaPublisher) makeHeader(headers map[string]string) []kafka.Header {
+	headers["timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	k.telemetry.Logger().Debug("message headers before conversion", "headers", headers)
+	headerList := make([]kafka.Header, 0, len(headers))
+	for k, v := range headers {
+		headerList = append(headerList, kafka.Header{Key: k, Value: []byte(v)})
 	}
 
-	return headers
+	return headerList
 }
 
 var _ ports.EventPublisher = (*KafkaPublisher)(nil)

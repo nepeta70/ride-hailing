@@ -80,8 +80,8 @@ func CreateNewUser(payload UserPayload) (*User, error) {
 		email:     email,
 		phone:     phone,
 		password:  password,
-		createdAt: time.Now(),
-		updatedAt: time.Now(),
+		createdAt: time.Now().UTC(),
+		updatedAt: time.Now().UTC(),
 	}
 	return user, nil
 }

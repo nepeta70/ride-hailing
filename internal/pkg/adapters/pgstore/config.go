@@ -1,7 +1,9 @@
 package pgstore
 
 import (
-	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -34,9 +36,18 @@ func DefaultPostgresConfig() PostgresConfig {
 }
 
 func (c PostgresConfig) DSN() string {
-	// Template: postgres://user:password@host:port/dbname?sslmode=disable
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(c.User, c.Password),
+		Host:   net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
+		Path:   c.DBName,
+	}
+
+	q := u.Query()
+	q.Set("sslmode", c.SSLMode)
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 func (c *PostgresConfig) Init() error {

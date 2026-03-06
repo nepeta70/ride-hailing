@@ -11,6 +11,7 @@ import (
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/config"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -107,7 +108,7 @@ func NewApplication(opts *ApplicationOptions) (*Application, error) {
 }
 
 func (a *Application) Start(ctx context.Context) error {
-	err := a.subscriber.Subscribe(ctx, contracts.TopicMatching, a.handleRideEvent)
+	err := a.subscriber.Subscribe(ctx, contracts.TopicMatching, a.handleMatchEvent)
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,7 @@ func (a *Application) Start(ctx context.Context) error {
 	return nil
 }
 
-func (a *Application) handleRideEvent(ctx context.Context, headers map[string]string, msg []byte) error {
+func (a *Application) handleMatchEvent(ctx context.Context, headers map[string]string, msg []byte) error {
 	ctx = a.telemetry.Propagator().Extract(ctx, propagation.MapCarrier(headers))
 	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Matching Event",
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -158,20 +159,35 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			return errors.NewErrJSONUnmarshal(err)
 		}
-
+		span.AddEvent("Processing RideMatchedEvent", trace.WithAttributes(
+			attribute.String("ride.id", payload.RideID.String()),
+			attribute.String("driver.id", payload.DriverID.String()),
+		))
+		a.telemetry.Logger().DebugContext(ctx, "Received RideMatchedEvent", "ride_id", payload.RideID.String(), "driver_id", payload.DriverID.String(), "request_id", payload.RequestID.String())
 		ev := &grains.RideMatchedEvent{
 			RideID:    payload.RideID,
 			DriverID:  payload.DriverID,
-			RequestID: info.Trace.RequestID,
+			RequestID: payload.RequestID,
+		}
+		err := ev.Validate()
+		if err != nil {
+			span.RecordError(err)
+			a.telemetry.Logger().ErrorContext(ctx, "Invalid RideMatchedEvent", "ride_id", payload.RideID.String(), "error", err)
+			return err
 		}
 		identity := grain.NewGrainIdentity(domain.RideGrainKind, ev.RideID)
 
-		_, err := a.grainSystem.Silo().Ask(ctx, identity, ev)
+		_, err = a.grainSystem.Silo().Ask(ctx, identity, ev)
 		if err != nil {
+			span.RecordError(err)
+			a.telemetry.Logger().ErrorContext(ctx, "Failed to send RideMatchedEvent to grain", "ride_id", ev.RideID.String(), "error", err)
 			return err
 		}
-
+		span.SetStatus(codes.Ok, "RideMatchedEvent processed successfully")
 	default:
+		span.SetAttributes(attribute.String("error", "unhandled event type"))
+		a.telemetry.Logger().ErrorContext(ctx, "Unhandled event type", "event_type", evt.String())
+		span.SetStatus(codes.Error, "unhandled event type")
 	}
 
 	return nil

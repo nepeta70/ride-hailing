@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 )
@@ -12,7 +13,18 @@ type Coordinates struct {
 }
 
 func (c *Coordinates) String() string {
-	return fmt.Sprintf("(%f, %f)", c.Latitude, c.Longitude)
+	if c == nil {
+		return "(0, 0)"
+	}
+
+	b := make([]byte, 0, 40)
+	b = append(b, '(')
+	b = strconv.AppendFloat(b, c.Latitude, 'f', 6, 64)
+	b = append(b, ',', ' ')
+	b = strconv.AppendFloat(b, c.Longitude, 'f', 6, 64)
+	b = append(b, ')')
+
+	return string(b)
 }
 
 func (c *Coordinates) Validate() error {

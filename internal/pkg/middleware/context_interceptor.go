@@ -2,9 +2,7 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,7 +69,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		ctx, span := tr.Start(ctx, "Middleware.ContextInterceptor", trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()
 
-		i.telemetry.Logger().Debug("gRPC request received", "method", info.FullMethod, "payload", req, "timestamp", time.Now().Format(time.RFC3339))
+		i.telemetry.Logger().Debug("gRPC request received", "method", info.FullMethod, "payload", req, "timestamp", time.Now().UTC().Format(time.RFC3339))
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			i.telemetry.Metrics().AuthFailure(info.FullMethod, "missing_metadata")
@@ -128,10 +126,8 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 						"method", info.FullMethod,
 						"required_roles", roles,
 						"provided_role", role)
-
 					span.SetAttributes(
 						attribute.String("auth.reason", "role_mismatch"),
-						attribute.String("auth.role.required", fmt.Sprintf("%v", roles)),
 						attribute.String("auth.role.provided", role.String()),
 					)
 					i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_role")
@@ -155,7 +151,7 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			},
 			Trace: ctxmgr.TraceInfo{
 				RequestID:  requestID,
-				Timestamp:  timestamp,
+				Timestamp:  *timestamp,
 				RetryCount: getIntMetadata(md, "retry-count"),
 			},
 			Location: ctxmgr.LocationInfo{
@@ -169,41 +165,34 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			},
 		}
 
-		span.AddEvent("context_assembled", trace.WithAttributes(
-			attribute.String("user.id", senderID.String()),
-			attribute.String("request.id", requestID.String()),
-		))
+		span.SetStatus(codes.Ok, "context assembled successfully")
 		// 3. Inject and Continue
 		return handler(i.contextManager.Inject(ctx, rInfo), req)
 	}
 }
 
-func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (int64, error) {
+func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (*time.Time, error) {
 	sTimestamp := getMetadata(md, "timestamp")
 	if len(sTimestamp) == 0 {
 		i.telemetry.Metrics().ValidationFailure(method, "missing_timestamp")
-		return 0, errInvalidArgument
+		return nil, errInvalidArgument
 	}
-	timestamp, err := strconv.ParseInt(sTimestamp, 10, 64)
+	timestamp, err := time.Parse(time.RFC3339, sTimestamp)
 	if err != nil {
+		i.telemetry.Logger().Error("Invalid timestamp", "error", err, "timestamp", sTimestamp)
 		i.telemetry.Metrics().ValidationFailure(method, "invalid_timestamp")
-		return 0, errInvalidArgument
+		return nil, errInvalidArgument
 	}
 
-	if timestamp == 0 {
-		i.telemetry.Metrics().ValidationFailure(method, "missing_timestamp")
-		return 0, errInvalidArgument
-	}
-
-	now := time.Now().Unix()
-	if timestamp > (now + int64(i.config.Timeouts.MaxClockDriftSeconds)) {
+	now := time.Now().UTC()
+	if timestamp.After(now.Add(i.config.Timeouts.MaxClockDrift)) {
 		i.telemetry.Metrics().ValidationFailure(method, "timestamp_too_far_in_future")
-		return 0, errInvalidArgument
+		return nil, errInvalidArgument
 	}
 
-	if timestamp < (now - int64(i.config.Timeouts.RequestTimeoutSeconds)) {
+	if timestamp.Before(now.Add(-i.config.Timeouts.RequestTimeout)) {
 		i.telemetry.Metrics().ValidationFailure(method, "timestamp_expired")
-		return 0, errDeadlineExceeded
+		return nil, errDeadlineExceeded
 	}
-	return timestamp, nil
+	return &timestamp, nil
 }

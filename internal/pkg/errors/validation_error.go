@@ -9,8 +9,11 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
+	if e == nil {
+		return ""
+	}
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Err)
+		return e.Message + ": " + e.Err.Error()
 	}
 	return e.Message
 }

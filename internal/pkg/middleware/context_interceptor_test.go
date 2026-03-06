@@ -2,7 +2,6 @@ package middleware_test
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -52,7 +51,7 @@ func TestContextInterceptor(t *testing.T) {
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
-				"timestamp":    strconv.FormatInt(time.Now().Unix(), 10),
+				"timestamp":    time.Now().Format(time.RFC3339),
 			}),
 			expectedCode: codes.OK,
 			expectedRole: enums.SenderType("rider"),
@@ -88,7 +87,7 @@ func TestContextInterceptor(t *testing.T) {
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
-				"timestamp":    strconv.FormatInt(time.Now().Add(-24*time.Hour).Unix(), 10),
+				"timestamp":    time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
 			}),
 			expectedCode: codes.DeadlineExceeded,
 		},
@@ -100,7 +99,7 @@ func TestContextInterceptor(t *testing.T) {
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
-				"timestamp":    strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10),
+				"timestamp":    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
 			}),
 			expectedCode: codes.InvalidArgument,
 		},

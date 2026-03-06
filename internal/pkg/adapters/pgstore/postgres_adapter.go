@@ -103,6 +103,7 @@ func (db *PostgresDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (ports.T
 		span.SetStatus(codes.Error, "failed to begin transaction")
 		return nil, errors.NewTransientErrorf("failed to begin postgres transaction: %w", err)
 	}
+	span.SetStatus(codes.Ok, "transaction begun successfully")
 	return &PostgresTx{tx}, nil
 }
 
@@ -152,6 +153,7 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 		return nil
 	})
 	db.telemetry.Logger().DebugContext(ctx, "Query returned rows", "rows", rows, "error", err)
+	span.SetStatus(codes.Ok, "query executed successfully")
 	return rows, err
 }
 
@@ -178,7 +180,7 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 		}
 		return nil
 	})
-
+	span.SetStatus(codes.Ok, "exec executed successfully")
 	return res, err
 }
 
