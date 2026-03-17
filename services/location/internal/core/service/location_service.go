@@ -137,9 +137,6 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 			s.telemetryProvider.Logger().DebugContext(ctx, "No drivers found within radius, expanding search", "radius", radius)
 		}
 		radius *= 2 // Exponential backoff for radius
-		if radius > s.config.Logic.MaxRadiusSearchKm {
-			radius = s.config.Logic.MaxRadiusSearchKm
-		}
 	}
 
 	if len(drivers) == 0 {
