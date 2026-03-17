@@ -174,6 +174,8 @@ func (g *RideGrain) OnReceive(ctx context.Context, msg pkgPorts.Message) (pkgPor
 		response, err = g.handleCompleteRide(ctx, message)
 	case *StartRideCommand:
 		response, err = g.handleStartRide(ctx, message)
+	case *RideTimedOutEvent:
+		response, err = g.handleRideTimedOut(ctx, message)
 
 	default:
 		return nil, errors.NewPermanentErrorf("unhandled message type: %T", msg)
@@ -370,6 +372,33 @@ func (g *RideGrain) handleRideMatched(ctx context.Context, event *RideMatchedEve
 			return g.publishEvent(ctx, &contracts.RideMatchedEvent{
 				RequestID: event.RequestID,
 				DriverID:  event.DriverID,
+				RideID:    event.RideID,
+			})
+		}).
+		End(&SuccessResponse{})
+}
+
+func (g *RideGrain) handleRideTimedOut(ctx context.Context, event *RideTimedOutEvent) (pkgPorts.Message, error) {
+	p := g.Start(ctx, "Handle:RideTimedOut")
+
+	return p.
+		Step("ValidateMessage", func(_ context.Context) error { return event.Validate() }).
+		Step("ValidateTransition", func(ctx context.Context) error {
+			if g.state.Status != domain.RideStatusRequested && g.state.Status != domain.RideStatusMatched {
+				return errors.NewBusinessErrorf("invalid ride status transition %s to %s", g.state.Status, domain.RideStatusTimedOut)
+			}
+			return nil
+		}).
+		Step("Transition", func(ctx context.Context) error {
+			g.state.Status = domain.RideStatusTimedOut
+			g.version++
+			return nil
+		}).
+		Step("Persist", func(ctx context.Context) error { return g.persist(ctx, event) }).
+		Step("Publish", func(ctx context.Context) error {
+			return g.publishEvent(ctx, &contracts.RideTimedOutEvent{
+				RequestID: event.RequestID,
+				RiderID:   g.core.RiderID,
 				RideID:    event.RideID,
 			})
 		}).

@@ -12,6 +12,7 @@ const (
 	EventTypeRideCanceled  EventType = "RideCanceled"
 	EventTypeRideCompleted EventType = "RideCompleted"
 	EventTypeRideStarted   EventType = "RideStarted"
+	EventTypeRideTimedOut  EventType = "RideTimedOut"
 )
 
 type RideAcceptedEvent struct {
@@ -91,3 +92,15 @@ func (e *RideStartedEvent) EventType() EventType {
 }
 
 var _ Event = (*RideStartedEvent)(nil)
+
+type RideTimedOutEvent struct {
+	RequestID uuid.UUID
+	RiderID   uuid.UUID
+	RideID    uuid.UUID
+}
+
+func (e *RideTimedOutEvent) EventType() EventType {
+	return EventTypeRideTimedOut
+}
+
+var _ Event = (*RideTimedOutEvent)(nil)

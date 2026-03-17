@@ -17,6 +17,7 @@ import (
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	domain "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/ports"
@@ -90,13 +91,17 @@ func (lc *LocationClient) GetCandidates(ctx context.Context, coords *domain.Coor
 		Longitude: coords.Longitude,
 	}
 
-	// The call to Location Service
 	resp, err := lc.client.SearchNearbyDrivers(ctx, req, grpc.WaitForReady(true))
 	if err != nil {
-		span.RecordError(err)
-		lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "SearchNearbyDrivers", err.Error())
-		lc.telemetryProvider.Logger().ErrorContext(ctx, "Failed to call SearchNearbyDrivers", "error", err)
-		return nil, err
+		if errors.IsNotFound(err) {
+			lc.telemetryProvider.Logger().InfoContext(ctx, "No nearby drivers found", "coordinates", coords.String())
+			return []*locationv1.SearchNearbyDriversResponse_Driver{}, nil
+		} else {
+			span.RecordError(err)
+			lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "SearchNearbyDrivers", err.Error())
+			lc.telemetryProvider.Logger().ErrorContext(ctx, "Failed to call SearchNearbyDrivers", "error", err)
+			return nil, err
+		}
 	}
 
 	return resp.Drivers, nil
@@ -124,6 +129,7 @@ func (lc *LocationClient) UpdateDriverStatus(ctx context.Context, driverID uuid.
 		Status:   status.String(),
 	}
 	_, err = lc.client.UpdateDriverStatus(ctx, req, grpc.WaitForReady(true))
+
 	if err != nil {
 		span.RecordError(err)
 		lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "UpdateDriverStatus", err.Error())

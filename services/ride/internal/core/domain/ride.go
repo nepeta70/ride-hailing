@@ -19,6 +19,7 @@ const (
 	RideStatusCancelled RideStatus = "CANCELLED"
 	RideStatusStarted   RideStatus = "STARTED"
 	RideStatusCompleted RideStatus = "COMPLETED"
+	RideStatusTimedOut  RideStatus = "TIMED_OUT"
 )
 
 func (s RideStatus) IsValid() bool {
