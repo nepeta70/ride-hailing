@@ -84,7 +84,7 @@ func TestRequestInfo_ToByteMap(t *testing.T) {
 				"sender-type":  "anonymous",
 				"sender-name":  "",
 				"request-id":   uuid.Nil.String(),
-				"timestamp":    "0",
+				"timestamp":    "0001-01-01T00:00:00Z",
 				"retry-count":  "0",
 				"country-code": "",
 				"app-version":  "",
@@ -188,7 +188,7 @@ func TestNewRequestInfoFromByteMap(t *testing.T) {
 				assert.Equal(t, enums.SenderType(""), r.Sender.Type)
 				assert.Equal(t, "", r.Sender.Name)
 				assert.Equal(t, uuid.Nil, r.Trace.RequestID)
-				assert.Equal(t, int64(0), r.Trace.Timestamp)
+				assert.Equal(t, time.Time{}, r.Trace.Timestamp)
 				assert.Equal(t, 0, r.Trace.RetryCount)
 				assert.Equal(t, "", r.Location.CountryCode)
 			},

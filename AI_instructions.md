@@ -21,6 +21,7 @@ This file is intended to contain guidelines and rules that must always be follow
 - should use table driven tests for each method tested
 - refer to the struct folder using . "structbeingtestedpath"
 - Don't mock simple structs
+- Before mocking interfaces from github.com/nepeta70/ride-hailing/internal/pkg, check if the mocks arelready exist in github.com/nepeta70/ride-hailing/internal/pkg/mocks, if not, create the shared mock there.
 
 ---
 

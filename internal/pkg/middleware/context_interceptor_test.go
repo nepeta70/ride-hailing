@@ -21,7 +21,8 @@ import (
 
 func TestContextInterceptor(t *testing.T) {
 	// Setup dependencies
-	cfg := &config.BaseConfig{APIKey: "test-secret"}
+	cfg := config.DefaultBaseConfig()
+	cfg.APIKey = "test-secret"
 	cm := ctxmgr.NewContextManager()
 	telemetryProvider := mocks.NewMockTelemetryProvider()
 
@@ -29,7 +30,7 @@ func TestContextInterceptor(t *testing.T) {
 	endpointRoles := &mocks.EndpointRequests{}
 	contextInterceptor, _ := NewContextInterceptor(&ContextInterceptorOptions{
 		ContextManager: cm,
-		Config:         cfg,
+		Config:         &cfg,
 		Telemetry:      telemetryProvider,
 		EndpointRoles:  endpointRoles,
 	})
@@ -51,7 +52,7 @@ func TestContextInterceptor(t *testing.T) {
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
-				"timestamp":    time.Now().Format(time.RFC3339),
+				"timestamp":    time.Now().UTC().Format(time.RFC3339),
 			}),
 			expectedCode: codes.OK,
 			expectedRole: enums.SenderType("rider"),
