@@ -155,14 +155,14 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 		return nil, mapError(pkgErrors.NewValidationErrorf("invalid coordinates: %w", err))
 	}
 
-	results, err := h.app.LocationService.SearchNearby(ctx, coords)
+	results, err := h.app.LocationService.SearchNearby(ctx, coords, req.GetRadiusKm())
 	if err != nil {
 		span.RecordError(err)
 		return nil, mapError(err)
 	}
 
-	driverLocations := make([]*locationv1.SearchNearbyDriversResponse_Driver, 0, len(results))
-	for _, loc := range results {
+	driverLocations := make([]*locationv1.SearchNearbyDriversResponse_Driver, 0, len(results.Drivers))
+	for _, loc := range results.Drivers {
 		driverLocations = append(driverLocations, &locationv1.SearchNearbyDriversResponse_Driver{
 			UserId:         loc.UserID.String(),
 			Latitude:       loc.Coordinates.Latitude,
@@ -176,7 +176,8 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 		attribute.Int("driver.count", len(driverLocations)),
 	))
 	return &locationv1.SearchNearbyDriversResponse{
-		Drivers: driverLocations,
+		RadiusKm: results.RadiusKm,
+		Drivers:  driverLocations,
 	}, nil
 }
 

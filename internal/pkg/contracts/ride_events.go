@@ -95,7 +95,6 @@ var _ Event = (*RideStartedEvent)(nil)
 
 type RideTimedOutEvent struct {
 	RequestID uuid.UUID
-	RiderID   uuid.UUID
 	RideID    uuid.UUID
 }
 

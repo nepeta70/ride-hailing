@@ -21,7 +21,7 @@ type ResiliencyInterceptor struct {
 // NewResiliencyInterceptor initializes the interceptor with resiliency dependencies.
 func NewResiliencyInterceptor(rateLimit float64, rateBurst int, telemetry ports.TelemetryProvider) (*ResiliencyInterceptor, error) {
 	limiter := rate.NewLimiter(rate.Limit(rateLimit), rateBurst)
-	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig())
+	cb, err := circuitbreaker.NewCircuitBreaker(circuitbreaker.DefaultConfig(), telemetry)
 	if err != nil {
 		return nil, err
 	}

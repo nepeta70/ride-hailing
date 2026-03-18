@@ -7,6 +7,9 @@ import (
 	"time"
 
 	pkgErrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // State represents the circuit breaker state
@@ -47,27 +50,42 @@ type CircuitBreaker struct {
 	successes       uint32
 	lastFailureTime time.Time
 	halfOpenReqs    uint32 // Concurrent requests in half-open state
+	telemetry       ports.TelemetryProvider
 }
 
 // NewCircuitBreaker creates a new CircuitBreaker with the given configuration
-func NewCircuitBreaker(config *CircuitBreakerConfig) (*CircuitBreaker, error) {
+func NewCircuitBreaker(config *CircuitBreakerConfig, telemetry ports.TelemetryProvider) (*CircuitBreaker, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
 	return &CircuitBreaker{
-		config: config,
-		state:  StateClosed,
+		config:    config,
+		state:     StateClosed,
+		telemetry: telemetry,
 	}, nil
 }
 
 // Execute wraps the given function with circuit breaker logic
 func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) (err error) {
+	ctx, span := cb.telemetry.Tracer().Start(ctx, "CircuitBreaker.Execute",
+		trace.WithSpanKind(trace.SpanKindInternal),
+	)
+	defer span.End()
 	if ctxErr := ctx.Err(); ctxErr != nil {
+		span.RecordError(ctxErr)
 		return ctxErr
 	}
 
 	isHalfOpen, beforeErr := cb.beforeRequest()
+	span.SetAttributes(
+		attribute.String("circuit.state", cb.State().String()),
+		attribute.Bool("circuit.halfopen", isHalfOpen),
+		attribute.Int("halfOpenReqs", int(cb.halfOpenReqs)),
+		attribute.Int("failures", int(cb.failures)),
+		attribute.Int("successes", int(cb.successes)),
+	)
 	if beforeErr != nil {
+		span.RecordError(beforeErr)
 		return beforeErr
 	}
 
@@ -77,6 +95,7 @@ func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) (err err
 			err = ErrPanicRecovered
 
 			// Record the failure so the circuit actually transitions states
+			span.RecordError(err)
 			cb.afterRequest(err, isHalfOpen)
 		}
 	}()
@@ -137,6 +156,10 @@ func (cb *CircuitBreaker) afterRequest(err error, isHalfOpen bool) {
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return
+		}
+		if pkgErrors.IsNotFound(err) {
+			cb.onSuccess()
 			return
 		}
 		cb.onFailure()

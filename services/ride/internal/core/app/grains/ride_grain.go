@@ -398,7 +398,6 @@ func (g *RideGrain) handleRideTimedOut(ctx context.Context, event *RideTimedOutE
 		Step("Publish", func(ctx context.Context) error {
 			return g.publishEvent(ctx, &contracts.RideTimedOutEvent{
 				RequestID: event.RequestID,
-				RiderID:   g.core.RiderID,
 				RideID:    event.RideID,
 			})
 		}).

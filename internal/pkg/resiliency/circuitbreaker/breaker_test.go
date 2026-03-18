@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pkgErrors "github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/internal/pkg/mocks"
 	"github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
 	. "github.com/nepeta70/ride-hailing/internal/pkg/resiliency/circuitbreaker"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,8 @@ var someConfig = &CircuitBreakerConfig{
 	MaxRequests:      2,
 	SuccessesToClose: 1,
 }
+
+var tel = mocks.NewMockTelemetryProvider()
 
 func TestNew(t *testing.T) {
 	tests := []struct {
@@ -33,7 +36,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cb, err := NewCircuitBreaker(tt.config)
+			cb, err := NewCircuitBreaker(tt.config, tel)
 			assert.NoError(t, err)
 			assert.NotNil(t, cb)
 			assert.Equal(t, StateClosed, cb.State())
@@ -127,7 +130,7 @@ func TestCircuitBreaker_Execute_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cb, err := NewCircuitBreaker(tt.args.config)
+			cb, err := NewCircuitBreaker(tt.args.config, tel)
 			assert.NoError(t, err)
 			assert.NotNil(t, cb)
 
@@ -154,7 +157,7 @@ func TestCircuitBreaker_StateTransition_ClosedToOpen(t *testing.T) {
 		Timeout:          100 * time.Millisecond,
 		MaxRequests:      1,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")
@@ -185,7 +188,7 @@ func TestCircuitBreaker_StateTransition_OpenToHalfOpen(t *testing.T) {
 		Timeout:          50 * time.Millisecond,
 		MaxRequests:      1,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")
@@ -222,7 +225,7 @@ func TestCircuitBreaker_StateTransition_HalfOpenToClosed(t *testing.T) {
 		Timeout:          50 * time.Millisecond,
 		MaxRequests:      2,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")
@@ -255,7 +258,7 @@ func TestCircuitBreaker_StateTransition_HalfOpenToOpen(t *testing.T) {
 		Timeout:          50 * time.Millisecond,
 		MaxRequests:      2,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")
@@ -288,7 +291,7 @@ func TestCircuitBreaker_HalfOpen_MaxRequests(t *testing.T) {
 		Timeout:          50 * time.Millisecond,
 		MaxRequests:      1,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")
@@ -364,7 +367,7 @@ func TestCircuitBreaker_ContextErrors_NotCountedAsFailures(t *testing.T) {
 				Timeout:          100 * time.Millisecond,
 				MaxRequests:      1,
 				SuccessesToClose: 2,
-			})
+			}, tel)
 			assert.NoError(t, err)
 
 			// Execute with context error
@@ -412,7 +415,7 @@ func TestCircuitBreaker_IsOpen(t *testing.T) {
 				Timeout:          50 * time.Millisecond,
 				MaxRequests:      1,
 				SuccessesToClose: 2,
-			})
+			}, tel)
 			assert.NoError(t, err)
 
 			// Force state
@@ -448,7 +451,7 @@ func TestCircuitBreaker_Stats(t *testing.T) {
 		Timeout:          100 * time.Millisecond,
 		MaxRequests:      1,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	// Initial stats
@@ -519,7 +522,7 @@ func TestCircuitBreaker_ConcurrentAccess(t *testing.T) {
 		Timeout:          100 * time.Millisecond,
 		MaxRequests:      5,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -552,7 +555,7 @@ func TestCircuitBreaker_SuccessResetsFailuresInClosedState(t *testing.T) {
 		Timeout:          100 * time.Millisecond,
 		MaxRequests:      1,
 		SuccessesToClose: 2,
-	})
+	}, tel)
 	assert.NoError(t, err)
 
 	testErr := errors.New("test error")

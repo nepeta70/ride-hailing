@@ -119,6 +119,7 @@ func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]stri
 		defer ticker.Stop()
 
 		done := false
+		radius := float32(0)
 
 		for !done {
 			select {
@@ -132,17 +133,19 @@ func (s *MatchingService) MatchRide(ctx context.Context, headers map[string]stri
 
 			case <-ticker.C:
 				s.telemetry.Logger().DebugContext(funcCtx, "MatchingService: Getting candidates for ride request", "ride_id", request.RideID.String(), "pickup_location", request.PickupLocation)
-				candidates, err := s.client.GetCandidates(funcCtx, request.PickupLocation, headers)
+				response, err := s.client.GetCandidates(funcCtx, request.PickupLocation, radius, headers)
 				if err != nil {
 					span.RecordError(err)
 					s.telemetry.Logger().ErrorContext(funcCtx, "MatchingService: Failed to get candidates", "ride_id", request.RideID.String(), "error", err)
 					continue
 				}
-
+				candidates := response.GetDrivers()
 				if len(candidates) == 0 {
 					span.AddEvent("No candidates found for ride request", trace.WithAttributes(
 						attribute.String("ride.id", request.RideID.String()),
+						attribute.Float64("radius.km", float64(radius)),
 					))
+					radius = response.GetRadiusKm()
 					s.telemetry.Logger().WarnContext(funcCtx, "MatchingService: No drivers available for ride.", "ride_id", request.RideID.String())
 					continue
 				}

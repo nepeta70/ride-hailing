@@ -498,14 +498,14 @@ func TestLocationService_SearchNearby(t *testing.T) {
 				Telemetry: mockTelemetry,
 			})
 
-			drivers, err := service.SearchNearby(tt.ctx, tt.coordinates)
+			res, err := service.SearchNearby(tt.ctx, tt.coordinates, 1.0)
 
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 				if tt.validate != nil {
-					tt.validate(drivers)
+					tt.validate(res.Drivers)
 				}
 			}
 		})
