@@ -8,7 +8,6 @@ import (
 
 type RideTimedOutEvent struct {
 	RequestID uuid.UUID
-	DriverID  uuid.UUID
 	RideID    uuid.UUID
 }
 

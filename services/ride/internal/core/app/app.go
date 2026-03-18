@@ -90,7 +90,15 @@ func NewApplication(opts *ApplicationOptions) (*Application, error) {
 			EstimateFare:   commands.NewEstimateFareHandler(opts.Config, opts.Telemetry, opts.Storage, opts.DirectionsService),
 			CreateFareRate: commands.NewCreateFareRateHandler(opts.Storage.FareRatesWriteRepo()),
 			UpdateFareRate: commands.NewUpdateFareRateHandler(opts.Storage.FareRatesWriteRepo()),
-			RequestRide:    commands.NewRequestRideHandler(opts.Config, opts.Storage, opts.GrainSystem, opts.Telemetry),
+			RequestRide: commands.NewRequestRideHandler(&commands.RequestRideHandlerOpts{
+				ContextManager:       opts.ContextManager,
+				Config:               opts.Config,
+				FareReadRepo:         opts.Storage.FareReadRepo(),
+				Silo:                 opts.GrainSystem.Silo(),
+				GrainIdentityFactory: opts.GrainSystem.GrainIdentityFactory(),
+				ServiceTypeCache:     opts.Storage.ServiceTypeCache(),
+				Telemetry:            opts.Telemetry,
+			}),
 		},
 		Queries: &Queries{
 			FareRates: queries.NewGetFareRatesHandler(opts.Storage.FareRatesReadRepo()),
@@ -193,8 +201,10 @@ func (a *Application) handleMatchEvent(ctx context.Context, headers map[string]s
 			attribute.String("ride.id", payload.RideID.String()),
 		))
 		a.telemetry.Logger().DebugContext(ctx, "Received MatchingTimeoutEvent", "ride_id", payload.RideID.String())
+
 		ev := &grains.RideTimedOutEvent{
-			RideID: payload.RideID,
+			RideID:    payload.RideID,
+			RequestID: info.Trace.RequestID,
 		}
 		err := ev.Validate()
 		if err != nil {
