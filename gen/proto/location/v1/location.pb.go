@@ -344,6 +344,7 @@ func (x *SearchNearbyDriversRequest) GetRadiusKm() float32 {
 type SearchNearbyDriversResponse struct {
 	state         protoimpl.MessageState                `protogen:"open.v1"`
 	Drivers       []*SearchNearbyDriversResponse_Driver `protobuf:"bytes,1,rep,name=drivers,proto3" json:"drivers,omitempty"`
+	RadiusKm      float32                               `protobuf:"fixed32,2,opt,name=radius_km,json=radiusKm,proto3" json:"radius_km,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -383,6 +384,13 @@ func (x *SearchNearbyDriversResponse) GetDrivers() []*SearchNearbyDriversRespons
 		return x.Drivers
 	}
 	return nil
+}
+
+func (x *SearchNearbyDriversResponse) GetRadiusKm() float32 {
+	if x != nil {
+		return x.RadiusKm
+	}
+	return 0
 }
 
 type SearchNearbyDriversResponse_Driver struct {
@@ -486,9 +494,10 @@ const file_location_v1_location_proto_rawDesc = "" +
 	"\x1aSearchNearbyDriversRequest\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1b\n" +
-	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"\xac\x02\n" +
+	"\tradius_km\x18\x03 \x01(\x02R\bradiusKm\"\xc9\x02\n" +
 	"\x1bSearchNearbyDriversResponse\x12I\n" +
-	"\adrivers\x18\x01 \x03(\v2/.location.v1.SearchNearbyDriversResponse.DriverR\adrivers\x1a\xc1\x01\n" +
+	"\adrivers\x18\x01 \x03(\v2/.location.v1.SearchNearbyDriversResponse.DriverR\adrivers\x12\x1b\n" +
+	"\tradius_km\x18\x02 \x01(\x02R\bradiusKm\x1a\xc1\x01\n" +
 	"\x06Driver\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\blatitude\x18\x02 \x01(\x01R\blatitude\x12\x1c\n" +

@@ -74,4 +74,5 @@ message SearchNearbyDriversResponse {
     google.protobuf.Timestamp available_since = 5; // timestamp of when the driver became available
   }
   repeated Driver drivers = 1;
+  float radius_km = 2;
 }

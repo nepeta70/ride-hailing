@@ -184,6 +184,34 @@ func (a *Application) handleMatchEvent(ctx context.Context, headers map[string]s
 			return err
 		}
 		span.SetStatus(codes.Ok, "RideMatchedEvent processed successfully")
+	case contracts.EventTypeMatchingTimeout:
+		var payload contracts.MatchingTimeoutEvent
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return errors.NewErrJSONUnmarshal(err)
+		}
+		span.AddEvent("Processing MatchingTimeoutEvent", trace.WithAttributes(
+			attribute.String("ride.id", payload.RideID.String()),
+		))
+		a.telemetry.Logger().DebugContext(ctx, "Received MatchingTimeoutEvent", "ride_id", payload.RideID.String())
+		ev := &grains.RideTimedOutEvent{
+			RideID: payload.RideID,
+		}
+		err := ev.Validate()
+		if err != nil {
+			span.RecordError(err)
+			a.telemetry.Logger().ErrorContext(ctx, "Invalid MatchingTimeoutEvent", "ride_id", payload.RideID.String(), "error", err)
+			return err
+		}
+		identity := grain.NewGrainIdentity(domain.RideGrainKind, ev.RideID)
+
+		_, err = a.grainSystem.Silo().Ask(ctx, identity, ev)
+		if err != nil {
+			span.RecordError(err)
+			a.telemetry.Logger().ErrorContext(ctx, "Failed to send MatchingTimeoutEvent to grain", "ride_id", ev.RideID.String(), "error", err)
+			return err
+		}
+		span.SetStatus(codes.Ok, "MatchingTimeoutEvent processed successfully")
+
 	default:
 		span.SetAttributes(attribute.String("error", "unhandled event type"))
 		a.telemetry.Logger().ErrorContext(ctx, "Unhandled event type", "event_type", evt.String())

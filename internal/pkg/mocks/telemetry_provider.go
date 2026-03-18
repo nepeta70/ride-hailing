@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 type MockTelemetryProvider struct {
+	mock.Mock
 	metrics    *MockMetrics
 	logger     *MockLogger
 	propagator *MockPropagator

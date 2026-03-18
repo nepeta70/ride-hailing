@@ -10,6 +10,6 @@ import (
 )
 
 type GetCandidates interface {
-	GetCandidates(ctx context.Context, coords *domain.Coordinates, headers map[string]string) ([]*locationv1.SearchNearbyDriversResponse_Driver, error)
+	GetCandidates(ctx context.Context, coords *domain.Coordinates, radiusKm float32, headers map[string]string) (*locationv1.SearchNearbyDriversResponse, error)
 	UpdateDriverStatus(ctx context.Context, driverID uuid.UUID, status contracts.DriverStatus, headers map[string]string) error
 }

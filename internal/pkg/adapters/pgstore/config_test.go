@@ -162,7 +162,7 @@ func TestPostgresConfig_DSN(t *testing.T) {
 		{
 			name:     "empty fields",
 			cfg:      PostgresConfig{},
-			expected: "postgres://:@:0/?sslmode=",
+			expected: "postgres://:@:0?sslmode=",
 		},
 	}
 	for _, tc := range cases {

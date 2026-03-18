@@ -39,3 +39,8 @@ type DriverStatusUpdate struct {
 	Status          contracts.DriverStatus `json:"status"`
 	StatusUpdatedAt time.Time              `json:"status_updated_at"`
 }
+
+type SearchNearbyResponse struct {
+	Drivers  []*DriverLocation `json:"drivers"`
+	RadiusKm float32           `json:"radius_km"`
+}

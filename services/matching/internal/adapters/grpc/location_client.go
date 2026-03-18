@@ -17,6 +17,7 @@ import (
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	domain "github.com/nepeta70/ride-hailing/internal/pkg/core"
+	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/config"
 	"github.com/nepeta70/ride-hailing/services/matching/internal/ports"
@@ -67,12 +68,13 @@ func NewLocationClient(config *config.Config, telemetryProvider pkgPorts.Telemet
 	}, nil
 }
 
-func (lc *LocationClient) GetCandidates(ctx context.Context, coords *domain.Coordinates, headers map[string]string) ([]*locationv1.SearchNearbyDriversResponse_Driver, error) {
+func (lc *LocationClient) GetCandidates(ctx context.Context, coords *domain.Coordinates, radiusKm float32, headers map[string]string) (*locationv1.SearchNearbyDriversResponse, error) {
 	ctx = lc.telemetryProvider.Propagator().Extract(ctx, propagation.MapCarrier(headers))
 	ctx, span := lc.telemetryProvider.Tracer().Start(ctx, "LocationClient.GetCandidates",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("coordinates", coords.String()),
+			attribute.Float64("radius.km", float64(radiusKm)),
 		),
 	)
 	defer span.End()
@@ -88,18 +90,23 @@ func (lc *LocationClient) GetCandidates(ctx context.Context, coords *domain.Coor
 	req := &locationv1.SearchNearbyDriversRequest{
 		Latitude:  coords.Latitude,
 		Longitude: coords.Longitude,
+		RadiusKm:  radiusKm,
 	}
 
-	// The call to Location Service
 	resp, err := lc.client.SearchNearbyDrivers(ctx, req, grpc.WaitForReady(true))
 	if err != nil {
-		span.RecordError(err)
-		lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "SearchNearbyDrivers", err.Error())
-		lc.telemetryProvider.Logger().ErrorContext(ctx, "Failed to call SearchNearbyDrivers", "error", err)
-		return nil, err
+		if errors.IsNotFound(err) {
+			lc.telemetryProvider.Logger().InfoContext(ctx, "No nearby drivers found", "coordinates", coords.String())
+			return &locationv1.SearchNearbyDriversResponse{}, nil
+		} else {
+			span.RecordError(err)
+			lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "SearchNearbyDrivers", err.Error())
+			lc.telemetryProvider.Logger().ErrorContext(ctx, "Failed to call SearchNearbyDrivers", "error", err)
+			return nil, err
+		}
 	}
 
-	return resp.Drivers, nil
+	return resp, nil
 }
 
 func (lc *LocationClient) UpdateDriverStatus(ctx context.Context, driverID uuid.UUID, status contracts.DriverStatus, headers map[string]string) error {
@@ -124,6 +131,7 @@ func (lc *LocationClient) UpdateDriverStatus(ctx context.Context, driverID uuid.
 		Status:   status.String(),
 	}
 	_, err = lc.client.UpdateDriverStatus(ctx, req, grpc.WaitForReady(true))
+
 	if err != nil {
 		span.RecordError(err)
 		lc.telemetryProvider.Metrics().DependencyFailure("LocationClient", "UpdateDriverStatus", err.Error())

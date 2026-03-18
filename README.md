@@ -195,7 +195,7 @@ ride-hailing/
 ---
 
 ## Development Status
-
+`
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Core infrastructure | Stable | Used by all 3 services |
@@ -207,7 +207,7 @@ ride-hailing/
 | Driver service | Not started | — |
 | API Gateway | Not started | — |
 | Production infra | Deferred | Waiting for service API stabilization |
-
+`
 ---
 
 ## Getting Started

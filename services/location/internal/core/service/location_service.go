@@ -105,7 +105,7 @@ func (s *LocationService) RemoveUserLocation(ctx context.Context, userID uuid.UU
 	return s.repo.RemoveUserLocation(ctx, userID)
 }
 
-func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.Coordinates) ([]*domain.DriverLocation, error) {
+func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.Coordinates, radiusKm float32) (*domain.SearchNearbyResponse, error) {
 	ctx, span := s.telemetryProvider.Tracer().Start(ctx, "UpdateDriverLocation",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
@@ -119,33 +119,36 @@ func (s *LocationService) SearchNearby(ctx context.Context, coordinates *common.
 		return nil, errors.ErrContextError
 	}
 
-	radius := s.config.Logic.MinRadiusSearchKm
+	radius := max(radiusKm, s.config.Logic.MinRadiusSearchKm)
 
+	response := &domain.SearchNearbyResponse{
+		RadiusKm: radius,
+	}
 	var drivers []*domain.DriverLocation
 	var err error
 	for attempt := 1; radius <= s.config.Logic.MaxRadiusSearchKm; attempt++ {
 		span.AddEvent("Searching for nearby drivers", trace.WithAttributes(
 			attribute.Int("attempt", attempt),
-			attribute.Float64("radius_km", float64(radius)),
+			attribute.Float64("radius.km", float64(radius)),
 		))
 		s.telemetryProvider.Logger().DebugContext(ctx, "Searching for nearby drivers", "radius", radius, "attempt", attempt)
 		drivers, err = s.repo.SearchNearby(ctx, coordinates, radius)
+		response.RadiusKm = radius
+		response.Drivers = drivers
+
 		if err == nil {
 			if len(drivers) > 0 {
-				return drivers, nil
+				return response, nil
 			}
+			span.AddEvent("No drivers found within radius", trace.WithAttributes(
+				attribute.Float64("radius.km", float64(radius)),
+			))
 			s.telemetryProvider.Logger().DebugContext(ctx, "No drivers found within radius, expanding search", "radius", radius)
 		}
 		radius *= 2 // Exponential backoff for radius
-		if radius > s.config.Logic.MaxRadiusSearchKm {
-			radius = s.config.Logic.MaxRadiusSearchKm
-		}
 	}
 
-	if len(drivers) == 0 {
-		return nil, errors.NewErrNotFoundf("no drivers found within radius %.2f km", radius)
-	}
-	return drivers, err
+	return response, err
 }
 
 func (s *LocationService) UpdateDriverStatus(ctx context.Context, req *UpdateDriverStatusRequest) error {
