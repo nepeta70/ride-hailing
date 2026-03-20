@@ -11,7 +11,7 @@ import (
 type GrainActivation struct {
 	identity *grain.GrainIdentity
 	instance ports.Grain
-	mu       sync.Mutex // Moved to private
+	mu       sync.Mutex 
 }
 
 func (a *GrainActivation) Identity() *grain.GrainIdentity {

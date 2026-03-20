@@ -68,19 +68,16 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 	defer span.End()
 
 	key := identity.String()
-	// Fast path: already activated
 	if val, ok := s.activations.Load(key); ok {
 		return val.(*GrainActivation), nil
 	}
 
-	// Get factory
 	factoryVal, ok := s.factories.Load(identity.Kind)
 	if !ok {
 		return nil, errors.NewPermanentErrorf("no factory registered for grain kind: %s", identity.Kind)
 	}
 	factory := factoryVal.(ports.GrainFactory)
 
-	// Create instance with identity injected
 	instance := factory(identity)
 
 	activation := &GrainActivation{
@@ -88,10 +85,8 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 		instance: instance,
 	}
 
-	// Try to store (might lose race)
 	actual, loaded := s.activations.LoadOrStore(key, activation)
 	if loaded {
-		// Lost race, use existing
 		return actual.(*GrainActivation), nil
 	}
 
@@ -99,12 +94,11 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 		return instance.OnActivate(ctx, identity)
 	})
 
-	// Won race, activate (pass identity so grain knows which entity it is)
 	if err != nil {
 		s.telemetry.Logger().ErrorContext(ctx, "grain activation failed after retry strategy",
 			"identity", key,
 			"error", err)
-		s.activations.Delete(key) // Cleanup so next request can try fresh
+		s.activations.Delete(key)
 		return nil, err
 	}
 
@@ -152,7 +146,7 @@ func (s *Silo) Deactivate(ctx context.Context, identity *grain.GrainIdentity) er
 
 	val, ok := s.activations.Load(key)
 	if !ok {
-		return nil // already deactivated
+		return nil 
 	}
 
 	activation := val.(*GrainActivation)
