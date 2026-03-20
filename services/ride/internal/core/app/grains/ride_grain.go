@@ -13,6 +13,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/shopspring/decimal"
 
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/domain"
@@ -80,6 +81,10 @@ func NewRideGrain(options *RideGrainOptions) *RideGrain {
 
 func (g *RideGrain) GetIdentity() *grain.GrainIdentity {
 	return g.identity
+}
+
+func (g *RideGrain) GetStatus() any {
+	return g.state.Status
 }
 
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
@@ -196,6 +201,15 @@ func (g *RideGrain) handleRequestRide(ctx context.Context, cmd *RequestRideComma
 			return nil
 		}).
 		Step("Transition", func(ctx context.Context) error {
+			g.core = &domain.RideCore{
+				RiderID:         cmd.RiderID,
+				PickupLocation:  cmd.PickupLocation,
+				DropoffLocation: cmd.DropoffLocation,
+				ServiceType:     cmd.ServiceType,
+				Fare:            decimal.NewFromFloat(cmd.Fare),
+				Currency:        cmd.Currency,
+				RequestID:       cmd.RequestID,
+			}
 			g.state.Status = domain.RideStatusRequested
 			g.version++
 			return nil

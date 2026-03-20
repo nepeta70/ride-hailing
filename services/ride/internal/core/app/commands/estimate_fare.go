@@ -61,7 +61,7 @@ func NewEstimateFareHandler(config *config.Config, telemetry pkgPorts.TelemetryP
 	}
 }
 
-func (h *EstimateFareHandler) Handle(ctx context.Context, query EstimateFareCommand) (*domain.Fares, error) {
+func (h *EstimateFareHandler) Handle(ctx context.Context, query *EstimateFareCommand) (*domain.Fares, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "EstimateFareHandler.Handle",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(

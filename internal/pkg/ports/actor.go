@@ -22,9 +22,13 @@ type Grain interface {
 
 	// OnDeactivate is called before grain is removed from memory
 	OnDeactivate(ctx context.Context) error
+
+	GetStatus() any
 }
 
 type Silo interface {
+	GetOrActivate(ctx context.Context, identity *grain.GrainIdentity) (GrainRef, error)
+
 	// RegisterFactory attaches a grain creation function to an aggregate type.
 	RegisterFactory(kind enums.AggregateType, factory GrainFactory)
 
@@ -47,4 +51,11 @@ type GrainFactory func(identity *grain.GrainIdentity) Grain
 type MessageInterface interface {
 	MessageName() string
 	Message
+}
+
+type GrainRef interface {
+	Tell(ctx context.Context, msg Message) error
+	Ask(ctx context.Context, msg Message) (Message, error)
+	Identity() *grain.GrainIdentity
+	GetStatus() any
 }

@@ -15,13 +15,6 @@ import (
 
 const siloServiceName = "GrainSilo"
 
-// GrainActivation holds an active grain instance
-type GrainActivation struct {
-	Identity *grain.GrainIdentity
-	Instance ports.Grain
-	mu       sync.RWMutex
-}
-
 type SiloOptions struct {
 	Timeout        time.Duration
 	Telemetry      ports.TelemetryProvider
@@ -70,35 +63,30 @@ func (s *Silo) RegisterFactory(kind enums.AggregateType, factory ports.GrainFact
 }
 
 // GetOrActivate retrieves or activates a grain
-func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity) (*GrainActivation, error) {
+func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity) (ports.GrainRef, error) {
 	ctx, span := s.TraceSpan(ctx, "GetOrActivate", identity)
 	defer span.End()
 
 	key := identity.String()
-	// Fast path: already activated
 	if val, ok := s.activations.Load(key); ok {
 		return val.(*GrainActivation), nil
 	}
 
-	// Get factory
 	factoryVal, ok := s.factories.Load(identity.Kind)
 	if !ok {
 		return nil, errors.NewPermanentErrorf("no factory registered for grain kind: %s", identity.Kind)
 	}
 	factory := factoryVal.(ports.GrainFactory)
 
-	// Create instance with identity injected
 	instance := factory(identity)
 
 	activation := &GrainActivation{
-		Identity: identity,
-		Instance: instance,
+		identity: identity,
+		instance: instance,
 	}
 
-	// Try to store (might lose race)
 	actual, loaded := s.activations.LoadOrStore(key, activation)
 	if loaded {
-		// Lost race, use existing
 		return actual.(*GrainActivation), nil
 	}
 
@@ -106,12 +94,11 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 		return instance.OnActivate(ctx, identity)
 	})
 
-	// Won race, activate (pass identity so grain knows which entity it is)
 	if err != nil {
 		s.telemetry.Logger().ErrorContext(ctx, "grain activation failed after retry strategy",
 			"identity", key,
 			"error", err)
-		s.activations.Delete(key) // Cleanup so next request can try fresh
+		s.activations.Delete(key)
 		return nil, err
 	}
 
@@ -131,11 +118,7 @@ func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg port
 		return err
 	}
 
-	activation.mu.Lock()
-	defer activation.mu.Unlock()
-
-	_, err = activation.Instance.OnReceive(ctx, msg)
-	return err
+	return activation.Tell(ctx, msg)
 }
 
 // Ask sends a request message and waits for a response
@@ -151,10 +134,7 @@ func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports
 		return nil, err
 	}
 
-	activation.mu.Lock()
-	defer activation.mu.Unlock()
-
-	return activation.Instance.OnReceive(ctx, msg)
+	return activation.Ask(ctx, msg)
 }
 
 // Deactivate removes a grain from memory
@@ -166,14 +146,15 @@ func (s *Silo) Deactivate(ctx context.Context, identity *grain.GrainIdentity) er
 
 	val, ok := s.activations.Load(key)
 	if !ok {
-		return nil // already deactivated
+		return nil 
 	}
 
 	activation := val.(*GrainActivation)
-	activation.mu.Lock()
-	defer activation.mu.Unlock()
-
-	if err := activation.Instance.OnDeactivate(ctx); err != nil {
+	err := activation.deactivate(ctx)
+	if err != nil {
+		s.telemetry.Logger().ErrorContext(ctx, "grain deactivation failed",
+			"identity", key,
+			"error", err)
 		return err
 	}
 
@@ -189,7 +170,7 @@ func (s *Silo) Reset(ctx context.Context) error {
 	var firstErr error
 	s.activations.Range(func(key, value any) bool {
 		activation := value.(*GrainActivation)
-		if err := activation.Instance.OnDeactivate(ctx); err != nil && firstErr == nil {
+		if err := activation.deactivate(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
 		return true
@@ -210,3 +191,5 @@ func (s *Silo) TraceSpan(ctx context.Context, operation string, identity *grain.
 	)
 	return ctx, span
 }
+
+var _ ports.Silo = (*Silo)(nil)

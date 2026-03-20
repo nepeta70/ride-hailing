@@ -52,7 +52,7 @@ func (h *RideHandler) EstimateFare(ctx context.Context, req *ridev1.FareEstimate
 		CountryCode: info.Location.CountryCode,
 		RiderID:     info.Sender.ID,
 	}
-	fare, err := h.application.Commands.EstimateFare.Handle(ctx, *query)
+	fare, err := h.application.Commands.EstimateFare.Handle(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (h *RideHandler) RequestRide(ctx context.Context, req *ridev1.RideRequest) 
 		return nil, val.Errors()
 	}
 
-	cmd := commands.RequestRide{
+	cmd := &commands.RequestRide{
 		FareID:      uuid.MustParse(req.GetFareId()),
 		ServiceType: req.GetServiceType(),
 		RiderID:     info.Sender.ID,

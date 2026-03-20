@@ -84,6 +84,12 @@ func (m *mockGrain) getReceiveCalled() bool {
 	return m.receiveCalled
 }
 
+func (m *mockGrain) GetStatus() any {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return "mock status"
+}
+
 // Test message types
 type testMessage struct {
 	data string
@@ -176,7 +182,7 @@ func TestSilo_RegisterFactory(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, activation)
-			assert.Equal(t, identity, activation.Identity)
+			assert.Equal(t, identity, activation.Identity())
 		})
 	}
 }
@@ -256,7 +262,7 @@ func TestSilo_GetOrActivate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, activation)
-				assert.Equal(t, identity, activation.Identity)
+				assert.Equal(t, identity, activation.Identity())
 
 				if tt.validateGrain != nil && testGrain != nil {
 					tt.validateGrain(t, testGrain)

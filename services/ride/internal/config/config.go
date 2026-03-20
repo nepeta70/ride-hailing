@@ -7,21 +7,6 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
-type KeysConfig struct {
-	GoogleMapsAPIKey string `json:"google_maps_api_key" env:"GOOGLE_MAPS_API_KEY"`
-}
-
-func (rc *KeysConfig) Validate() error {
-
-	return nil
-}
-
-func DefaultKeysConfig() KeysConfig {
-	return KeysConfig{
-		GoogleMapsAPIKey: "",
-	}
-}
-
 type Config struct {
 	config.BaseConfig
 	KeysConfig KeysConfig             `json:"keys"`
@@ -29,6 +14,7 @@ type Config struct {
 	Redis      rdstore.RedisConfig    `json:"redis"`
 	Postgres   pgstore.PostgresConfig `json:"postgres"`
 	Kafka      *pubsub.KafkaConfig    `json:"kafka"`
+	RideConfig RideConfig             `json:"ride"`
 }
 
 func DefaultConfig() *Config {
@@ -41,6 +27,7 @@ func DefaultConfig() *Config {
 		Redis:      rdstore.DefaultRedisConfig(),
 		Postgres:   pgstore.DefaultPostgresConfig(),
 		Kafka:      pubsub.DefaultKafkaConfig(),
+		RideConfig: DefaultRideConfig(),
 	}
 }
 
