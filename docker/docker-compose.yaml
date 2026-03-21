@@ -126,6 +126,47 @@ services:
       location:
         condition: service_healthy  
 
+  driver:
+    build:
+      context: ..
+      dockerfile: services/driver/docker/Dockerfile
+    ports:
+      - "50054:50054"
+    volumes:
+      - ../services/driver/cmd/config.json:/home/appuser/config/config.json:ro
+    environment:
+      - SERVER_PORT=${DRIVER_SERVER_PORT}
+      - API_KEY=${DRIVER_API_KEY}
+      - PROMETHEUS_ADDRESS=${PROMETHEUS_ADDRESS}
+      - OPENTELEMETRY_ADDRESS=${OPENTELEMETRY_ADDRESS}
+      - TELEMETRY_INTERVAL_SECONDS=${TELEMETRY_INTERVAL_SECONDS}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - KAFKA_ADVERTISE_EXTERNAL=${KAFKA_ADVERTISE_EXTERNAL}
+      - KAFKA_ADVERTISE_INTERNAL=${KAFKA_ADVERTISE_INTERNAL}
+      - KAFKA_AUTO_CREATE_TOPICS=${KAFKA_AUTO_CREATE_TOPICS}
+      - KAFKA_BATCH_SIZE=${KAFKA_BATCH_SIZE}
+      - KAFKA_ENABLE_LOGGING=${KAFKA_ENABLE_LOGGING}
+      - KAFKA_EXTERNAL_PORT=${KAFKA_EXTERNAL_PORT}
+      - KAFKA_INTERNAL_PORT=${KAFKA_INTERNAL_PORT}
+      - KAFKA_MEMORY=${KAFKA_MEMORY}
+      - KAFKA_NODE_ID=${KAFKA_NODE_ID}
+      - KAFKA_RESERVE_MEMORY=${KAFKA_RESERVE_MEMORY}
+      - KAFKA_SMP=${KAFKA_SMP}
+      - KAFKA_UI_BROKERS=${KAFKA_UI_BROKERS}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - MONGO_DB=${MONGO_DB}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy  
+
 include:
   - path: docker-compose.infra.yaml
   - path: docker-compose.telemetry.yaml        

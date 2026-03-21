@@ -1,11 +1,13 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/mongodb"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
 type Config struct {
 	config.BaseConfig
+	Mongo mongodb.MongoConfig `json:"mongo"`
 }
 
 func DefaultConfig() *Config {
@@ -13,6 +15,7 @@ func DefaultConfig() *Config {
 	base.ServiceName = "Driver Service"
 	return &Config{
 		BaseConfig: base,
+		Mongo:      mongodb.DefaultMongoConfig(),
 	}
 }
 
