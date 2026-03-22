@@ -60,7 +60,6 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 
 	dbConn, err := sql.Open("postgres", opts.Config.DSN())
 	if err != nil {
-		// If the driver name or DSN format is wrong, it's a permanent code/config bug
 		opts.Telemetry.Logger().ErrorContext(ctx, "Failed to open postgres connection", "error", err)
 		span.SetStatus(codes.Error, "failed to open connection")
 		return nil, errors.NewPermanentErrorf("failed to open postgres connection: %w", err)

@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -134,7 +135,7 @@ type CreateDriverRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	UserId                  string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	LicenseNumber           string                 `protobuf:"bytes,2,opt,name=license_number,json=licenseNumber,proto3" json:"license_number,omitempty"`
-	LicenseNumberExpiryDate string                 `protobuf:"bytes,3,opt,name=license_number_expiry_date,json=licenseNumberExpiryDate,proto3" json:"license_number_expiry_date,omitempty"`
+	LicenseNumberExpiryDate *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=license_number_expiry_date,json=licenseNumberExpiryDate,proto3" json:"license_number_expiry_date,omitempty"`
 	VehicleInfo             *VehicleInfo           `protobuf:"bytes,4,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -184,11 +185,11 @@ func (x *CreateDriverRequest) GetLicenseNumber() string {
 	return ""
 }
 
-func (x *CreateDriverRequest) GetLicenseNumberExpiryDate() string {
+func (x *CreateDriverRequest) GetLicenseNumberExpiryDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LicenseNumberExpiryDate
 	}
-	return ""
+	return nil
 }
 
 func (x *CreateDriverRequest) GetVehicleInfo() *VehicleInfo {
@@ -246,7 +247,7 @@ type Driver struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	UserId                  string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	LicenseNumber           string                 `protobuf:"bytes,2,opt,name=license_number,json=licenseNumber,proto3" json:"license_number,omitempty"`
-	LicenseNumberExpiryDate string                 `protobuf:"bytes,3,opt,name=license_number_expiry_date,json=licenseNumberExpiryDate,proto3" json:"license_number_expiry_date,omitempty"`
+	LicenseNumberExpiryDate *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=license_number_expiry_date,json=licenseNumberExpiryDate,proto3" json:"license_number_expiry_date,omitempty"`
 	VehicleInfo             *VehicleInfo           `protobuf:"bytes,4,opt,name=vehicle_info,json=vehicleInfo,proto3" json:"vehicle_info,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -296,11 +297,11 @@ func (x *Driver) GetLicenseNumber() string {
 	return ""
 }
 
-func (x *Driver) GetLicenseNumberExpiryDate() string {
+func (x *Driver) GetLicenseNumberExpiryDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LicenseNumberExpiryDate
 	}
-	return ""
+	return nil
 }
 
 func (x *Driver) GetVehicleInfo() *VehicleInfo {
@@ -314,7 +315,7 @@ var File_driver_v1_driver_proto protoreflect.FileDescriptor
 
 const file_driver_v1_driver_proto_rawDesc = "" +
 	"\n" +
-	"\x16driver/v1/driver.proto\x12\tdriver.v1\x1a\x1bgoogle/protobuf/empty.proto\"\x9f\x02\n" +
+	"\x16driver/v1/driver.proto\x12\tdriver.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9f\x02\n" +
 	"\vVehicleInfo\x12\x12\n" +
 	"\x04make\x18\x01 \x01(\tR\x04make\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12\x14\n" +
@@ -324,18 +325,18 @@ const file_driver_v1_driver_proto_rawDesc = "" +
 	"\bcategory\x18\x06 \x01(\tR\bcategory\x12!\n" +
 	"\faccepts_pets\x18\a \x01(\bR\vacceptsPets\x12-\n" +
 	"\x12accepts_wheelchair\x18\b \x01(\bR\x11acceptsWheelchair\x12'\n" +
-	"\x0fadditional_info\x18\t \x01(\tR\x0eadditionalInfo\"\xcd\x01\n" +
+	"\x0fadditional_info\x18\t \x01(\tR\x0eadditionalInfo\"\xe9\x01\n" +
 	"\x13CreateDriverRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
-	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x12;\n" +
-	"\x1alicense_number_expiry_date\x18\x03 \x01(\tR\x17licenseNumberExpiryDate\x129\n" +
+	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x12W\n" +
+	"\x1alicense_number_expiry_date\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x17licenseNumberExpiryDate\x129\n" +
 	"\fvehicle_info\x18\x04 \x01(\v2\x16.driver.v1.VehicleInfoR\vvehicleInfo\"+\n" +
 	"\x10GetDriverRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xc0\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xdc\x01\n" +
 	"\x06Driver\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12%\n" +
-	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x12;\n" +
-	"\x1alicense_number_expiry_date\x18\x03 \x01(\tR\x17licenseNumberExpiryDate\x129\n" +
+	"\x0elicense_number\x18\x02 \x01(\tR\rlicenseNumber\x12W\n" +
+	"\x1alicense_number_expiry_date\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x17licenseNumberExpiryDate\x129\n" +
 	"\fvehicle_info\x18\x04 \x01(\v2\x16.driver.v1.VehicleInfoR\vvehicleInfo2\xc5\x01\n" +
 	"\rDriverService\x12A\n" +
 	"\fCreateDriver\x12\x1e.driver.v1.CreateDriverRequest\x1a\x11.driver.v1.Driver\x124\n" +
@@ -358,25 +359,28 @@ func file_driver_v1_driver_proto_rawDescGZIP() []byte {
 
 var file_driver_v1_driver_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_driver_v1_driver_proto_goTypes = []any{
-	(*VehicleInfo)(nil),         // 0: driver.v1.VehicleInfo
-	(*CreateDriverRequest)(nil), // 1: driver.v1.CreateDriverRequest
-	(*GetDriverRequest)(nil),    // 2: driver.v1.GetDriverRequest
-	(*Driver)(nil),              // 3: driver.v1.Driver
+	(*VehicleInfo)(nil),           // 0: driver.v1.VehicleInfo
+	(*CreateDriverRequest)(nil),   // 1: driver.v1.CreateDriverRequest
+	(*GetDriverRequest)(nil),      // 2: driver.v1.GetDriverRequest
+	(*Driver)(nil),                // 3: driver.v1.Driver
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
 }
 var file_driver_v1_driver_proto_depIdxs = []int32{
-	0, // 0: driver.v1.CreateDriverRequest.vehicle_info:type_name -> driver.v1.VehicleInfo
-	0, // 1: driver.v1.Driver.vehicle_info:type_name -> driver.v1.VehicleInfo
-	1, // 2: driver.v1.DriverService.CreateDriver:input_type -> driver.v1.CreateDriverRequest
-	3, // 3: driver.v1.DriverService.UpdateDriver:input_type -> driver.v1.Driver
-	2, // 4: driver.v1.DriverService.GetDriver:input_type -> driver.v1.GetDriverRequest
-	3, // 5: driver.v1.DriverService.CreateDriver:output_type -> driver.v1.Driver
-	3, // 6: driver.v1.DriverService.UpdateDriver:output_type -> driver.v1.Driver
-	3, // 7: driver.v1.DriverService.GetDriver:output_type -> driver.v1.Driver
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 0: driver.v1.CreateDriverRequest.license_number_expiry_date:type_name -> google.protobuf.Timestamp
+	0, // 1: driver.v1.CreateDriverRequest.vehicle_info:type_name -> driver.v1.VehicleInfo
+	4, // 2: driver.v1.Driver.license_number_expiry_date:type_name -> google.protobuf.Timestamp
+	0, // 3: driver.v1.Driver.vehicle_info:type_name -> driver.v1.VehicleInfo
+	1, // 4: driver.v1.DriverService.CreateDriver:input_type -> driver.v1.CreateDriverRequest
+	3, // 5: driver.v1.DriverService.UpdateDriver:input_type -> driver.v1.Driver
+	2, // 6: driver.v1.DriverService.GetDriver:input_type -> driver.v1.GetDriverRequest
+	3, // 7: driver.v1.DriverService.CreateDriver:output_type -> driver.v1.Driver
+	3, // 8: driver.v1.DriverService.UpdateDriver:output_type -> driver.v1.Driver
+	3, // 9: driver.v1.DriverService.GetDriver:output_type -> driver.v1.Driver
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_driver_v1_driver_proto_init() }

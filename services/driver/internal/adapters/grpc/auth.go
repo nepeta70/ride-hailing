@@ -14,7 +14,7 @@ type DriverEndpointRoles struct {
 
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
 	var roleConfig = map[string][]enums.SenderType{
-		driverv1.DriverService_CreateDriver_FullMethodName: {enums.SenderTypeAdmin, enums.SenderTypeService},
+		driverv1.DriverService_CreateDriver_FullMethodName: {enums.SenderTypeDriver, enums.SenderTypeAdmin, enums.SenderTypeService},
 		driverv1.DriverService_UpdateDriver_FullMethodName: {enums.SenderTypeDriver, enums.SenderTypeAdmin},
 		driverv1.DriverService_GetDriver_FullMethodName:    {enums.SenderTypeDriver, enums.SenderTypeAdmin},
 	}

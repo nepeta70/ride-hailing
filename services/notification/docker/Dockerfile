@@ -13,7 +13,7 @@ COPY . .
 
 # Build from root context
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -o /home/appuser/location-service ./services/location/cmd/main.go
+    go build -o /home/appuser/notification-service ./services/notification/cmd/main.go
 
 FROM alpine:latest
 
@@ -22,13 +22,12 @@ USER appuser
 
 WORKDIR /home/appuser
 
-COPY --from=builder /home/appuser/location-service .
+COPY --from=builder /home/appuser/notification-service .
 
-RUN chown appuser:appuser ./location-service && \
-    chmod +x ./location-service
+RUN chown appuser:appuser ./notification-service && \
+    chmod +x ./notification-service
 
-COPY services/location/cmd/config.json /home/appuser/config/config.json
+COPY services/notification/cmd/config.json /home/appuser/config/config.json
 
-EXPOSE 50051
-
-ENTRYPOINT ["./location-service"]
+EXPOSE 50056
+ENTRYPOINT ["./notification-service"]
