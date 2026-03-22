@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	pkgPorts "github.com/nepeta70/ride-hailing/internal/pkg/ports"
@@ -22,13 +23,35 @@ func NewDriverService(repo ports.DriverRepository, telemetry pkgPorts.TelemetryP
 }
 
 func (s *DriverService) CreateDriver(ctx context.Context, driver *domain.Driver) (*domain.Driver, error) {
-	return nil, nil
+	driver.UserID = uuid.New()
+	now := time.Now().UTC()
+	driver.CreatedAt = now
+	driver.UpdatedAt = now
+	// TODO check duplicated licenses, plates
+
+	if err := driver.Validate(); err != nil {
+		return nil, err
+	}
+	err := s.repo.AddDriver(ctx, driver)
+	if err != nil {
+		return nil, err
+	}
+	return driver, nil
 }
 
 func (s *DriverService) UpdateDriver(ctx context.Context, driver *domain.Driver) (*domain.Driver, error) {
-	return nil, nil
+	now := time.Now().UTC()
+	driver.UpdatedAt = now
+
+	if err := driver.Validate(); err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateDriver(ctx, driver); err != nil {
+		return nil, err
+	}
+	return driver, nil
 }
 
 func (s *DriverService) GetDriver(ctx context.Context, userID uuid.UUID) (*domain.Driver, error) {
-	return nil, nil
+	return s.repo.GetDriver(ctx, userID)
 }

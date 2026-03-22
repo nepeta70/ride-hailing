@@ -58,13 +58,9 @@ func (r *DriverRepository) AddDriver(ctx context.Context, driver *domain.Driver)
 	now := time.Now().UTC()
 
 	driverDoc := FromDomain(driver)
-	driver.CreatedAt = now
-	driver.UpdatedAt = now
-
-	// Ensure the ID is generated if not provided
-	if driverDoc.ID.IsZero() {
-		driverDoc.ID = primitive.NewObjectID()
-	}
+	driverDoc.CreatedAt = now
+	driverDoc.UpdatedAt = now
+	driverDoc.ID = primitive.NewObjectID()
 
 	_, err := r.collection.InsertOne(ctx, driverDoc)
 	if err != nil {
@@ -82,10 +78,11 @@ func (r *DriverRepository) AddDriver(ctx context.Context, driver *domain.Driver)
 func (r *DriverRepository) UpdateDriver(ctx context.Context, driver *domain.Driver) error {
 	now := time.Now().UTC()
 
-	// Define the filter to find the specific driver
-	filter := bson.M{"user_id": driver.UserID}
+	driverDoc := FromDomain(driver)
+	driverDoc.UpdatedAt = now
 
-	// Define the update operation using $set
+	filter := bson.M{"user_id": driverDoc.UserID}
+
 	update := bson.M{
 		"$set": bson.M{
 			"license_number": driver.LicenseNumber,
@@ -113,6 +110,10 @@ func (r *DriverRepository) ensureSchema(ctx context.Context) error {
 	_, err := r.collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "user_id", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "license_number", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 		{

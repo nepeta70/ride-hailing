@@ -24,7 +24,7 @@ func (d *DriverDoc) ToDomain() *domain.Driver {
 		UserID:        uuid.MustParse(d.UserID),
 		LicenseNumber: d.LicenseNumber,
 		LicenseExpiry: d.LicenseExpiry,
-		Vehicle: domain.Vehicle{
+		Vehicle: &domain.Vehicle{
 			Make:              d.Vehicle.Make,
 			Model:             d.Vehicle.Model,
 			Color:             d.Vehicle.Color,
@@ -43,8 +43,6 @@ func (d *DriverDoc) ToDomain() *domain.Driver {
 // FromDomain converts a Domain entity to a MongoDB document
 func FromDomain(d *domain.Driver) *DriverDoc {
 	return &DriverDoc{
-		// Note: We don't set ID here if we want MongoDB to generate it on Insert,
-		// or you can generate a new one if this is a fresh creation.
 		UserID:        d.UserID.String(),
 		LicenseNumber: d.LicenseNumber,
 		LicenseExpiry: d.LicenseExpiry,

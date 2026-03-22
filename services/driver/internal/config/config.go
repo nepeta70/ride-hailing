@@ -12,7 +12,7 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	base := config.DefaultBaseConfig()
-	base.ServiceName = "Driver Service"
+	base.ServiceName = "driver"
 	return &Config{
 		BaseConfig: base,
 		Mongo:      mongodb.DefaultMongoConfig(),
