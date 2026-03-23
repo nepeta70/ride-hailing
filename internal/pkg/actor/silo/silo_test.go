@@ -90,6 +90,12 @@ func (m *mockGrain) GetStatus() any {
 	return "mock status"
 }
 
+func (m *mockGrain) IsTerminal() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return false
+}
+
 // Test message types
 type testMessage struct {
 	data string

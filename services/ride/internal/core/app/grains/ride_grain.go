@@ -87,6 +87,10 @@ func (g *RideGrain) GetStatus() any {
 	return g.state.Status
 }
 
+func (g *RideGrain) IsTerminal() bool {
+	return g.state.Status == domain.RideStatusCancelled || g.state.Status == domain.RideStatusCompleted || g.state.Status == domain.RideStatusTimedOut
+}
+
 func (g *RideGrain) OnActivate(ctx context.Context, identity *grain.GrainIdentity) error {
 	g.identity = identity
 
@@ -474,3 +478,5 @@ func (g *RideGrain) persist(ctx context.Context, msg pkgPorts.MessageInterface) 
 	}
 	return nil
 }
+
+var _ pkgPorts.Grain = (*RideGrain)(nil)

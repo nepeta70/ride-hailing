@@ -105,25 +105,9 @@ func (s *Silo) GetOrActivate(ctx context.Context, identity *grain.GrainIdentity)
 	return activation, nil
 }
 
-// Tell sends a one-way message to a grain (fire and forget)
-func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) error {
-	ctx, span := s.TraceSpan(ctx, "Tell", identity)
-	defer span.End()
-
-	ctx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
-
-	activation, err := s.GetOrActivate(ctx, identity)
-	if err != nil {
-		return err
-	}
-
-	return activation.Tell(ctx, msg)
-}
-
-// Ask sends a request message and waits for a response
-func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) (ports.Message, error) {
-	ctx, span := s.TraceSpan(ctx, "Ask", identity)
+// invoke handles the common infrastructure for both Ask and Tell
+func (s *Silo) invoke(ctx context.Context, operation string, identity *grain.GrainIdentity, msg ports.Message) (ports.Message, error) {
+	ctx, span := s.TraceSpan(ctx, operation, identity)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
@@ -134,7 +118,27 @@ func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports
 		return nil, err
 	}
 
-	return activation.Ask(ctx, msg)
+	message, err := activation.OnReceive(ctx, msg)
+
+	// Single source of truth for deactivation
+	if activation.IsTerminal() {
+		if errDeact := s.Deactivate(ctx, identity); errDeact != nil {
+			return message, errDeact
+		}
+	}
+
+	return message, err
+}
+
+// Tell sends a one-way message to a grain (fire and forget)
+func (s *Silo) Tell(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) error {
+	_, err := s.invoke(ctx, "Tell", identity, msg)
+	return err
+}
+
+// Ask sends a request message and waits for a response
+func (s *Silo) Ask(ctx context.Context, identity *grain.GrainIdentity, msg ports.Message) (ports.Message, error) {
+	return s.invoke(ctx, "Ask", identity, msg)
 }
 
 // Deactivate removes a grain from memory
@@ -146,7 +150,7 @@ func (s *Silo) Deactivate(ctx context.Context, identity *grain.GrainIdentity) er
 
 	val, ok := s.activations.Load(key)
 	if !ok {
-		return nil 
+		return nil
 	}
 
 	activation := val.(*GrainActivation)

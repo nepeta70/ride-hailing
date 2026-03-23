@@ -11,21 +11,14 @@ import (
 type GrainActivation struct {
 	identity *grain.GrainIdentity
 	instance ports.Grain
-	mu       sync.Mutex 
+	mu       sync.Mutex
 }
 
 func (a *GrainActivation) Identity() *grain.GrainIdentity {
 	return a.identity
 }
 
-func (a *GrainActivation) Tell(ctx context.Context, msg ports.Message) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	_, err := a.instance.OnReceive(ctx, msg)
-	return err
-}
-
-func (a *GrainActivation) Ask(ctx context.Context, msg ports.Message) (ports.Message, error) {
+func (a *GrainActivation) OnReceive(ctx context.Context, msg ports.Message) (ports.Message, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.instance.OnReceive(ctx, msg)
@@ -40,8 +33,13 @@ func (a *GrainActivation) deactivate(ctx context.Context) error {
 func (a *GrainActivation) GetStatus() any {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-
 	return a.instance.GetStatus()
+}
+
+func (a *GrainActivation) IsTerminal() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.instance.IsTerminal()
 }
 
 var _ ports.GrainRef = (*GrainActivation)(nil)

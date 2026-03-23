@@ -10,6 +10,11 @@ import (
 // Message is the base interface for all grain messages (commands, queries, responses)
 type Message any
 
+type GrainStateInterface interface {
+	GetStatus() any
+	IsTerminal() bool
+}
+
 // Grain defines a virtual actor with lifecycle hooks
 type Grain interface {
 	// OnActivate is called when grain is loaded into memory
@@ -23,7 +28,7 @@ type Grain interface {
 	// OnDeactivate is called before grain is removed from memory
 	OnDeactivate(ctx context.Context) error
 
-	GetStatus() any
+	GrainStateInterface
 }
 
 type Silo interface {
@@ -54,8 +59,7 @@ type MessageInterface interface {
 }
 
 type GrainRef interface {
-	Tell(ctx context.Context, msg Message) error
-	Ask(ctx context.Context, msg Message) (Message, error)
+	OnReceive(ctx context.Context, msg Message) (Message, error)
 	Identity() *grain.GrainIdentity
-	GetStatus() any
+	GrainStateInterface
 }
