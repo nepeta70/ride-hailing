@@ -44,7 +44,33 @@ go.work.sum
 
 # API client files
 .postman/
+
+# Local .terraform directories (contains downloaded providers and modules)
 .terraform/
-.terraform.lock.hcl
+
+# Terraform state files (Do NOT commit local state; use a remote backend instead)
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Exclude all variable snapshot files (often contain secrets)
+*.tfvars
+*.tfvars.json
+
+# Ignore override files (used for local-only tweaks)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore plan files (can contain sensitive data and are environment-specific)
+*.tfplan
 
 buf.lock
