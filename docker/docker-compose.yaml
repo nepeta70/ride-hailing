@@ -223,7 +223,7 @@ services:
       user:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      test: ["CMD", "nc", "-z", "localhost", "5000"]
       interval: 10s
       timeout: 5s
       retries: 5
