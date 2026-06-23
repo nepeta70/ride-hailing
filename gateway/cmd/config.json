@@ -1,0 +1,44 @@
+{
+  "server": {
+    "port": 5000,
+    "host": "0.0.0.0",
+    "read_timeout_seconds": 10,
+    "write_timeout_seconds": 30,
+    "idle_timeout_seconds": 120
+  },
+  "logging": {
+    "log_format": "json",
+    "log_level": "INFO"
+  },
+  "timeouts": {
+    "shutdown_timeout_seconds": 10,
+    "request_timeout_seconds": 30,
+    "health_check_interval_seconds": 10,
+    "max_clock_drift_seconds": 2
+  },
+  "security": {
+    "rate_limit": 100,
+    "rate_burst": 200,
+    "max_body_mb": 2
+  },
+  "telemetry": {
+    "interval_seconds": 15,
+    "prometheus_address": "localhost:9090",
+    "opentelemetry_address": "localhost:4317",
+    "pyroscope_address": "localhost:4040"
+  },
+  "services": {
+    "ride": {
+      "address": "127.0.0.1:50052"
+    },
+    "user": {
+      "address": "127.0.0.1:50055"
+    },
+    "driver": {
+      "address": "127.0.0.1:50054"
+    },
+    "location": {
+      "address": "127.0.0.1:50051"
+    }
+  }
+}

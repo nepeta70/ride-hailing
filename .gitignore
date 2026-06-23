@@ -48,3 +48,4 @@ go.work.sum
 .terraform.lock.hcl
 
 buf.lock
+terraform/terraform.tfvars

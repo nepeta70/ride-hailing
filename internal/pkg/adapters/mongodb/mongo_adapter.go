@@ -5,9 +5,9 @@ import (
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -64,7 +64,7 @@ func NewMongoAdapter(opts *MongoAdapterOpts, ctx context.Context) (*MongoAdapter
 	clientOptions.SetConnectTimeout(opts.Config.PingTimeout)
 	clientOptions.SetServerSelectionTimeout(opts.Config.PingTimeout)
 
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(clientOptions)
 	if err != nil {
 		return nil, errors.NewPermanentErrorf("failed to create mongo client: %w", err)
 	}

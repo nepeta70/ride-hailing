@@ -1,6 +1,6 @@
 {
   "server": {
-    "port": 50051,
+    "port": 50055,
     "host": "127.0.0.1"
   },
   "logging": {

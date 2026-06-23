@@ -41,11 +41,11 @@ func main() {
 	handler := grpcAdapters.NewUserHandler(application)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{
-		Config:         &cfg.BaseConfig,
-		Logger:         logger,
-		ContextManager: ctxmgr.NewContextManager(),
-		//AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig), TODO: implemnt it
-		Telemetry: tel,
+		Config:            &cfg.BaseConfig,
+		Logger:            logger,
+		ContextManager:    ctxmgr.NewContextManager(),
+		AuthConfiguration: grpcAdapters.NewEndpointRoles(&cfg.BaseConfig),
+		Telemetry:         tel,
 	}
 	grpcServer, err := grpc_adapter.NewGRPCAdapter(opts)
 	if err != nil {

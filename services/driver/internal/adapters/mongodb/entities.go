@@ -5,18 +5,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/services/driver/internal/core/domain"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // DriverDoc is the internal representation in MongoDB
 type DriverDoc struct {
-	ID            primitive.ObjectID `bson:"_id,omitempty"`
-	UserID        string             `bson:"user_id"` // Indexed
-	LicenseNumber string             `bson:"license_number"`
-	LicenseExpiry time.Time          `bson:"license_expiry"`
-	Vehicle       VehicleDoc         `bson:"vehicle"`
-	CreatedAt     time.Time          `bson:"created_at"`
-	UpdatedAt     time.Time          `bson:"updated_at"`
+	ID            bson.ObjectID `bson:"_id,omitempty"`
+	UserID        string        `bson:"user_id"` // Indexed
+	LicenseNumber string        `bson:"license_number"`
+	LicenseExpiry time.Time     `bson:"license_expiry"`
+	Vehicle       VehicleDoc    `bson:"vehicle"`
+	CreatedAt     time.Time     `bson:"created_at"`
+	UpdatedAt     time.Time     `bson:"updated_at"`
 }
 
 func (d *DriverDoc) ToDomain() *domain.Driver {

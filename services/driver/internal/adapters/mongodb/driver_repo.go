@@ -11,10 +11,9 @@ import (
 	"github.com/nepeta70/ride-hailing/services/driver/internal/config"
 	"github.com/nepeta70/ride-hailing/services/driver/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/driver/internal/ports"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type DriverRepository struct {
@@ -60,7 +59,7 @@ func (r *DriverRepository) AddDriver(ctx context.Context, driver *domain.Driver)
 	driverDoc := FromDomain(driver)
 	driverDoc.CreatedAt = now
 	driverDoc.UpdatedAt = now
-	driverDoc.ID = primitive.NewObjectID()
+	driverDoc.ID = bson.NewObjectID()
 
 	_, err := r.collection.InsertOne(ctx, driverDoc)
 	if err != nil {
