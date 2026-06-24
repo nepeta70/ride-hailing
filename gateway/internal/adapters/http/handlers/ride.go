@@ -13,16 +13,18 @@ import (
 )
 
 type RideHandler struct {
-	client     ridev1.RideServiceClient
-	apiKey     string
-	telemetry  ports.TelemetryProvider
-	propagator propagation.TextMapPropagator
+	client      ridev1.RideServiceClient
+	apiKey      string
+	hmacSecret  string
+	telemetry   ports.TelemetryProvider
+	propagator  propagation.TextMapPropagator
 }
 
 func NewRideHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry ports.TelemetryProvider) *RideHandler {
 	return &RideHandler{
 		client:     clients.Ride,
 		apiKey:     cfg.Services.Ride.APIKey,
+		hmacSecret: cfg.HMACSecret,
 		telemetry:  telemetry,
 		propagator: telemetry.Propagator(),
 	}
@@ -45,7 +47,7 @@ func (h *RideHandler) EstimateFare(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.EstimateFare(ctx, &ridev1.FareEstimateRequest{
 		PickupLocation: &ridev1.Coordinates{
 			Latitude:  body.PickupLocation.Latitude,
@@ -78,7 +80,7 @@ func (h *RideHandler) RequestRide(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.RequestRide(ctx, &ridev1.RideRequest{
 		FareId:      body.FareID,
 		ServiceType: body.ServiceType,
@@ -100,7 +102,7 @@ func (h *RideHandler) RequestRide(c *gin.Context) {
 }
 
 func (h *RideHandler) CancelRide(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.CancelRide(ctx, &ridev1.CancelRideRequest{RideId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -121,7 +123,7 @@ func (h *RideHandler) AcceptOrRejectRide(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.AcceptOrRejectRide(ctx, &ridev1.AcceptOrRejectRideRequest{
 		RideId: c.Param("id"),
 		Accept: body.Accept,
@@ -135,7 +137,7 @@ func (h *RideHandler) AcceptOrRejectRide(c *gin.Context) {
 }
 
 func (h *RideHandler) StartRide(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.StartRide(ctx, &ridev1.StartRideRequest{RideId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -146,7 +148,7 @@ func (h *RideHandler) StartRide(c *gin.Context) {
 }
 
 func (h *RideHandler) CompleteRide(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.CompleteRide(ctx, &ridev1.CompleteRideRequest{RideId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -174,7 +176,7 @@ func (h *RideHandler) CreateFareRate(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.CreateFareRate(ctx, fareRatePayloadToProto(&body))
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -185,7 +187,7 @@ func (h *RideHandler) CreateFareRate(c *gin.Context) {
 }
 
 func (h *RideHandler) GetFareRates(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.GetFareRates(ctx, &ridev1.GetFareRatesRequest{Country: c.Query("country")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -203,7 +205,7 @@ func (h *RideHandler) UpdateFareRate(c *gin.Context) {
 	}
 	body.ID = c.Param("id")
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.UpdateFareRate(ctx, fareRatePayloadToProto(&body))
 	if err != nil {
 		middleware.WriteGRPCError(c, err)

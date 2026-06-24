@@ -15,15 +15,17 @@ import (
 )
 
 type DriverHandler struct {
-	client     driverv1.DriverServiceClient
-	apiKey     string
-	propagator propagation.TextMapPropagator
+	client      driverv1.DriverServiceClient
+	apiKey      string
+	hmacSecret  string
+	propagator  propagation.TextMapPropagator
 }
 
 func NewDriverHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry ports.TelemetryProvider) *DriverHandler {
 	return &DriverHandler{
 		client:     clients.Driver,
 		apiKey:     cfg.Services.Driver.APIKey,
+		hmacSecret: cfg.HMACSecret,
 		propagator: telemetry.Propagator(),
 	}
 }
@@ -54,7 +56,7 @@ func (h *DriverHandler) CreateDriver(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.CreateDriver(ctx, &driverv1.CreateDriverRequest{
 		UserId:                  body.UserID,
 		LicenseNumber:           body.LicenseNumber,
@@ -82,7 +84,7 @@ func (h *DriverHandler) UpdateDriver(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.UpdateDriver(ctx, &driverv1.Driver{
 		UserId:                  c.Param("id"),
 		LicenseNumber:           body.LicenseNumber,
@@ -98,7 +100,7 @@ func (h *DriverHandler) UpdateDriver(c *gin.Context) {
 }
 
 func (h *DriverHandler) GetDriver(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.GetDriver(ctx, &driverv1.GetDriverRequest{UserId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)

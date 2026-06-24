@@ -13,15 +13,17 @@ import (
 )
 
 type UserHandler struct {
-	client     userv1.UserServiceClient
-	apiKey     string
-	propagator propagation.TextMapPropagator
+	client      userv1.UserServiceClient
+	apiKey      string
+	hmacSecret  string
+	propagator  propagation.TextMapPropagator
 }
 
 func NewUserHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry ports.TelemetryProvider) *UserHandler {
 	return &UserHandler{
 		client:     clients.User,
 		apiKey:     cfg.Services.User.APIKey,
+		hmacSecret: cfg.HMACSecret,
 		propagator: telemetry.Propagator(),
 	}
 }
@@ -43,7 +45,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.CreateUser(ctx, &userv1.CreateUserRequest{
 		UserType:    body.UserType,
 		UserName:    body.UserName,
@@ -62,7 +64,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.GetUser(ctx, &userv1.GetUserRequest{UserId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -89,7 +91,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.UpdateUser(ctx, &userv1.UpdateUserRequest{
 		UserId:      c.Param("id"),
 		UserName:    body.UserName,

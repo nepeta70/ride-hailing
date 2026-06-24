@@ -14,15 +14,17 @@ import (
 )
 
 type LocationHandler struct {
-	client     locationv1.LocationServiceClient
-	apiKey     string
-	propagator propagation.TextMapPropagator
+	client      locationv1.LocationServiceClient
+	apiKey      string
+	hmacSecret  string
+	propagator  propagation.TextMapPropagator
 }
 
 func NewLocationHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry ports.TelemetryProvider) *LocationHandler {
 	return &LocationHandler{
 		client:     clients.Location,
 		apiKey:     cfg.Services.Location.APIKey,
+		hmacSecret: cfg.HMACSecret,
 		propagator: telemetry.Propagator(),
 	}
 }
@@ -43,7 +45,7 @@ func (h *LocationHandler) UpdateDriverLocation(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.UpdateDriverLocation(ctx, &locationv1.DriverLocation{
 		Latitude:  body.Latitude,
 		Longitude: body.Longitude,
@@ -61,7 +63,7 @@ func (h *LocationHandler) UpdateDriverLocation(c *gin.Context) {
 }
 
 func (h *LocationHandler) GetDriverLocation(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.GetDriverLocation(ctx, &locationv1.UserID{UserId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -72,7 +74,7 @@ func (h *LocationHandler) GetDriverLocation(c *gin.Context) {
 }
 
 func (h *LocationHandler) DeleteDriverLocation(c *gin.Context) {
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.DeleteDriverLocation(ctx, &locationv1.UserID{UserId: c.Param("id")})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
@@ -99,7 +101,7 @@ func (h *LocationHandler) SearchNearbyDrivers(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.SearchNearbyDrivers(ctx, &locationv1.SearchNearbyDriversRequest{
 		Latitude:  latitude,
 		Longitude: longitude,
@@ -124,7 +126,7 @@ func (h *LocationHandler) UpdateDriverStatus(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.propagator)
+	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	_, err := h.client.UpdateDriverStatus(ctx, &locationv1.DriverStatus{
 		DriverId: c.Param("id"),
 		Status:   body.Status,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc/metadata"
@@ -82,8 +83,8 @@ func GetRequestContext(c *gin.Context) (*RequestContext, bool) {
 	return ctx, ok
 }
 
-func (r *RequestContext) ToMetadata(apiKey string) metadata.MD {
-	return metadata.New(map[string]string{
+func (r *RequestContext) ToMetadata(apiKey, hmacSecret string) metadata.MD {
+	md := metadata.New(map[string]string{
 		"api-key":      apiKey,
 		"sender-id":    r.SenderID,
 		"sender-type":  r.SenderType,
@@ -97,9 +98,10 @@ func (r *RequestContext) ToMetadata(apiKey string) metadata.MD {
 		"device-id":    r.DeviceID,
 		"retry-count":  r.RetryCount,
 	})
+	return auth.AttachSignature(md, hmacSecret)
 }
 
-func OutgoingGRPCContext(c *gin.Context, apiKey string, propagator propagation.TextMapPropagator) context.Context {
+func OutgoingGRPCContext(c *gin.Context, apiKey, hmacSecret string, propagator propagation.TextMapPropagator) context.Context {
 	reqCtx, _ := GetRequestContext(c)
 	if reqCtx == nil {
 		reqCtx = &RequestContext{
@@ -113,7 +115,7 @@ func OutgoingGRPCContext(c *gin.Context, apiKey string, propagator propagation.T
 		ctx = propagator.Extract(ctx, propagation.HeaderCarrier(c.Request.Header))
 	}
 
-	return metadata.NewOutgoingContext(ctx, reqCtx.ToMetadata(apiKey))
+	return metadata.NewOutgoingContext(ctx, reqCtx.ToMetadata(apiKey, hmacSecret))
 }
 
 func firstHeader(c *gin.Context, names ...string) string {

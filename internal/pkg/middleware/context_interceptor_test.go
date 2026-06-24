@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
@@ -19,10 +20,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func signedMetadata(fields map[string]string, secret string) metadata.MD {
+	md := metadata.New(fields)
+	return auth.AttachSignature(md, secret)
+}
+
 func TestContextInterceptor(t *testing.T) {
-	// Setup dependencies
 	cfg := config.DefaultBaseConfig()
 	cfg.APIKey = "test-secret"
+	cfg.HMACSecret = "test-hmac-secret"
 	cm := ctxmgr.NewContextManager()
 	telemetryProvider := mocks.NewMockTelemetryProvider()
 
@@ -37,6 +43,16 @@ func TestContextInterceptor(t *testing.T) {
 
 	validUserID := uuid.New().String()
 	validReqID := uuid.New().String()
+	validTimestamp := time.Now().UTC().Format(time.RFC3339)
+
+	baseFields := map[string]string{
+		"api-key":      "test-secret",
+		"sender-id":    validUserID,
+		"sender-type":  "rider",
+		"request-id":   validReqID,
+		"country-code": "ES",
+		"timestamp":    validTimestamp,
+	}
 
 	tests := []struct {
 		name         string
@@ -45,63 +61,56 @@ func TestContextInterceptor(t *testing.T) {
 		expectedRole enums.SenderType
 	}{
 		{
-			name: "Success - Full valid metadata",
-			md: metadata.New(map[string]string{
-				"api-key":      "test-secret",
-				"sender-id":    validUserID,
-				"sender-type":  "rider",
-				"request-id":   validReqID,
-				"country-code": "ES",
-				"timestamp":    time.Now().UTC().Format(time.RFC3339),
-			}),
+			name:         "Success - Full valid metadata",
+			md:           signedMetadata(baseFields, cfg.HMACSecret),
 			expectedCode: codes.OK,
 			expectedRole: enums.SenderType("rider"),
 		},
 		{
 			name: "Failure - Missing Timestamp",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":      "test-secret",
 				"sender-id":    validUserID,
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
-			}),
+			}, cfg.HMACSecret),
 			expectedCode: codes.InvalidArgument,
 		},
 		{
 			name: "Failure - Invalid Timestamp (non-numeric)",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":      "test-secret",
 				"sender-id":    validUserID,
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
 				"timestamp":    "notanumber",
-			}),
+			}, cfg.HMACSecret),
 			expectedCode: codes.InvalidArgument,
 		},
 		{
 			name: "Failure - Invalid Timestamp (too old)",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":      "test-secret",
 				"sender-id":    validUserID,
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
 				"timestamp":    time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
-			}),
+			}, cfg.HMACSecret),
 			expectedCode: codes.DeadlineExceeded,
 		},
 		{
 			name: "Failure - Invalid Timestamp (in the future)",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":      "test-secret",
 				"sender-id":    validUserID,
 				"sender-type":  "rider",
 				"request-id":   validReqID,
 				"country-code": "ES",
 				"timestamp":    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
-			}),
+			}, cfg.HMACSecret),
 			expectedCode: codes.InvalidArgument,
 		},
 		{
@@ -113,42 +122,74 @@ func TestContextInterceptor(t *testing.T) {
 		},
 		{
 			name: "Failure - Missing User ID",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":     "test-secret",
 				"sender-type": "rider",
 				"request-id":  validReqID,
-			}),
+				"timestamp":   validTimestamp,
+			}, cfg.HMACSecret),
 			expectedCode: codes.Unauthenticated,
 		},
 		{
 			name: "Failure - Invalid User Role",
-			md: metadata.New(map[string]string{
+			md: signedMetadata(map[string]string{
 				"api-key":     "test-secret",
 				"sender-id":   validUserID,
 				"sender-type": "invalid-role",
 				"request-id":  validReqID,
-			}),
+				"timestamp":   validTimestamp,
+			}, cfg.HMACSecret),
 			expectedCode: codes.Unauthenticated,
 		},
 		{
 			name: "Failure - Missing Request ID",
+			md: signedMetadata(map[string]string{
+				"api-key":     "test-secret",
+				"sender-id":   validUserID,
+				"sender-type": "rider",
+				"timestamp":   validTimestamp,
+			}, cfg.HMACSecret),
+			expectedCode: codes.InvalidArgument,
+		},
+		{
+			name: "Failure - Missing Signature",
 			md: metadata.New(map[string]string{
 				"api-key":     "test-secret",
 				"sender-id":   validUserID,
 				"sender-type": "rider",
+				"request-id":  validReqID,
+				"timestamp":   validTimestamp,
 			}),
-			expectedCode: codes.InvalidArgument,
+			expectedCode: codes.Unauthenticated,
+		},
+		{
+			name: "Failure - Invalid Signature",
+			md: metadata.New(map[string]string{
+				"api-key":     "test-secret",
+				"sender-id":   validUserID,
+				"sender-type": "rider",
+				"request-id":  validReqID,
+				"timestamp":   validTimestamp,
+				"signature":   "invalid-signature",
+			}),
+			expectedCode: codes.Unauthenticated,
+		},
+		{
+			name: "Failure - Tampered Sender ID",
+			md: func() metadata.MD {
+				md := signedMetadata(baseFields, cfg.HMACSecret)
+				md.Set("sender-id", uuid.New().String())
+				return md
+			}(),
+			expectedCode: codes.Unauthenticated,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create context with metadata
 			ctx := metadata.NewIncomingContext(context.Background(), tt.md)
 
-			// Mock gRPC handler
 			handler := func(currentCtx context.Context, req any) (any, error) {
-				// For success cases, verify the context was actually injected
 				if tt.expectedCode == codes.OK {
 					rInfo, ok := cm.Extract(currentCtx)
 					assert.True(t, ok)
@@ -158,7 +199,6 @@ func TestContextInterceptor(t *testing.T) {
 				return "resp", nil
 			}
 
-			// Execute Interceptor
 			interceptor := contextInterceptor.Unary()
 			_, err := interceptor(ctx, nil, info, handler)
 
