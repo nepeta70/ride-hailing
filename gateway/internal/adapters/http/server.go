@@ -2,8 +2,8 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +31,11 @@ func NewServer(opts *Options) *Server {
 	gin.SetMode(gin.ReleaseMode)
 
 	engine := gin.New()
-	engine.Use(otelgin.Middleware(opts.Config.ServiceName))
+	engine.Use(otelgin.Middleware(opts.Config.ServiceName,
+		otelgin.WithTracerProvider(opts.Telemetry.TracerProvider()),
+		otelgin.WithMeterProvider(opts.Telemetry.MeterProvider()),
+		otelgin.WithPropagators(opts.Telemetry.Propagator()),
+	))
 	engine.Use(middleware.Recovery(opts.Telemetry))
 	engine.Use(middleware.RequestContextMiddleware())
 	engine.Use(gin.Logger())
@@ -88,7 +92,7 @@ func NewServer(opts *Options) *Server {
 		}
 	}
 
-	addr := fmt.Sprintf("%s:%d", opts.Config.Server.Host, opts.Config.Server.Port)
+	addr := opts.Config.Server.Host + ":" + strconv.Itoa(opts.Config.Server.Port)
 	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      engine,

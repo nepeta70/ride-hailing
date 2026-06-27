@@ -3,40 +3,42 @@ package grpc
 import (
 	"time"
 
+	"github.com/nepeta70/ride-hailing/gateway/internal/config"
 	driverv1 "github.com/nepeta70/ride-hailing/gen/proto/driver/v1"
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
 	ridev1 "github.com/nepeta70/ride-hailing/gen/proto/ride/v1"
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
-	"github.com/nepeta70/ride-hailing/gateway/internal/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
 type Clients struct {
-	Ride     ridev1.RideServiceClient
-	User     userv1.UserServiceClient
-	Driver   driverv1.DriverServiceClient
-	Location locationv1.LocationServiceClient
-	conns    []*grpc.ClientConn
+	Ride      ridev1.RideServiceClient
+	User      userv1.UserServiceClient
+	Driver    driverv1.DriverServiceClient
+	Location  locationv1.LocationServiceClient
+	conns     []*grpc.ClientConn
+	telemetry ports.TelemetryProvider
 }
 
 func NewClients(cfg *config.Config, telemetry ports.TelemetryProvider) (*Clients, error) {
-	rideConn, err := dial(cfg.Services.Ride.Address)
+	rideConn, err := dial(cfg.Services.Ride.Address, telemetry)
 	if err != nil {
 		telemetry.Metrics().DependencyFailure("gateway", "ride_client", err.Error())
 		return nil, err
 	}
 
-	userConn, err := dial(cfg.Services.User.Address)
+	userConn, err := dial(cfg.Services.User.Address, telemetry)
 	if err != nil {
 		telemetry.Metrics().DependencyFailure("gateway", "user_client", err.Error())
 		_ = rideConn.Close()
 		return nil, err
 	}
 
-	driverConn, err := dial(cfg.Services.Driver.Address)
+	driverConn, err := dial(cfg.Services.Driver.Address, telemetry)
 	if err != nil {
 		telemetry.Metrics().DependencyFailure("gateway", "driver_client", err.Error())
 		_ = rideConn.Close()
@@ -44,7 +46,7 @@ func NewClients(cfg *config.Config, telemetry ports.TelemetryProvider) (*Clients
 		return nil, err
 	}
 
-	locationConn, err := dial(cfg.Services.Location.Address)
+	locationConn, err := dial(cfg.Services.Location.Address, telemetry)
 	if err != nil {
 		telemetry.Metrics().DependencyFailure("gateway", "location_client", err.Error())
 		_ = rideConn.Close()
@@ -68,7 +70,7 @@ func (c *Clients) Close() {
 	}
 }
 
-func dial(address string) (*grpc.ClientConn, error) {
+func dial(address string, telemetry ports.TelemetryProvider) (*grpc.ClientConn, error) {
 	retryPolicy := `{
 		"methodConfig": [{
 			"retryPolicy": {
@@ -89,5 +91,10 @@ func dial(address string) (*grpc.ClientConn, error) {
 			Timeout:             time.Second,
 			PermitWithoutStream: true,
 		}),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(
+			otelgrpc.WithTracerProvider(telemetry.TracerProvider()),
+			otelgrpc.WithMeterProvider(telemetry.MeterProvider()),
+			otelgrpc.WithPropagators(telemetry.Propagator()),
+		)),
 	)
 }
