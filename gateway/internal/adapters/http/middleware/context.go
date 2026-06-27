@@ -8,22 +8,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	headerSenderID    = "X-Sender-Id"
-	headerSenderType  = "X-Sender-Type"
-	headerSenderName  = "X-Sender-Name"
-	headerRequestID   = "X-Request-Id"
-	headerCountryCode = "X-Country-Code"
-	headerAppVersion  = "X-App-Version"
-	headerOS          = "X-OS"
-	headerNetwork     = "X-Network"
-	headerDeviceID    = "X-Device-Id"
-	headerRetryCount  = "X-Retry-Count"
+	headerSenderID    = "sender-id"
+	headerSenderType  = "sender-type"
+	headerSenderName  = "sender-name"
+	headerRequestID   = "request-id"
+	headerCountryCode = "country-code"
+	headerAppVersion  = "app-version"
+	headerOS          = "os"
+	headerNetwork     = "network"
+	headerDeviceID    = "device-id"
+	headerRetryCount  = "retry-count"
+
+	requestContext = "request_context"
 )
 
 type RequestContext struct {
@@ -42,39 +45,39 @@ type RequestContext struct {
 
 func RequestContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		requestID := firstHeader(c, headerRequestID, "request-id")
+		requestID := header(c, headerRequestID)
 		if requestID == "" {
 			requestID = uuid.NewString()
 		}
 
-		senderType := firstHeader(c, headerSenderType, "sender-type")
+		senderType := header(c, headerSenderType)
 		if senderType != "" && !enums.SenderType(senderType).IsValid() {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid sender type"})
 			return
 		}
 
 		ctx := &RequestContext{
-			SenderID:    firstHeader(c, headerSenderID, "sender-id"),
+			SenderID:    header(c, headerSenderID),
 			SenderType:  senderType,
-			SenderName:  firstHeader(c, headerSenderName, "sender-name"),
+			SenderName:  header(c, headerSenderName),
 			RequestID:   requestID,
-			CountryCode: firstHeader(c, headerCountryCode, "country-code"),
-			AppVersion:  firstHeader(c, headerAppVersion, "app-version"),
-			OS:          firstHeader(c, headerOS, "os"),
-			Network:     firstHeader(c, headerNetwork, "network"),
-			DeviceID:    firstHeader(c, headerDeviceID, "device-id"),
-			RetryCount:  firstHeader(c, headerRetryCount, "retry-count"),
+			CountryCode: header(c, headerCountryCode),
+			AppVersion:  header(c, headerAppVersion),
+			OS:          header(c, headerOS),
+			Network:     header(c, headerNetwork),
+			DeviceID:    header(c, headerDeviceID),
+			RetryCount:  header(c, headerRetryCount),
 			Timestamp:   time.Now().UTC().Format(time.RFC3339),
 		}
 
-		c.Set("request_context", ctx)
+		c.Set(requestContext, ctx)
 		c.Header(headerRequestID, requestID)
 		c.Next()
 	}
 }
 
 func GetRequestContext(c *gin.Context) (*RequestContext, bool) {
-	value, ok := c.Get("request_context")
+	value, ok := c.Get(requestContext)
 	if !ok {
 		return nil, false
 	}
@@ -82,26 +85,27 @@ func GetRequestContext(c *gin.Context) (*RequestContext, bool) {
 	return ctx, ok
 }
 
-func (r *RequestContext) ToMetadata(apiKey string) metadata.MD {
-	return metadata.New(map[string]string{
-		"api-key":      apiKey,
-		"sender-id":    r.SenderID,
-		"sender-type":  r.SenderType,
-		"sender-name":  r.SenderName,
-		"request-id":   r.RequestID,
-		"timestamp":    r.Timestamp,
-		"country-code": r.CountryCode,
-		"app-version":  r.AppVersion,
-		"os":           r.OS,
-		"network":      r.Network,
-		"device-id":    r.DeviceID,
-		"retry-count":  r.RetryCount,
-	})
+func (r *RequestContext) ToMetadata(apiKey, hmacSecret string) metadata.MD {
+	md := make(metadata.MD, 11)
+	md.Set("api-key", apiKey)
+	md.Set("sender-id", r.SenderID)
+	md.Set("sender-type", r.SenderType)
+	md.Set("sender-name", r.SenderName)
+	md.Set("request-id", r.RequestID)
+	md.Set("timestamp", r.Timestamp)
+	md.Set("country-code", r.CountryCode)
+	md.Set("app-version", r.AppVersion)
+	md.Set("os", r.OS)
+	md.Set("network", r.Network)
+	md.Set("device-id", r.DeviceID)
+	md.Set("retry-count", r.RetryCount)
+
+	return auth.AttachSignature(md, hmacSecret)
 }
 
-func OutgoingGRPCContext(c *gin.Context, apiKey string, propagator propagation.TextMapPropagator) context.Context {
-	reqCtx, _ := GetRequestContext(c)
-	if reqCtx == nil {
+func OutgoingGRPCContext(c *gin.Context, apiKey, hmacSecret string, propagator propagation.TextMapPropagator) context.Context {
+	reqCtx, ok := GetRequestContext(c)
+	if !ok || reqCtx == nil {
 		reqCtx = &RequestContext{
 			RequestID: uuid.NewString(),
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -113,14 +117,9 @@ func OutgoingGRPCContext(c *gin.Context, apiKey string, propagator propagation.T
 		ctx = propagator.Extract(ctx, propagation.HeaderCarrier(c.Request.Header))
 	}
 
-	return metadata.NewOutgoingContext(ctx, reqCtx.ToMetadata(apiKey))
+	return metadata.NewOutgoingContext(ctx, reqCtx.ToMetadata(apiKey, hmacSecret))
 }
 
-func firstHeader(c *gin.Context, names ...string) string {
-	for _, name := range names {
-		if value := strings.TrimSpace(c.GetHeader(name)); value != "" {
-			return value
-		}
-	}
-	return ""
+func header(c *gin.Context, name string) string {
+	return strings.TrimSpace(c.GetHeader(name))
 }

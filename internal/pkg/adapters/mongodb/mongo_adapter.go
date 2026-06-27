@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -46,7 +47,8 @@ type MongoAdapter struct {
 
 func NewMongoAdapter(opts *MongoAdapterOpts, ctx context.Context) (*MongoAdapter, error) {
 	ctx, span := opts.Telemetry.Tracer().Start(ctx, "MongoAdapter:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(semconv.DBSystemNameMongoDB),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()

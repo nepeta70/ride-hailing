@@ -20,6 +20,7 @@ type BaseConfig struct {
 	Security    SecurityConfig            `json:"security"`
 	Telemetry   telemetry.TelemetryConfig `json:"telemetry"`
 	APIKey      string                    `json:"api_key" env:"API_KEY"`
+	HMACSecret  string                    `json:"hmac_secret" env:"HMAC_SECRET"`
 	ServiceName string                    `json:"service_name" env:"SERVICE_NAME"`
 }
 

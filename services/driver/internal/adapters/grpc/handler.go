@@ -33,7 +33,7 @@ func NewDriverHandler(driverService *service.DriverService, telemetry pkgPorts.T
 }
 func (h *DriverHandler) CreateDriver(ctx context.Context, req *driverv1.CreateDriverRequest) (*driverv1.Driver, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "CreateDriver",
-		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 	info, err := h.getInfoFromMetadata(ctx)
@@ -82,7 +82,7 @@ func (h *DriverHandler) CreateDriver(ctx context.Context, req *driverv1.CreateDr
 
 func (h *DriverHandler) UpdateDriver(ctx context.Context, req *driverv1.Driver) (*driverv1.Driver, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "CreateDriver",
-		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 	info, err := h.getInfoFromMetadata(ctx)

@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -78,8 +79,9 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Ride Event",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
-			attribute.String("kafka.topic", contracts.TopicRide.String()),
-			attribute.String("kafka.operation", "consume"),
+			semconv.MessagingSystemKafka,
+			semconv.MessagingOperationTypeProcess,
+			semconv.MessagingDestinationName(contracts.TopicRide.String()),
 		),
 	)
 
@@ -98,8 +100,9 @@ func (a *Application) handleRideEvent(ctx context.Context, headers map[string]st
 	if !ok || eventType == "" {
 		return errors.NewValidationErrorf("missing event-type header")
 	}
+	span.SetAttributes(attribute.String("messaging.message.type", eventType))
+
 	evt := contracts.EventType(eventType)
-	span.SetAttributes(attribute.String("message.type", evt.String()))
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if !ok {

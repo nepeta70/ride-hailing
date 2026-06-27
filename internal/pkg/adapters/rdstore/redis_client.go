@@ -6,6 +6,7 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/redis/go-redis/v9"
@@ -23,7 +24,8 @@ type RedisClient struct {
 // NewClient returns our wrapped client
 func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, telemetry ports.TelemetryProvider) (*RedisClient, error) {
 	ctx, span := telemetry.Tracer().Start(context.Background(), "Redis:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(semconv.DBSystemNameRedis),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()
@@ -90,8 +92,8 @@ func (c *RedisClient) TraceSpan(ctx context.Context, spanName string, operation 
 	ctx, span := tracer.Start(ctx, spanName,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
-			attribute.String("db.system", "redis"),
-			attribute.String("db.operation", operation),
+			semconv.DBSystemNameRedis,
+			semconv.DBOperationName(operation),
 			attribute.String("db.key", key),
 		),
 	)

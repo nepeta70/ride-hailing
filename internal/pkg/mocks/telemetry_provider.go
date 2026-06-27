@@ -6,7 +6,9 @@ import (
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
+	tracer "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/embedded"
 )
 
@@ -35,7 +37,7 @@ func (m *MockTelemetryProvider) Logger() ports.Logger {
 	return m.logger
 }
 
-func (m *MockTelemetryProvider) Tracer() trace.Tracer {
+func (m *MockTelemetryProvider) Tracer() tracer.Tracer {
 	return m.tracer
 }
 
@@ -57,6 +59,14 @@ func (m *MockTelemetryProvider) MetricsCalls() map[string]int {
 
 func (m *MockTelemetryProvider) MetricsArgs() map[string][]any {
 	return m.metrics.Args
+}
+
+func (m *MockTelemetryProvider) TracerProvider() *trace.TracerProvider {
+	return nil
+}
+
+func (m *MockTelemetryProvider) MeterProvider() *sdkmetric.MeterProvider {
+	return nil
 }
 
 var _ ports.TelemetryProvider = (*MockTelemetryProvider)(nil)
@@ -91,20 +101,20 @@ func NewMockTracer() *MockTracer {
 	}
 }
 
-func (m *MockTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	s := &MockSpan{name: spanName, Span: trace.SpanFromContext(ctx)}
+func (m *MockTracer) Start(ctx context.Context, spanName string, opts ...tracer.SpanStartOption) (context.Context, tracer.Span) {
+	s := &MockSpan{name: spanName, Span: tracer.SpanFromContext(ctx)}
 	return ctx, s
 }
 
-var _ trace.Tracer = (*MockTracer)(nil)
+var _ tracer.Tracer = (*MockTracer)(nil)
 
 type MockSpan struct {
-	trace.Span
+	tracer.Span
 	name  string
 	ended bool
 	err   error
 }
 
-func (s *MockSpan) End(options ...trace.SpanEndOption)               { s.ended = true }
-func (s *MockSpan) RecordError(err error, opts ...trace.EventOption) { s.err = err }
-func (s *MockSpan) IsRecording() bool                                { return true }
+func (s *MockSpan) End(options ...tracer.SpanEndOption)               { s.ended = true }
+func (s *MockSpan) RecordError(err error, opts ...tracer.EventOption) { s.err = err }
+func (s *MockSpan) IsRecording() bool                                 { return true }

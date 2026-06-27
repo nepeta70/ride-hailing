@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nepeta70/ride-hailing/services/ride/internal/core/app/commands"
@@ -129,8 +130,9 @@ func (a *Application) handleMatchEvent(ctx context.Context, headers map[string]s
 	ctx, span := a.telemetry.Tracer().Start(ctx, "Consume Matching Event",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
-			attribute.String("kafka.topic", contracts.TopicMatching.String()),
-			attribute.String("kafka.operation", "consume"),
+			semconv.MessagingSystemKafka,
+			semconv.MessagingOperationTypeProcess,
+			semconv.MessagingDestinationName(contracts.TopicMatching.String()),
 		),
 	)
 	defer span.End()
@@ -149,8 +151,8 @@ func (a *Application) handleMatchEvent(ctx context.Context, headers map[string]s
 		a.telemetry.Logger().ErrorContext(ctx, "Missing event-type header in message")
 		return errors.NewValidationErrorf("missing event-type header")
 	}
+	span.SetAttributes(attribute.String("messaging.message.type", eventType))
 	evt := contracts.EventType(eventType)
-	span.SetAttributes(attribute.String("message.type", evt.String()))
 
 	info, ok := ctxmgr.NewInfoFromMap(headers)
 	if ok {

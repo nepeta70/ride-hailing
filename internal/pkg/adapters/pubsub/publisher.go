@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -93,9 +94,10 @@ func (k *KafkaPublisher) Publish(ctx context.Context, topic contracts.Topic, mes
 	ctx, span := tracer.Start(ctx, "Kafka Publish",
 		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(
-			attribute.String("kafka.topic", topic.String()),
-			attribute.String("kafka.operation", "publish"),
-			attribute.String("kafka.message.type", message.EventType.String()),
+			semconv.MessagingSystemKafka,
+			semconv.MessagingOperationTypeSend,
+			semconv.MessagingDestinationName(topic.String()),
+			attribute.String("messaging.message.type", message.EventType.String()),
 		),
 	)
 	defer span.End()
@@ -173,7 +175,7 @@ func (k *KafkaPublisher) ServiceName() string {
 
 func (k *KafkaPublisher) initializeTopics(required []string, config *KafkaConfig) error {
 	ctx, span := k.telemetry.Tracer().Start(context.Background(), "Publisher:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()

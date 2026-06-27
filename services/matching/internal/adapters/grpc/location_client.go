@@ -15,6 +15,7 @@ import (
 	// Import your generated code
 	"github.com/google/uuid"
 	locationv1 "github.com/nepeta70/ride-hailing/gen/proto/location/v1"
+	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/contracts"
 	domain "github.com/nepeta70/ride-hailing/internal/pkg/core"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
@@ -145,6 +146,7 @@ func (lc *LocationClient) addMetadata(ctx context.Context, headers map[string]st
 	md := metadata.New(headers)
 	md.Set("timestamp", time.Now().UTC().Format(time.RFC3339))
 	md.Set("api-key", lc.config.LocationService.APIKey)
+	md = auth.AttachSignature(md, lc.config.HMACSecret)
 	lc.telemetryProvider.Logger().DebugContext(ctx, "Adding metadata to outgoing gRPC call", "metadata", md)
 	return metadata.NewOutgoingContext(ctx, md), nil
 }
