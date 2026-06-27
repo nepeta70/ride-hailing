@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
@@ -55,6 +56,8 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 	ctx, span := opts.Telemetry.Tracer().Start(context.Background(), "Postgres:Initialize",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
+		trace.WithAttributes(semconv.DBSystemNamePostgreSQL),
+		trace.WithAttributes(semconv.DBNamespace(opts.Config.DBName)),
 	)
 	defer span.End()
 
@@ -132,7 +135,7 @@ func (db *PostgresDB) QueryContext(ctx context.Context, query string, args ...an
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("query", query),
+		semconv.DBQueryText(query),
 	)
 
 	strategy := db.retryFactory.NewExponentialBackoffRetrier(postgresServiceName, db.config.QueryTimeout)
@@ -162,7 +165,7 @@ func (db *PostgresDB) ExecContext(ctx context.Context, query string, args ...any
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("query", query),
+		semconv.DBQueryText(query),
 	)
 	var res sql.Result
 
@@ -188,7 +191,7 @@ func (db *PostgresDB) TraceSpan(ctx context.Context, spanName string) trace.Span
 	ctx, span := tracer.Start(ctx, spanName,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
-			attribute.String("db.system", "postgres"),
+			semconv.DBSystemNamePostgreSQL,
 		),
 	)
 
