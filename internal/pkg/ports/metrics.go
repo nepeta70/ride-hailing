@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
+	tracer "go.opentelemetry.io/otel/trace"
 )
 
 type Metrics interface {
@@ -27,7 +29,9 @@ type CircuitBreakerMetrics interface {
 type TelemetryProvider interface {
 	Metrics() Metrics
 	Logger() Logger
-	Tracer() trace.Tracer
+	Tracer() tracer.Tracer
 	Propagator() propagation.TextMapPropagator
+	TracerProvider() *trace.TracerProvider
+	MeterProvider() *sdkmetric.MeterProvider
 	Shutdown(ctx context.Context) error
 }
