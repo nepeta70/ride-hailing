@@ -173,7 +173,7 @@ func (k *KafkaPublisher) ServiceName() string {
 
 func (k *KafkaPublisher) initializeTopics(required []string, config *KafkaConfig) error {
 	ctx, span := k.telemetry.Tracer().Start(context.Background(), "Publisher:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()

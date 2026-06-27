@@ -23,7 +23,7 @@ type RedisClient struct {
 // NewClient returns our wrapped client
 func NewClient(cfg *RedisConfig, retrierFactory ports.RetrierFactoryInterface, telemetry ports.TelemetryProvider) (*RedisClient, error) {
 	ctx, span := telemetry.Tracer().Start(context.Background(), "Redis:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()

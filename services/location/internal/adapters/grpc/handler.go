@@ -37,7 +37,7 @@ func NewLocationHandler(app *app.Application, telemetry ports.TelemetryProvider)
 
 func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locationv1.DriverLocation) (*emptypb.Empty, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "UpdateDriverLocation",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 	info, err := h.getInfoFromMetadata(ctx)
@@ -85,7 +85,7 @@ func (h *LocationHandler) UpdateDriverLocation(ctx context.Context, req *locatio
 // GetDriverLocation handles the read-side (Query)
 func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1.UserID) (*locationv1.DriverLocationWithStatus, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "UpdateDriverLocation",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 	userID, err := uuid.Parse(req.UserId)
@@ -116,7 +116,7 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 // DeleteDriverLocation handles the deletion of a driver's location
 func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locationv1.UserID) (*emptypb.Empty, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "DeleteDriverLocation",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			attribute.String("driver.id", req.UserId),
 		),
@@ -137,7 +137,7 @@ func (h *LocationHandler) DeleteDriverLocation(ctx context.Context, req *locatio
 // SearchNearbyDrivers handles searching for nearby drivers
 func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *locationv1.SearchNearbyDriversRequest) (*locationv1.SearchNearbyDriversResponse, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "SearchNearbyDrivers",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			attribute.Float64("latitude", req.GetLatitude()),
 			attribute.Float64("longitude", req.GetLongitude()),
@@ -183,7 +183,7 @@ func (h *LocationHandler) SearchNearbyDrivers(ctx context.Context, req *location
 
 func (h *LocationHandler) UpdateDriverStatus(ctx context.Context, req *locationv1.DriverStatus) (*emptypb.Empty, error) {
 	ctx, span := h.telemetry.Tracer().Start(ctx, "UpdateDriverStatus",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			attribute.String("driver.id", req.DriverId),
 			attribute.String("status", req.Status),

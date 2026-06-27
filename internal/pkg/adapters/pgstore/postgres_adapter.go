@@ -53,7 +53,7 @@ func NewPostgresDB(opts *PostgresOpts) (*PostgresDB, error) {
 	}
 
 	ctx, span := opts.Telemetry.Tracer().Start(context.Background(), "Postgres:Initialize",
-		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(attribute.Bool("service.init", true)),
 	)
 	defer span.End()
