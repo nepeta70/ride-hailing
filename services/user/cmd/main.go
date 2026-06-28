@@ -37,7 +37,18 @@ func main() {
 	logger := tel.Logger()
 
 	repo := inmemory.NewInMemoryUserRepository()
-	application := app.NewApplication(cfg, logger, repo, repo)
+
+	appOpts := &app.AppOpts{
+		Config:    cfg,
+		Telemetry: tel,
+		WriteRepo: repo,
+		ReadRepo:  repo,
+	}
+	application, err := app.NewApplication(appOpts)
+	if err != nil {
+		logger.Error("Failed to create Application:", "error", err)
+		return
+	}
 	handler := grpcAdapters.NewUserHandler(application)
 
 	opts := &grpc_adapter.GRPGAdapterOptions{

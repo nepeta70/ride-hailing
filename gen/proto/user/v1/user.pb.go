@@ -66,33 +66,30 @@ func (x *GetUserRequest) GetUserId() string {
 	return ""
 }
 
-type CreateUserRequest struct {
+type RegisterUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserType      string                 `protobuf:"bytes,1,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"`
-	UserName      string                 `protobuf:"bytes,2,opt,name=user_name,json=userName,proto3" json:"user_name,omitempty"`
-	FirstName     string                 `protobuf:"bytes,3,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
-	LastName      string                 `protobuf:"bytes,4,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
-	Email         string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,6,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	Password      string                 `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	PhoneNumber   string                 `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CreateUserRequest) Reset() {
-	*x = CreateUserRequest{}
+func (x *RegisterUserRequest) Reset() {
+	*x = RegisterUserRequest{}
 	mi := &file_user_v1_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateUserRequest) String() string {
+func (x *RegisterUserRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateUserRequest) ProtoMessage() {}
+func (*RegisterUserRequest) ProtoMessage() {}
 
-func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
+func (x *RegisterUserRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_user_v1_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -104,54 +101,33 @@ func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
-func (*CreateUserRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RegisterUserRequest.ProtoReflect.Descriptor instead.
+func (*RegisterUserRequest) Descriptor() ([]byte, []int) {
 	return file_user_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CreateUserRequest) GetUserType() string {
+func (x *RegisterUserRequest) GetUserType() string {
 	if x != nil {
 		return x.UserType
 	}
 	return ""
 }
 
-func (x *CreateUserRequest) GetUserName() string {
-	if x != nil {
-		return x.UserName
-	}
-	return ""
-}
-
-func (x *CreateUserRequest) GetFirstName() string {
-	if x != nil {
-		return x.FirstName
-	}
-	return ""
-}
-
-func (x *CreateUserRequest) GetLastName() string {
-	if x != nil {
-		return x.LastName
-	}
-	return ""
-}
-
-func (x *CreateUserRequest) GetEmail() string {
+func (x *RegisterUserRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
 	}
 	return ""
 }
 
-func (x *CreateUserRequest) GetPhoneNumber() string {
+func (x *RegisterUserRequest) GetPhoneNumber() string {
 	if x != nil {
 		return x.PhoneNumber
 	}
 	return ""
 }
 
-func (x *CreateUserRequest) GetPassword() string {
+func (x *RegisterUserRequest) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
@@ -165,9 +141,6 @@ type UpdateUserRequest struct {
 	UserType      string                 `protobuf:"bytes,3,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"`
 	FirstName     string                 `protobuf:"bytes,4,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
 	LastName      string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
-	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,7,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	Password      string                 `protobuf:"bytes,8,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -233,27 +206,6 @@ func (x *UpdateUserRequest) GetFirstName() string {
 func (x *UpdateUserRequest) GetLastName() string {
 	if x != nil {
 		return x.LastName
-	}
-	return ""
-}
-
-func (x *UpdateUserRequest) GetEmail() string {
-	if x != nil {
-		return x.Email
-	}
-	return ""
-}
-
-func (x *UpdateUserRequest) GetPhoneNumber() string {
-	if x != nil {
-		return x.PhoneNumber
-	}
-	return ""
-}
-
-func (x *UpdateUserRequest) GetPassword() string {
-	if x != nil {
-		return x.Password
 	}
 	return ""
 }
@@ -356,26 +308,19 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"\x12user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\")\n" +
 	"\x0eGetUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xde\x01\n" +
-	"\x11CreateUserRequest\x12\x1b\n" +
-	"\tuser_type\x18\x01 \x01(\tR\buserType\x12\x1b\n" +
-	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1d\n" +
-	"\n" +
-	"first_name\x18\x03 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x04 \x01(\tR\blastName\x12\x14\n" +
-	"\x05email\x18\x05 \x01(\tR\x05email\x12!\n" +
-	"\fphone_number\x18\x06 \x01(\tR\vphoneNumber\x12\x1a\n" +
-	"\bpassword\x18\a \x01(\tR\bpassword\"\xf7\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x87\x01\n" +
+	"\x13RegisterUserRequest\x12\x1b\n" +
+	"\tuser_type\x18\x01 \x01(\tR\buserType\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12!\n" +
+	"\fphone_number\x18\x03 \x01(\tR\vphoneNumber\x12\x1a\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\"\xa2\x01\n" +
 	"\x11UpdateUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
 	"\tuser_type\x18\x03 \x01(\tR\buserType\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x04 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x05 \x01(\tR\blastName\x12\x14\n" +
-	"\x05email\x18\x06 \x01(\tR\x05email\x12!\n" +
-	"\fphone_number\x18\a \x01(\tR\vphoneNumber\x12\x1a\n" +
-	"\bpassword\x18\b \x01(\tR\bpassword\"\xce\x01\n" +
+	"\tlast_name\x18\x05 \x01(\tR\blastName\"\xce\x01\n" +
 	"\x04User\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tuser_name\x18\x02 \x01(\tR\buserName\x12\x1b\n" +
@@ -384,11 +329,11 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"first_name\x18\x04 \x01(\tR\tfirstName\x12\x1b\n" +
 	"\tlast_name\x18\x05 \x01(\tR\blastName\x12\x14\n" +
 	"\x05email\x18\x06 \x01(\tR\x05email\x12!\n" +
-	"\fphone_number\x18\a \x01(\tR\vphoneNumber2\xb2\x01\n" +
+	"\fphone_number\x18\a \x01(\tR\vphoneNumber2\xb4\x01\n" +
 	"\vUserService\x121\n" +
-	"\aGetUser\x12\x17.user.v1.GetUserRequest\x1a\r.user.v1.User\x127\n" +
+	"\aGetUser\x12\x17.user.v1.GetUserRequest\x1a\r.user.v1.User\x129\n" +
 	"\n" +
-	"CreateUser\x12\x1a.user.v1.CreateUserRequest\x1a\r.user.v1.User\x127\n" +
+	"CreateUser\x12\x1c.user.v1.RegisterUserRequest\x1a\r.user.v1.User\x127\n" +
 	"\n" +
 	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\r.user.v1.UserB\x90\x01\n" +
 	"\vcom.user.v1B\tUserProtoP\x01Z9github.com/nepeta70/ride-hailing/gen/proto/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
@@ -407,14 +352,14 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 
 var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_user_v1_user_proto_goTypes = []any{
-	(*GetUserRequest)(nil),    // 0: user.v1.GetUserRequest
-	(*CreateUserRequest)(nil), // 1: user.v1.CreateUserRequest
-	(*UpdateUserRequest)(nil), // 2: user.v1.UpdateUserRequest
-	(*User)(nil),              // 3: user.v1.User
+	(*GetUserRequest)(nil),      // 0: user.v1.GetUserRequest
+	(*RegisterUserRequest)(nil), // 1: user.v1.RegisterUserRequest
+	(*UpdateUserRequest)(nil),   // 2: user.v1.UpdateUserRequest
+	(*User)(nil),                // 3: user.v1.User
 }
 var file_user_v1_user_proto_depIdxs = []int32{
 	0, // 0: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
-	1, // 1: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
+	1, // 1: user.v1.UserService.CreateUser:input_type -> user.v1.RegisterUserRequest
 	2, // 2: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
 	3, // 3: user.v1.UserService.GetUser:output_type -> user.v1.User
 	3, // 4: user.v1.UserService.CreateUser:output_type -> user.v1.User

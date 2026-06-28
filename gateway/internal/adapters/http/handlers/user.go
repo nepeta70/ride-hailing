@@ -4,19 +4,19 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	grpcClients "github.com/nepeta70/ride-hailing/gateway/internal/adapters/grpc"
 	"github.com/nepeta70/ride-hailing/gateway/internal/adapters/http/middleware"
 	"github.com/nepeta70/ride-hailing/gateway/internal/config"
+	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ports"
 	"go.opentelemetry.io/otel/propagation"
 )
 
 type UserHandler struct {
-	client      userv1.UserServiceClient
-	apiKey      string
-	hmacSecret  string
-	propagator  propagation.TextMapPropagator
+	client     userv1.UserServiceClient
+	apiKey     string
+	hmacSecret string
+	propagator propagation.TextMapPropagator
 }
 
 func NewUserHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry ports.TelemetryProvider) *UserHandler {
@@ -46,11 +46,8 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
-	resp, err := h.client.CreateUser(ctx, &userv1.CreateUserRequest{
+	resp, err := h.client.CreateUser(ctx, &userv1.RegisterUserRequest{
 		UserType:    body.UserType,
-		UserName:    body.UserName,
-		FirstName:   body.FirstName,
-		LastName:    body.LastName,
 		Email:       body.Email,
 		PhoneNumber: body.PhoneNumber,
 		Password:    body.Password,
@@ -93,14 +90,11 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
 	resp, err := h.client.UpdateUser(ctx, &userv1.UpdateUserRequest{
-		UserId:      c.Param("id"),
-		UserName:    body.UserName,
-		UserType:    body.UserType,
-		FirstName:   body.FirstName,
-		LastName:    body.LastName,
-		Email:       body.Email,
-		PhoneNumber: body.PhoneNumber,
-		Password:    body.Password,
+		UserId:    c.Param("id"),
+		UserName:  body.UserName,
+		UserType:  body.UserType,
+		FirstName: body.FirstName,
+		LastName:  body.LastName,
 	})
 	if err != nil {
 		middleware.WriteGRPCError(c, err)
