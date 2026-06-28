@@ -1,11 +1,13 @@
 package config
 
 import (
+	"github.com/nepeta70/ride-hailing/internal/pkg/adapters/pgstore"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 )
 
 type Config struct {
 	config.BaseConfig
+	Postgres pgstore.PostgresConfig `json:"postgres"`
 }
 
 func DefaultConfig() *Config {
@@ -13,6 +15,7 @@ func DefaultConfig() *Config {
 	base.ServiceName = "User Service"
 	return &Config{
 		BaseConfig: base,
+		Postgres:   pgstore.DefaultPostgresConfig(),
 	}
 }
 
