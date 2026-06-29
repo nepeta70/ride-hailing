@@ -28,18 +28,15 @@ func NewUserHandler(clients *grpcClients.Clients, cfg *config.Config, telemetry 
 	}
 }
 
-type createUserPayload struct {
+type registerUserPayload struct {
 	UserType    string `json:"user_type" binding:"required"`
-	UserName    string `json:"user_name" binding:"required"`
-	FirstName   string `json:"first_name" binding:"required"`
-	LastName    string `json:"last_name" binding:"required"`
 	Email       string `json:"email" binding:"required"`
 	PhoneNumber string `json:"phone_number" binding:"required"`
 	Password    string `json:"password" binding:"required"`
 }
 
 func (h *UserHandler) CreateUser(c *gin.Context) {
-	var body createUserPayload
+	var body registerUserPayload
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
