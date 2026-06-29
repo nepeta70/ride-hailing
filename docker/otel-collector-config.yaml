@@ -3,6 +3,8 @@ receivers:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318  
   filelog:
     include: [ "/var/lib/docker/containers/*/*-json.log" ]
     operators:
@@ -30,6 +32,9 @@ exporters:
     tls: { insecure: true }
 
 processors:
+  batch:
+    send_batch_size: 8192
+    timeout: 1s
   resource:
     attributes:
       - key: service.name
@@ -40,7 +45,19 @@ processors:
       - key: job
         from_attribute: service.name
         action: upsert
-        
+  transform:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # Step 1: Combine the method and full URL into the span name
+          - set(name, Concat([" ", attributes["http.method"], " ", attributes["http.url"]], "")) where name == "kong" and attributes["http.url"] != nil
+          
+          # Step 2: Strip the domain/protocol in-place directly from the name field (lowercase editor)
+          - replace_pattern(name, "^https?://[^/]+", "") where attributes["http.url"] != nil
+          
+          # Step 3: Fallback if http.url is completely missing
+          - set(name, Concat([" ", attributes["http.method"], " ", attributes["http.route"]], "")) where name == "kong" and attributes["http.url"] == nil and attributes["http.route"] != nil
 service:
   pipelines:
     metrics:
@@ -53,7 +70,7 @@ service:
       exporters: [otlphttp/loki]      
     traces:
       receivers: [otlp]
-      processors: [resource]
+      processors: [resource, attributes, transform, batch]
       exporters: [otlphttp/tempo]
     profiles:
       receivers: [otlp]

@@ -1,0 +1,141 @@
+_format_version: "3.0"
+
+# ============================================
+# CONSUMERS (API Clients)
+# ============================================
+consumers:
+  - username: postman-test
+    id: 11111111-1111-1111-1111-111111111111
+    jwt_secrets:
+      - id: 22222222-2222-2222-2222-222222222222
+        algorithm: HS256
+        key: postman-test-key
+        secret: mysecret ##${HMAC_SECRET}
+
+# ============================================
+# UPSTREAMS (Load Balancing for Gateway)
+# ============================================
+upstreams:
+  - name: gateway-upstream
+    algorithm: round-robin
+    healthchecks:
+      active:
+        healthy:
+          interval: 5
+          successes: 2
+        unhealthy:
+          interval: 5
+          tcp_failures: 2
+          timeouts: 3
+        type: http
+        http_path: /health
+        timeout: 3
+    targets:
+      - target: gateway:5000
+        weight: 100
+
+# ============================================
+# SERVICES & ROUTES
+# ============================================
+services:
+  # API Service with JWT
+  - name: gateway-api
+    host: gateway-upstream
+    port: 5000
+    protocol: http
+    routes:
+      - name: api-routes
+        paths:
+          - /api
+        strip_path: false
+        preserve_host: true
+
+  # Health Service WITHOUT JWT
+  - name: gateway-health
+    host: gateway-upstream
+    port: 5000
+    protocol: http
+    routes:
+      - name: health-check
+        paths:
+          - /health
+        strip_path: false
+        preserve_host: true
+
+# ============================================
+# PLUGINS
+# ============================================
+plugins:
+  # - name: key-auth
+  #   route: api-routes
+  #   config:
+  #     key_names: [api-key]
+  #     hide_credentials: true
+
+  # 1. JWT AUTH (Best option - stateless, signed, expirable)
+  - name: jwt
+    service: gateway-api
+    config:
+      uri_param_names: []
+      cookie_names: []
+      key_claim_name: iss
+      claims_to_verify:
+        - exp
+      secret_is_base64: false
+      maximum_expiration: 86400
+
+  # 2. RATE LIMITING 
+  - name: rate-limiting
+    config:
+      minute: 100
+      hour: 5000
+      policy: redis
+      redis:
+        host: redis
+        port: 6379
+        password: "${REDIS_PASSWORD}"
+        timeout: 2000
+        database: 0
+        ssl: false
+        ssl_verify: false
+      fault_tolerant: true
+
+  # # 3. CIRCUIT BREAKER (Resiliency)
+  # - name: circuit-breaker
+  #   config:
+  #     version: 1
+  #     window_time: 15
+  #     min_calls_in_window: 10
+  #     api_call_timeout_ms: 5000
+  #     failure_percent_threshold: 51
+  #     wait_duration_in_open_state: 30
+  #     error_status_code: 503
+  #     error_msg_override: "Service temporarily unavailable"
+
+  # 4. REQUEST SIZE LIMIT
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+
+  # 5. OPENTELEMETRY 
+  - name: opentelemetry
+    config:
+      traces_endpoint: "http://otel-collector:4318/v1/traces"
+      resource_attributes:
+        service.name: kong-gateway
+        service.version: "3.9.3"
+      sampling_rate: 1.0
+      propagation:
+        extract:
+          - w3c
+        inject:
+          - w3c
+        default_format: "w3c"
+
+  # 6. PROMETHEUS METRICS
+  - name: prometheus
+    config:
+      per_consumer: true
+      status_code_metrics: true
+      latency_metrics: true
+      upstream_health_metrics: true

@@ -229,8 +229,6 @@ services:
     build:
       context: ..
       dockerfile: gateway/docker/Dockerfile
-    ports:
-      - "5000:5000"
     volumes:
       - ../gateway/cmd/config.json:/home/appuser/config.json:ro
     environment:
@@ -268,3 +266,4 @@ services:
 include:
   - path: docker-compose.infra.yaml
   - path: docker-compose.telemetry.yaml
+  - path: docker-compose.gateway.yaml

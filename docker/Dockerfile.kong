@@ -1,0 +1,18 @@
+FROM kong:3.9.3
+
+USER root
+
+RUN apt-get update && apt-get install -y \
+    git \
+    gcc \
+    make \
+    liblua5.1-0-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install circuit breaker plugin
+RUN luarocks install kong-circuit-breaker
+
+# Or install from a specific version
+# RUN luarocks install kong-circuit-breaker 1.0.0
+
+USER kong

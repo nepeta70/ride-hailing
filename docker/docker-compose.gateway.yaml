@@ -1,0 +1,30 @@
+services:
+  kong:
+    image: kong:3.9.3
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.kong
+    container_name: kong
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yaml
+      KONG_PLUGINS: bundled,opentelemetry ##,circuit-breaker
+      KONG_TRACING_INSTRUMENTATIONS: all
+      KONG_TRACING_SAMPLING_RATE: 1.0
+      KONG_TRUSTED_IPS: 0.0.0.0/0,::/0
+      KONG_DNS_RESOLVER: 127.0.0.11
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      HMAC_SECRET: ${HMAC_SECRET}
+    volumes:
+      - ./kong.yaml:/kong/declarative/kong.yaml:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - gateway
+      - redis
