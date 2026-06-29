@@ -10,8 +10,15 @@
   "redis": {
     "address": "127.0.0.1:6379"
   },
-  "logic": {
-    "geohash_precision": 8,
-    "location_ttl_seconds": 3600
+  "postgres": {
+      "host": "localhost",
+      "port": 5432,
+      "ping_timeout_seconds": 5,
+      "query_timeout_seconds": 5
+  },
+  "telemetry": {
+    "interval_seconds": 15,
+    "prometheus_address": "prometheus:9090",
+    "opentelemetry_address": "otel-collector:4317"
   }
 }
