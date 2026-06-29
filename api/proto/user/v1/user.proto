@@ -9,7 +9,7 @@ option go_package = "github.com/nepeta70/ride-hailing/gen/pb/user/v1";
 service UserService {
   // rpc methods go here
   rpc GetUser(GetUserRequest) returns (User);
-  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
   rpc UpdateUser(UpdateUserRequest) returns (User);
 }
 
@@ -17,14 +17,11 @@ message GetUserRequest {
   string user_id = 1;
 }
 
-message CreateUserRequest {
+message RegisterUserRequest {
   string user_type = 1;
-  string user_name = 2;
-  string first_name = 3;
-  string last_name = 4;
-  string email = 5;
-  string phone_number = 6;
-  string password = 7;
+  string email = 2;
+  string phone_number = 3;
+  string password = 4;
 }
 
 message UpdateUserRequest {
@@ -33,9 +30,6 @@ message UpdateUserRequest {
   string user_type = 3;
   string first_name = 4;
   string last_name = 5;
-  string email = 6;
-  string phone_number = 7;
-  string password = 8;
 }
 
 message User {
@@ -46,4 +40,8 @@ message User {
   string last_name = 5;
   string email = 6;
   string phone_number = 7;
+}
+
+message RegisterUserResponse {
+  string user_id = 1;
 }

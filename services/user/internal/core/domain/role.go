@@ -1,21 +1,22 @@
 package domain
 
-type UserType string
+type Role string
 
 const (
-	UserTypeRider  UserType = "rider"
-	UserTypeDriver UserType = "driver"
+	RoleRider  Role = "rider"
+	RoleDriver Role = "driver"
+	RoleAdmin  Role = "admin"
 )
 
 // String returns the string representation of the user type
-func (u UserType) String() string {
+func (u Role) String() string {
 	return string(u)
 }
 
 // Valid checks if the user type is valid
-func (u UserType) Valid() bool {
+func (u Role) IsValid() bool {
 	switch u {
-	case UserTypeRider, UserTypeDriver:
+	case RoleRider, RoleDriver, RoleAdmin:
 		return true
 	default:
 		return false
@@ -23,16 +24,16 @@ func (u UserType) Valid() bool {
 }
 
 // Equals checks if the UserType equals the given string
-func (u UserType) Equals(str string) bool {
+func (u Role) Equals(str string) bool {
 	return string(u) == str
 }
 
 // ParseUserType attempts to parse a string into a valid UserType.
 // Returns the UserType and true if valid, otherwise returns "" and false.
-func ParseUserType(str string) (UserType, bool) {
-	switch UserType(str) {
-	case UserTypeRider, UserTypeDriver:
-		return UserType(str), true
+func ParseUserType(str string) (Role, bool) {
+	switch Role(str) {
+	case RoleRider, RoleDriver, RoleAdmin:
+		return Role(str), true
 	default:
 		return "", false
 	}

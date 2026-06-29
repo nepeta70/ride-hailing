@@ -5,7 +5,6 @@ import (
 
 	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	"github.com/nepeta70/ride-hailing/services/user/internal/core/app"
-	"github.com/nepeta70/ride-hailing/services/user/internal/core/app/commands"
 	"github.com/nepeta70/ride-hailing/services/user/internal/core/app/queries"
 	"github.com/nepeta70/ride-hailing/services/user/internal/core/domain"
 )
@@ -39,41 +38,28 @@ func (h *UserHandler) GetUser(ctx context.Context, req *userv1.GetUserRequest) (
 	}, nil
 }
 
-func (h *UserHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.User, error) {
-
-	var command = commands.CreateUser{UserData: req}
-
-	user, err := h.application.Commands.CreateUser.Handle(ctx, command)
+func (h *UserHandler) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
+	user, err := h.application.Commands.CreateUser.Handle(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.User{
-		UserId:      user.ID().String(),
-		UserType:    user.UserType().String(),
-		UserName:    user.UserName(),
-		FirstName:   user.FirstName(),
-		LastName:    user.LastName(),
-		Email:       user.Email(),
-		PhoneNumber: user.Phone(),
+	return &userv1.RegisterUserResponse{
+		UserId: user.ID.String(),
 	}, nil
 }
 
 func (h *UserHandler) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.User, error) {
-	var command = commands.UpdateUser{UserData: req}
-
-	err := h.application.Commands.UpdateUser.Handle(ctx, command)
+	err := h.application.Commands.UpdateUser.Handle(ctx, req)
 
 	if err != nil {
 		return nil, err
 	}
 	return &userv1.User{
-		UserId:      req.GetUserId(),
-		UserType:    req.GetUserType(),
-		UserName:    req.GetUserName(),
-		FirstName:   req.GetFirstName(),
-		LastName:    req.GetLastName(),
-		Email:       req.GetEmail(),
-		PhoneNumber: req.GetPhoneNumber(),
+		UserId:    req.GetUserId(),
+		UserType:  req.GetUserType(),
+		UserName:  req.GetUserName(),
+		FirstName: req.GetFirstName(),
+		LastName:  req.GetLastName(),
 	}, nil
 }

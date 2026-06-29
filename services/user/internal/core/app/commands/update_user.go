@@ -3,33 +3,28 @@ package commands
 import (
 	"context"
 
+	userv1 "github.com/nepeta70/ride-hailing/gen/proto/user/v1"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
-	"github.com/nepeta70/ride-hailing/services/user/internal/core/domain"
 	"github.com/nepeta70/ride-hailing/services/user/internal/ports"
 )
 
-// 1. The Command (The Data)
-type UpdateUser struct {
-	UserData domain.UpdateUserPayload
-}
-
-// 2. The Handler (The Logic)
 type UpdateUserHandler struct {
 	repo ports.WriteUserRepository
 }
 
-func (h UpdateUserHandler) Handle(ctx context.Context, cmd UpdateUser) error {
+func (h UpdateUserHandler) Handle(ctx context.Context, cmd *userv1.UpdateUserRequest) error {
 	if err := ctx.Err(); err != nil {
 		return errors.ErrContextError
 	}
-	user, err := domain.NewUpdateUser(cmd.UserData)
-	if err != nil {
-		return err
-	}
+	// user, err := domain.NewUpdateUser(cmd.UserData)
+	// if err != nil {
+	// 	return err
+	// }
 
-	// 2. Persist
-	return h.repo.Update(ctx, user)
+	// // 2. Persist
+	// return h.repo.Update(ctx, user)
+	return nil // TODO implement
 }
-func NewUpdateUserHandler(repo ports.WriteUserRepository) UpdateUserHandler {
-	return UpdateUserHandler{repo: repo}
+func NewUpdateUserHandler(repo ports.WriteUserRepository) *UpdateUserHandler {
+	return &UpdateUserHandler{repo: repo}
 }

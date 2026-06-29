@@ -1,19 +1,17 @@
 package domain
 
 import (
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nepeta70/ride-hailing/internal/pkg/errors"
+	"github.com/nepeta70/ride-hailing/services/user/internal/core/validator"
 )
-
-var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 
 type User struct {
 	id        uuid.UUID
-	userType  UserType
+	userType  Role
 	userName  string
 	firstName string
 	lastName  string
@@ -25,7 +23,7 @@ type User struct {
 }
 
 func (u *User) ID() uuid.UUID        { return u.id }
-func (u *User) UserType() UserType   { return u.userType }
+func (u *User) UserType() Role       { return u.userType }
 func (u *User) UserName() string     { return u.userName }
 func (u *User) FirstName() string    { return u.firstName }
 func (u *User) LastName() string     { return u.lastName }
@@ -62,7 +60,7 @@ func CreateNewUser(payload UserPayload) (*User, error) {
 	if email == "" {
 		return nil, errors.NewBusinessError("email is required")
 	}
-	if !emailRegex.MatchString(email) {
+	if !validator.IsValidEmail(email) {
 		return nil, errors.NewBusinessError("invalid email format")
 	}
 	phone := strings.TrimSpace(payload.GetPhoneNumber())
