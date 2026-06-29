@@ -70,7 +70,7 @@ func NewServer(opts *Options) *Server {
 
 		users := v1.Group("/users")
 		{
-			users.POST("", userHandler.CreateUser)
+			users.POST("", userHandler.RegisterUser)
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
 		}

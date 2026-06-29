@@ -35,7 +35,7 @@ type registerUserPayload struct {
 	Password    string `json:"password" binding:"required"`
 }
 
-func (h *UserHandler) CreateUser(c *gin.Context) {
+func (h *UserHandler) RegisterUser(c *gin.Context) {
 	var body registerUserPayload
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -43,7 +43,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	ctx := middleware.OutgoingGRPCContext(c, h.apiKey, h.hmacSecret, h.propagator)
-	resp, err := h.client.CreateUser(ctx, &userv1.RegisterUserRequest{
+	resp, err := h.client.RegisterUser(ctx, &userv1.RegisterUserRequest{
 		UserType:    body.UserType,
 		Email:       body.Email,
 		PhoneNumber: body.PhoneNumber,

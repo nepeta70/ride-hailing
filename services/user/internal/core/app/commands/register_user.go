@@ -15,10 +15,10 @@ import (
 )
 
 type RegisterUserHandler struct {
-	repo      ports.UserCredentialsRepository
-	hasher    ports.PasswordHasher
-	telemetry pkgPorts.TelemetryProvider
-	validator validator.PasswordValidator
+	repo              ports.UserCredentialsRepository
+	hasher            ports.PasswordHasher
+	telemetry         pkgPorts.TelemetryProvider
+	passwordValidator validator.PasswordValidator
 }
 
 func (h *RegisterUserHandler) Handle(ctx context.Context, cmd *userv1.RegisterUserRequest) (*domain.UserCredentials, error) {
@@ -44,14 +44,15 @@ func (h *RegisterUserHandler) Handle(ctx context.Context, cmd *userv1.RegisterUs
 		return nil, errors.NewBusinessError("email is required")
 	}
 
-	err := h.validator.Validate(email)
-	if err != nil {
-		span.RecordError(err)
-		return nil, errors.NewBusinessErrorf("invalid email format")
+	if !validator.IsValidEmail(email) {
+		e := errors.NewBusinessErrorf("invalid email format: %s", email)
+		span.RecordError(e)
+		return nil, e
 	}
+
 	phone := strings.TrimSpace(cmd.GetPhoneNumber())
 	password := strings.TrimSpace(cmd.GetPassword())
-	err = h.validator.Validate(password)
+	err := h.passwordValidator.Validate(password)
 	if err != nil {
 		span.RecordError(err)
 		return nil, errors.BusinessError(err)
@@ -82,5 +83,5 @@ func (h *RegisterUserHandler) Handle(ctx context.Context, cmd *userv1.RegisterUs
 }
 
 func NewRegisterUserHandler(repo ports.UserCredentialsRepository, hasher ports.PasswordHasher, telemetry pkgPorts.TelemetryProvider, validator *validator.PasswordValidator) *RegisterUserHandler {
-	return &RegisterUserHandler{repo: repo, hasher: hasher, telemetry: telemetry, validator: *validator}
+	return &RegisterUserHandler{repo: repo, hasher: hasher, telemetry: telemetry, passwordValidator: *validator}
 }

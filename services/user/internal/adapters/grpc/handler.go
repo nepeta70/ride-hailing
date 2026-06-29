@@ -38,17 +38,14 @@ func (h *UserHandler) GetUser(ctx context.Context, req *userv1.GetUserRequest) (
 	}, nil
 }
 
-func (h *UserHandler) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.User, error) {
+func (h *UserHandler) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
 	user, err := h.application.Commands.CreateUser.Handle(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.User{
-		UserId:      user.ID.String(),
-		UserType:    user.Role.String(),
-		Email:       *user.Email,
-		PhoneNumber: *user.Phone,
+	return &userv1.RegisterUserResponse{
+		UserId: user.ID.String(),
 	}, nil
 }
 

@@ -28,8 +28,8 @@ func NewCredentialsRepo(config *config.Config, db *pgstore.PostgresDB) *Credenti
 func (r *CredentialsRepo) Create(ctx context.Context, creds *domain.UserCredentials) error {
 	const query = `
 		INSERT INTO user_credentials (
-			id, email, phone, role, status, password_hash
-		) VALUES ($1, $2, $3, $4, $5, $6)
+			id, email, phone, role, password_hash
+		) VALUES ($1, $2, $3, $4, $5)
 	`
 	var email any
 	if creds.Email != nil {
@@ -42,7 +42,7 @@ func (r *CredentialsRepo) Create(ctx context.Context, creds *domain.UserCredenti
 	}
 
 	_, err := r.db.ExecContext(ctx, query,
-		creds.ID, email, phone, creds.Role.String(), creds.Status.String(), creds.PasswordHash,
+		creds.ID, email, phone, creds.Role.String(), creds.PasswordHash,
 	)
 	if err != nil {
 		return mapUniqueConstraintError(err)

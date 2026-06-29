@@ -14,9 +14,9 @@ type UserEndpointRoles struct {
 
 func NewEndpointRoles(config *config.BaseConfig) ports.EndpointRoles {
 	var roleConfig = map[string][]enums.SenderType{
-		userv1.UserService_GetUser_FullMethodName:    {enums.SenderTypeUser, enums.SenderTypeAdmin, enums.SenderTypeService},
-		userv1.UserService_CreateUser_FullMethodName: {enums.SenderTypeAdmin},
-		userv1.UserService_UpdateUser_FullMethodName: {enums.SenderTypeUser, enums.SenderTypeAdmin},
+		userv1.UserService_GetUser_FullMethodName:      {enums.SenderTypeUser, enums.SenderTypeAdmin, enums.SenderTypeService},
+		userv1.UserService_RegisterUser_FullMethodName: {enums.SenderTypeAnonymous},
+		userv1.UserService_UpdateUser_FullMethodName:   {enums.SenderTypeUser, enums.SenderTypeAdmin},
 	}
 
 	return &UserEndpointRoles{

@@ -7,18 +7,22 @@
     "log_format": "json",
     "log_level": "DEBUG"
   },
-  "redis": {
-    "address": "127.0.0.1:6379"
+  "timeouts": {
+    "reset_system_in_seconds": 10,
+    "standard_in_seconds": 5
   },
   "postgres": {
-      "host": "localhost",
-      "port": 5432,
-      "ping_timeout_seconds": 5,
-      "query_timeout_seconds": 5
+    "user": "postgres",
+    "password": "postgres",
+    "db": "ride_db",
+    "port": 5432,
+    "ping_timeout_seconds": 5,
+    "query_timeout_seconds": 5
   },
   "telemetry": {
-    "interval_seconds": 15,
     "prometheus_address": "prometheus:9090",
-    "opentelemetry_address": "otel-collector:4317"
+    "opentelemetry_address": "otel-collector:4317",
+    "pyroscope_address": "pyroscope:4040",
+    "interval_seconds": 15
   }
 }

@@ -87,6 +87,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy  
+      migrations:
+        condition: service_completed_successfully   
 
   matching:
     build:
@@ -171,6 +173,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy  
+      migrations:
+        condition: service_completed_successfully     
 
   driver:
     build:
