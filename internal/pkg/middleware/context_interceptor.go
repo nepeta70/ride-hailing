@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
@@ -143,14 +142,6 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 
-		if !i.verifySignature(info.FullMethod, md, senderID.String(), senderType, requestID.String()) {
-			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_signature")
-			i.telemetry.Logger().Warn("Invalid request signature", "method", info.FullMethod)
-			span.SetAttributes(attribute.String("auth.reason", "invalid_signature"))
-			span.SetStatus(codes.Error, "invalid_signature")
-			return nil, errUnauthenticated
-		}
-
 		// 2. Assemble the RequestInfo (Pointer-based to minimize boxing cost)
 		rInfo := &ctxmgr.RequestInfo{
 			Sender: ctxmgr.Sender{
@@ -204,19 +195,4 @@ func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (*t
 		return nil, errDeadlineExceeded
 	}
 	return &timestamp, nil
-}
-
-func (i *ContextInterceptor) verifySignature(method string, md metadata.MD, senderID, senderType, requestID string) bool {
-	if i.config.HMACSecret == "" {
-		i.telemetry.Logger().Warn("HMAC secret is not configured", "method", method)
-		return false
-	}
-
-	signature := getMetadata(md, auth.MetadataSignatureKey)
-	if signature == "" {
-		return false
-	}
-
-	payload := auth.CanonicalPayload(senderID, senderType, requestID, getMetadata(md, "timestamp"))
-	return auth.Verify(i.config.HMACSecret, payload, signature)
 }
