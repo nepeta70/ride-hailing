@@ -49,3 +49,5 @@ go.work.sum
 
 buf.lock
 terraform/terraform.tfvars
+
+docker/envoy/jwks.json
