@@ -57,7 +57,6 @@ func (h *UserHandler) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequ
 	}
 	return &userv1.User{
 		UserId:    req.GetUserId(),
-		UserType:  req.GetUserType(),
 		UserName:  req.GetUserName(),
 		FirstName: req.GetFirstName(),
 		LastName:  req.GetLastName(),

@@ -70,7 +70,6 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 type updateUserPayload struct {
 	UserName    string `json:"user_name"`
-	UserType    string `json:"user_type"`
 	FirstName   string `json:"first_name"`
 	LastName    string `json:"last_name"`
 	Email       string `json:"email"`
@@ -89,7 +88,6 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	resp, err := h.client.UpdateUser(ctx, &userv1.UpdateUserRequest{
 		UserId:    c.Param("id"),
 		UserName:  body.UserName,
-		UserType:  body.UserType,
 		FirstName: body.FirstName,
 		LastName:  body.LastName,
 	})
