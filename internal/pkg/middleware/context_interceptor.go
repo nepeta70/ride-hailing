@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nepeta70/ride-hailing/internal/pkg/auth"
 	"github.com/nepeta70/ride-hailing/internal/pkg/config"
 	"github.com/nepeta70/ride-hailing/internal/pkg/core/enums"
 	"github.com/nepeta70/ride-hailing/internal/pkg/ctxmgr"
@@ -81,17 +80,17 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		i.telemetry.Logger().Debug("Received metadata:", "metadata", md)
 
-		// 1. Security Check (Fail Fast)
-		apiKey := getMetadata(md, "api-key")
-		if apiKey != i.config.APIKey {
-			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_api_key")
-			i.telemetry.Logger().Warn("Invalid API Key", "method", info.FullMethod)
-			span.SetAttributes(
-				attribute.String("auth.reason", "invalid_api_key"),
-				attribute.String("auth.received_key", apiKey),
-			)
-			return nil, errUnauthenticated
-		}
+		// 1. Security Check (Fail Fast) - api-key check moved to gateway
+		// apiKey := getMetadata(md, "api-key")
+		// if apiKey != i.config.APIKey {
+		// 	i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_api_key")
+		// 	i.telemetry.Logger().Warn("Invalid API Key", "method", info.FullMethod)
+		// 	span.SetAttributes(
+		// 		attribute.String("auth.reason", "invalid_api_key"),
+		// 		attribute.String("auth.received_key", apiKey),
+		// 	)
+		// 	return nil, errUnauthenticated
+		// }
 
 		senderID := getUUIDMetadata(md, "sender-id")
 		if senderID == uuid.Nil {
@@ -141,14 +140,6 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 		if err != nil {
 			span.SetStatus(codes.Error, "invalid_timestamp")
 			return nil, err
-		}
-
-		if !i.verifySignature(info.FullMethod, md, senderID.String(), senderType, requestID.String()) {
-			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_signature")
-			i.telemetry.Logger().Warn("Invalid request signature", "method", info.FullMethod)
-			span.SetAttributes(attribute.String("auth.reason", "invalid_signature"))
-			span.SetStatus(codes.Error, "invalid_signature")
-			return nil, errUnauthenticated
 		}
 
 		// 2. Assemble the RequestInfo (Pointer-based to minimize boxing cost)
@@ -204,19 +195,4 @@ func (i *ContextInterceptor) extractTimestamp(method string, md metadata.MD) (*t
 		return nil, errDeadlineExceeded
 	}
 	return &timestamp, nil
-}
-
-func (i *ContextInterceptor) verifySignature(method string, md metadata.MD, senderID, senderType, requestID string) bool {
-	if i.config.HMACSecret == "" {
-		i.telemetry.Logger().Warn("HMAC secret is not configured", "method", method)
-		return false
-	}
-
-	signature := getMetadata(md, auth.MetadataSignatureKey)
-	if signature == "" {
-		return false
-	}
-
-	payload := auth.CanonicalPayload(senderID, senderType, requestID, getMetadata(md, "timestamp"))
-	return auth.Verify(i.config.HMACSecret, payload, signature)
 }

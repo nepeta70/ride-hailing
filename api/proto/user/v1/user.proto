@@ -27,9 +27,8 @@ message RegisterUserRequest {
 message UpdateUserRequest {
   string user_id = 1;
   string user_name = 2;
-  string user_type = 3;
-  string first_name = 4;
-  string last_name = 5;
+  string first_name = 3;
+  string last_name = 4;
 }
 
 message User {

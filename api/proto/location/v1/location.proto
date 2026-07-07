@@ -32,16 +32,12 @@ message DriverLocation {
   float speed = 5;
 
   string status = 6;
-
-  google.protobuf.Timestamp status_updated_at = 7;
 }
 
 message DriverLocationWithStatus {
   DriverLocation location = 1;
 
   string status = 2;
-
-  google.protobuf.Timestamp status_updated_at = 3;
 }
 
 message DriverStatus {

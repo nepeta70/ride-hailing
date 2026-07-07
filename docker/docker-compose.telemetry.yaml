@@ -6,7 +6,7 @@ services:
       - "--config=/etc/otelcol/config.yaml"
       - "--feature-gates=service.profilesSupport"
     volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+      - ../config/otel/otel-collector-config.yaml:/etc/otelcol/config.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro 
       - /var/run/docker.sock:/var/run/docker.sock:ro 
     ports:
@@ -20,7 +20,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yaml'
     volumes:
-      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ../config/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
     ports:
       - "9090:9090"
 
@@ -31,7 +31,7 @@ services:
       - "-config.file=/etc/tempo.yaml"  
       - "-target=all"                  
     volumes:
-      - ./tempo.yaml:/etc/tempo.yaml
+      - ../config/tempo/tempo.yaml:/etc/tempo.yaml
       - tempo-data:/var/tempo
     ports:
       - "3200:3200"   # Tempo UI/API
@@ -45,7 +45,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - ../config/loki/loki-config.yaml:/etc/loki/local-config.yaml
 
   pyroscope:
     image: grafana/pyroscope:latest
@@ -67,7 +67,7 @@ services:
       - tempo
       - pyroscope
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ../config/grafana/provisioning:/etc/grafana/provisioning
 
 volumes:
   tempo-data:

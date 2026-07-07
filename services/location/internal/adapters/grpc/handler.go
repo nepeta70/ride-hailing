@@ -108,8 +108,7 @@ func (h *LocationHandler) GetDriverLocation(ctx context.Context, req *locationv1
 			Heading:   result.Heading,
 			Speed:     result.Speed,
 		},
-		Status:          result.Status.String(),
-		StatusUpdatedAt: timestamppb.New(result.StatusUpdatedAt),
+		Status: result.Status.String(),
 	}, nil
 }
 
