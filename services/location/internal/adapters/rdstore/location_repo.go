@@ -70,15 +70,18 @@ func (r *LocationRepository) SaveDriverLocation(ctx context.Context, loc *domain
 	pipe.HSetNX(ctx, driverLocationKey, "status", contracts.DriverStatusAvailable.String()) // Default to Available if not set
 	pipe.Expire(ctx, driverLocationKey, r.cfg.Logic.LocationTTL)
 
-	if _, err = pipe.Exec(ctx); err != nil {
+	if _, err = pipe.Exec(ctx); err != nil && err != redis.Nil {
 		span.RecordError(err)
 		r.telemetry.Metrics().DependencyFailure("redis", "pipe_exec", "save_location")
 		return errors.NewTransientErrorf("Pipeline execution failed: %w", err)
 	}
 
-	currStatus := statusCmd.Val()
-	if currStatus == "" {
+	currStatus, err := statusCmd.Result()
+	if err == redis.Nil {
 		currStatus = contracts.DriverStatusAvailable.String()
+	} else if err != nil {
+		span.RecordError(err)
+		return errors.NewTransientErrorf("failed to get driver status: %w", err)
 	}
 
 	if currStatus == contracts.DriverStatusAvailable.String() {
