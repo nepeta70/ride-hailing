@@ -80,17 +80,17 @@ func (i *ContextInterceptor) Unary() grpc.UnaryServerInterceptor {
 
 		i.telemetry.Logger().Debug("Received metadata:", "metadata", md)
 
-		// 1. Security Check (Fail Fast)
-		apiKey := getMetadata(md, "api-key")
-		if apiKey != i.config.APIKey {
-			i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_api_key")
-			i.telemetry.Logger().Warn("Invalid API Key", "method", info.FullMethod)
-			span.SetAttributes(
-				attribute.String("auth.reason", "invalid_api_key"),
-				attribute.String("auth.received_key", apiKey),
-			)
-			return nil, errUnauthenticated
-		}
+		// 1. Security Check (Fail Fast) - api-key check moved to gateway
+		// apiKey := getMetadata(md, "api-key")
+		// if apiKey != i.config.APIKey {
+		// 	i.telemetry.Metrics().AuthFailure(info.FullMethod, "invalid_api_key")
+		// 	i.telemetry.Logger().Warn("Invalid API Key", "method", info.FullMethod)
+		// 	span.SetAttributes(
+		// 		attribute.String("auth.reason", "invalid_api_key"),
+		// 		attribute.String("auth.received_key", apiKey),
+		// 	)
+		// 	return nil, errUnauthenticated
+		// }
 
 		senderID := getUUIDMetadata(md, "sender-id")
 		if senderID == uuid.Nil {

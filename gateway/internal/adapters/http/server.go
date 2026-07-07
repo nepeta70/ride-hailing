@@ -37,7 +37,10 @@ func NewServer(opts *Options) *Server {
 		otelgin.WithPropagators(opts.Telemetry.Propagator()),
 	))
 	engine.Use(middleware.Recovery(opts.Telemetry))
-	engine.Use(middleware.RequestContextMiddleware())
+	engine.Use(middleware.RequestContextMiddleware(&middleware.HTTPMiddlewareOptions{
+		Telemetry: opts.Telemetry,
+		Config:    opts.Config,
+	}))
 	engine.Use(gin.Logger())
 
 	rideHandler := handlers.NewRideHandler(opts.Clients, opts.Config, opts.Telemetry)

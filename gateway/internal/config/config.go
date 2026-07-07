@@ -56,5 +56,11 @@ func DefaultConfig() *Config {
 
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
-	return config.LoadGeneric(path, cfg)
+
+	cfg, err := config.LoadGeneric(path, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
