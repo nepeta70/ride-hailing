@@ -44,6 +44,9 @@ static_resources:
                           cluster_name: otel_collector
                         timeout: 0.250s
                       service_name: envoy-gateway
+                  spawn_upstream_span: true
+                  operation: "%REQ(:METHOD)% %REQ(:PATH)%"
+                  upstream_operation: "%REQ(:METHOD)% %REQ(:PATH)%"
 
                 route_config:
                   name: gateway_routes
