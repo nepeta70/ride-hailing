@@ -269,3 +269,4 @@ services:
 include:
   - path: docker-compose.infra.yaml
   - path: docker-compose.telemetry.yaml
+  - path: docker-compose.gateway.yaml

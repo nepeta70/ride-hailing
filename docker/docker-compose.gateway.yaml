@@ -1,0 +1,28 @@
+services:
+
+  envoy-gateway:
+    image: envoyproxy/envoy:v1.38.3
+    container_name: envoy-gateway
+    secrets:
+      - jwks_json
+    ports:
+      - "8081:8081"
+      - "9901:9901"
+    volumes:
+      - ../config/envoy/gateway/gateway.yaml:/etc/envoy/envoy.yaml:ro
+    environment:
+      - ENVOY_UID=0
+    depends_on:
+      gateway:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+#     networks:
+#       - envoy-net
+
+# networks:
+#   envoy-net:
+#     driver: bridge
+secrets:
+  jwks_json:
+    file: ../config/secrets/jwks.json
